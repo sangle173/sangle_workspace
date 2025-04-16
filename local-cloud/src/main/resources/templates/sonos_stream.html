@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Live Sonos Discovery</title>
+    <style>
+        body {
+            font-family: monospace;
+            background-color: #000;
+            color: #0f0;
+            padding: 1rem;
+        }
+        #log {
+            white-space: pre-wrap;
+            background-color: #111;
+            padding: 1rem;
+            border-radius: 6px;
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 1px solid #333;
+        }
+        h2 {
+            color: #0f0;
+        }
+    </style>
+</head>
+<body>
+    <h2>📡 Discovering Sonos Devices...</h2>
+    <div id="log">Waiting for responses...</div>
+
+    <script>
+        const log = document.getElementById("log");
+        const source = new EventSource("/discover-sonos-stream");
+
+        source.onmessage = e => {
+            log.textContent += "\n" + e.data;
+            log.scrollTop = log.scrollHeight;
+        };
+
+        source.onerror = e => {
+            log.textContent += "\n❌ Discovery ended or failed.";
+            source.close();
+        };
+    </script>
+</body>
+</html>
