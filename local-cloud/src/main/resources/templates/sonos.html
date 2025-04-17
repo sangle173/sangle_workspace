@@ -98,9 +98,45 @@
             </div>
         </div>
     </div>
+    <!-- ✅ Common Modal -->
+    <div class="modal fade" id="commonModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="commonModalTitle">Processing...</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="commonModalBody">
+                    Please wait...
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script>
         let currentGroups = {}; // HHID → list of devices
+        let modalInstance = null;
+
+        function showModal(title, body) {
+            const modalTitle = document.getElementById("commonModalTitle");
+            const modalBody = document.getElementById("commonModalBody");
+            const modalEl = document.getElementById("commonModal");
+
+            modalTitle.textContent = title;
+            modalBody.innerHTML = body;
+
+            if (!modalInstance) {
+                modalInstance = new bootstrap.Modal(modalEl, {
+                    backdrop: 'static',
+                    keyboard: true
+                });
+            }
+
+            modalInstance.show();
+        }
 
         function scanSonos() {
             const btn = document.getElementById("scanBtn");
@@ -117,7 +153,7 @@
 
             currentGroups = {};
 
-            const eventSource = new EventSource("/stream-sonos");
+            const eventSource = new EventSource("/sonos-action/stream-sonos");
 
             eventSource.addEventListener("device", function (event) {
                 const d = JSON.parse(event.data);
@@ -154,6 +190,55 @@
             }
         }
 
+        function rebootDevice(ip) {
+            if (!confirm(`Reboot device at ${ip}?`)) return;
+            showModal("Rebooting Device", "🔁 Sending reboot command...");
+            fetch("/sonos-action/reboot?ip=" + ip, { method: "POST" })
+                .then(res => res.text())
+                .then(msg => showModal("Reboot Result", msg))
+                .catch(err => showModal("Error", "❌ Reboot failed.<br>" + err));
+        }
+
+        function renameDevice(ip, currentName) {
+            const newName = prompt("Enter new room name:", currentName);
+            if (!newName || newName === currentName) return;
+
+            const params = new URLSearchParams({ ip, name: newName, current: currentName });
+            showModal("Renaming Device", `✏️ Renaming room <b>${currentName}</b> to <b>${newName}</b>...`);
+
+            fetch("/sonos-action/rename?" + params.toString(), { method: "POST" })
+                .then(res => res.text())
+                .then(msg => showModal("Rename Result", msg))
+                .catch(err => showModal("Error", "❌ Rename failed.<br>" + err));
+        }
+
+        function updateDevice(ip) {
+            const url = prompt("Enter the full URL to the .upd file:");
+            if (!url) return;
+
+            showModal("Sending Update", "🔄 Updating device firmware...");
+
+            fetch("/sonos-action/update?ip=" + ip + "&url=" + encodeURIComponent(url), {
+                method: "POST"
+            })
+                .then(res => res.text())
+                .then(msg => showModal("Update Result", msg))
+                .catch(err => showModal("Error", "❌ Update failed.<br>" + err));
+        }
+
+        function submitDiagnostics(ip) {
+            if (!confirm(`🧪 Submit diagnostics for device at ${ip}?`)) return;
+
+            showModal("Submitting Diagnostics", "⏳ Sending request...");
+
+            fetch(`/sonos-action/submit-diagnostics?ip=${ip}&includeControllers=1&type=user`, {
+                method: "POST"
+            })
+                .then(res => res.text())
+                .then(msg => showModal("Diagnostics Result", msg))
+                .catch(err => showModal("Error", "❌ Failed to submit diagnostics.<br>" + err));
+        }
+
         function renderGroupedResults(groups) {
             const filter = document.getElementById("hhidFilter");
             const selected = filter.value;
@@ -169,13 +254,13 @@
                 const label = (hhid === "NO_HHID") ? "No HHID ⚠️" : hhid;
 
                 section.innerHTML = `
-                    <h5 class="text-primary mb-2">HHID: ${label}</h5>
-                    <div class="table-responsive">
-                        <table class="table table-bordered align-middle">
-                            <tbody id="tbody-${CSS.escape(hhid)}"></tbody>
-                        </table>
-                    </div>
-                `;
+                <h5 class="text-primary mb-2">HHID: ${label}</h5>
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle">
+                        <tbody id="tbody-${CSS.escape(hhid)}"></tbody>
+                    </table>
+                </div>
+            `;
 
                 results.appendChild(section);
                 const tbody = section.querySelector(`#tbody-${CSS.escape(hhid)}`);
@@ -213,26 +298,18 @@
         </div>
     </td>
     <td class="align-top" style="white-space: nowrap; width: 160px;">
-        <button class="btn btn-sm btn-outline-danger mb-1" onclick="rebootDevice('${d["IP"]}')">
-            🔁 Reboot
-        </button>
-        <button class="btn btn-sm btn-outline-secondary mb-1" onclick="renameDevice('${d["IP"]}', '${d["Room Name"] || ''}')">
-            ✏️ Rename
-        </button>
-          <button class="btn btn-sm btn-outline-success mb-1" onclick="updateDevice('${d["IP"]}')">
-        🔄 Update
-    </button>
-    </td>
-`;
-
+        <button class="btn btn-sm btn-outline-danger mb-1" onclick="rebootDevice('${d["IP"]}')">🔁 Reboot</button>
+        <button class="btn btn-sm btn-outline-secondary mb-1" onclick="renameDevice('${d["IP"]}', '${d["Room Name"] || ''}')">✏️ Rename</button>
+        <button class="btn btn-sm btn-outline-success mb-1" onclick="updateDevice('${d["IP"]}')">🔄 Update</button>
+        <button class="btn btn-sm btn-outline-info mb-1" onclick="submitDiagnostics('${d["IP"]}')">🧪 Diagnostics</button>
+    </td>`;
                     tbody.appendChild(row);
                 });
             });
         }
 
-        // 🔁 Poll backend for latency every 5 seconds
         setInterval(() => {
-            fetch("/ping-status")
+            fetch("/sonos-action/ping-status")
                 .then(res => res.json())
                 .then(data => {
                     data.forEach(({ ip, latency }) => {
@@ -259,42 +336,8 @@
                     });
                 });
         }, 5000);
-        function rebootDevice(ip) {
-            if (!confirm(`Reboot device at ${ip}?`)) return;
-            fetch("/sonos-action/reboot?ip=" + ip, { method: "POST" })
-                .then(res => res.text())
-                .then(msg => alert("🔁 Reboot: " + msg))
-                .catch(err => alert("❌ Error: " + err));
-        }
-
-        function renameDevice(ip, currentName) {
-            const newName = prompt("Enter new room name:", currentName);
-            if (!newName || newName === currentName) return;
-
-            const params = new URLSearchParams({ ip, name: newName });
-            fetch("/sonos-action/rename?" + params.toString(), { method: "POST" })
-                .then(res => res.text())
-                .then(msg => alert("✏️ Rename: " + msg))
-                .catch(err => alert("❌ Error: " + err));
-        }
-
-
-        function updateDevice(ip) {
-            const url = prompt("Enter the full URL to the .upd file:");
-            if (!url) return;
-
-            fetch("/sonos-action/update?ip=" + ip + "&url=" + encodeURIComponent(url), {
-                method: "POST"
-            })
-                .then(res => res.text())
-                .then(msg => alert("🔄 Update: " + msg))
-                .catch(err => alert("❌ Error: " + err));
-        }
-
-
+        
     </script>
-
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 
