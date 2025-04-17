@@ -1,4 +1,4 @@
-package com.example.local_cloud;
+package com.example.local_cloud.service;
 
 import org.springframework.stereotype.Service;
 

@@ -1,4 +1,4 @@
-package com.example.local_cloud;
+package com.example.local_cloud.controller;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;

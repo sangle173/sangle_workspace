@@ -1,5 +1,6 @@
-package com.example.local_cloud;
+package com.example.local_cloud.controller;
 
+import com.example.local_cloud.service.SonosService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
