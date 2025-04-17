@@ -5,6 +5,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.w3c.dom.Document;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import javax.annotation.PostConstruct;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -36,12 +39,11 @@ public class SonosDiscoveryController {
             try {
                 Set<String> seenLocations = new HashSet<>();
 
-                String searchMessage =
-                        "M-SEARCH * HTTP/1.1\r\n" +
-                                "HOST: 239.255.255.250:1900\r\n" +
-                                "MAN: \"ssdp:discover\"\r\n" +
-                                "MX: 5\r\n" +
-                                "ST: urn:schemas-upnp-org:device:ZonePlayer:1\r\n\r\n";
+                String searchMessage = "M-SEARCH * HTTP/1.1\r\n" +
+                        "HOST: 239.255.255.250:1900\r\n" +
+                        "MAN: \"ssdp:discover\"\r\n" +
+                        "MX: 5\r\n" +
+                        "ST: urn:schemas-upnp-org:device:ZonePlayer:1\r\n\r\n";
 
                 InetAddress wifiAddress = getWifiInterfaceAddress();
                 DatagramSocket socket = new DatagramSocket(0, wifiAddress);
@@ -52,8 +54,7 @@ public class SonosDiscoveryController {
                         searchMessage.getBytes(),
                         searchMessage.length(),
                         InetAddress.getByName("239.255.255.250"),
-                        1900
-                );
+                        1900);
                 socket.send(packet);
 
                 byte[] buf = new byte[2048];
@@ -72,7 +73,8 @@ public class SonosDiscoveryController {
                                 emitter.send(SseEmitter.event().name("device").data(info));
                             }
                         }
-                    } catch (SocketTimeoutException ignored) {}
+                    } catch (SocketTimeoutException ignored) {
+                    }
                 }
 
                 socket.close();
@@ -129,7 +131,8 @@ public class SonosDiscoveryController {
             map.put("Hardware Version", xpath.evaluate("//*[local-name()='hardwareVersion']", doc));
 
             // Extract icon
-            String iconUrlPath = xpath.evaluate("//*[local-name()='iconList']/*[local-name()='icon']/*[local-name()='url']", doc);
+            String iconUrlPath = xpath
+                    .evaluate("//*[local-name()='iconList']/*[local-name()='icon']/*[local-name()='url']", doc);
             if (iconUrlPath != null && !iconUrlPath.isEmpty()) {
                 map.put("Image", "http://" + ip + ":1400" + iconUrlPath);
             } else {
@@ -183,10 +186,12 @@ public class SonosDiscoveryController {
         Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
         while (interfaces.hasMoreElements()) {
             NetworkInterface iface = interfaces.nextElement();
-            if (!iface.isUp() || iface.isLoopback()) continue;
+            if (!iface.isUp() || iface.isLoopback())
+                continue;
 
             String name = iface.getName().toLowerCase();
-            if (!(name.contains("wlan") || name.contains("wifi"))) continue;
+            if (!(name.contains("wlan") || name.contains("wifi")))
+                continue;
 
             Enumeration<InetAddress> addresses = iface.getInetAddresses();
             while (addresses.hasMoreElements()) {
@@ -213,6 +218,113 @@ public class SonosDiscoveryController {
                 }
             }
         }, 0, 5, TimeUnit.SECONDS);
+    }
+
+    // Add below existing methods in your @Controller
+    @PostMapping("/sonos-action/reboot")
+    @ResponseBody
+    public String reboot(@RequestParam String ip) {
+        try {
+            // Step 1: Get CSRF token from GET /reboot page
+            URL getUrl = new URL("http://" + ip + ":1400/reboot");
+            HttpURLConnection getConn = (HttpURLConnection) getUrl.openConnection();
+            getConn.setRequestMethod("GET");
+            getConn.setConnectTimeout(2000);
+            getConn.setReadTimeout(2000);
+
+            Scanner scanner = new Scanner(getConn.getInputStream()).useDelimiter("\\A");
+            String html = scanner.hasNext() ? scanner.next() : "";
+
+            // Step 2: Extract token
+            Pattern pattern = Pattern.compile("name=\"csrfToken\" value=\"([^\"]+)\"");
+            Matcher matcher = pattern.matcher(html);
+            if (!matcher.find()) {
+                return "ERROR: CSRF token not found";
+            }
+            String csrfToken = matcher.group(1);
+            System.out.println("🔐 CSRF token found: " + csrfToken);
+
+            // Step 3: POST the token to /reboot
+            URL postUrl = new URL("http://" + ip + ":1400/reboot");
+            HttpURLConnection postConn = (HttpURLConnection) postUrl.openConnection();
+            postConn.setRequestMethod("POST");
+            postConn.setDoOutput(true);
+            postConn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+            postConn.setConnectTimeout(2000);
+            postConn.setReadTimeout(2000);
+
+            String payload = "csrfToken=" + URLEncoder.encode(csrfToken, "UTF-8");
+            postConn.getOutputStream().write(payload.getBytes());
+
+            int responseCode = postConn.getResponseCode();
+            return (responseCode == 200) ? "OK" : "FAILED (" + responseCode + ")";
+
+        } catch (Exception e) {
+            return "ERROR: " + e.getMessage();
+        }
+    }
+
+    @PostMapping("/sonos-action/rename")
+    @ResponseBody
+    public String rename(@RequestParam String ip, @RequestParam String name, @RequestParam String current) {
+        try {
+            String body = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                    "<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\" " +
+                    "s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\">" +
+                    "<s:Body>" +
+                    "<u:SetRoomName xmlns:u=\"urn:schemas-upnp-org:service:DeviceProperties:1\">" +
+                    "<DesiredRoomName>" + name + "</DesiredRoomName>" +
+                    "<CurrentRoomName>" + current + "</CurrentRoomName>" +
+                    "</u:SetRoomName>" +
+                    "</s:Body></s:Envelope>";
+
+            URL url = new URL("http://" + ip + ":1400/DeviceProperties/Control");
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setDoOutput(true);
+            conn.setRequestProperty("SOAPACTION", "\"urn:schemas-upnp-org:service:DeviceProperties:1#SetRoomName\"");
+            conn.setRequestProperty("Content-Type", "text/xml; charset=utf-8");
+            conn.getOutputStream().write(body.getBytes());
+
+            int response = conn.getResponseCode();
+            return (response == 200) ? "OK" : "FAILED (" + response + ")";
+
+        } catch (Exception e) {
+            return "ERROR: " + e.getMessage();
+        }
+    }
+
+    @PostMapping("/sonos-action/update")
+    @ResponseBody
+    public String beginSoftwareUpdate(@RequestParam String ip, @RequestParam String url) {
+        try {
+            String body = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                    "<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\" " +
+                    "s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\">" +
+                    "<s:Body>" +
+                    "<u:BeginSoftwareUpdate xmlns:u=\"urn:schemas-upnp-org:service:DeviceProperties:1\">" +
+                    "<UpdateURL>" + url + "</UpdateURL>" +
+                    "<Flags>9</Flags>" +
+                    "</u:BeginSoftwareUpdate>" +
+                    "</s:Body></s:Envelope>";
+
+            URL controlUrl = new URL("http://" + ip + ":1400/DeviceProperties/Control");
+            HttpURLConnection conn = (HttpURLConnection) controlUrl.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setDoOutput(true);
+            conn.setRequestProperty("Content-Type", "text/xml; charset=\"utf-8\"");
+            conn.setRequestProperty("SOAPACTION",
+                    "\"urn:schemas-upnp-org:service:DeviceProperties:1#BeginSoftwareUpdate\"");
+            conn.setConnectTimeout(3000);
+            conn.setReadTimeout(3000);
+
+            conn.getOutputStream().write(body.getBytes());
+            int code = conn.getResponseCode();
+            return (code == 200) ? "Update triggered." : "FAILED (" + code + ")";
+
+        } catch (Exception e) {
+            return "ERROR: " + e.getMessage();
+        }
     }
 
     // Helper class for tracking ping info

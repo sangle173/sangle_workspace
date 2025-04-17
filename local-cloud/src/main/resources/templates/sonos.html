@@ -193,26 +193,38 @@
 
                     const row = document.createElement("tr");
                     row.innerHTML = `
-                        <td style="width: 80px; vertical-align: top;">
-                            <img src="${d["Image"]}" alt="Icon"
-                                 style="max-height: 56px; width: auto; object-fit: contain;">
-                        </td>
-                        <td class="align-top">
-                            <div class="fw-semibold text-primary" style="font-size: 1rem;">
-                                ${d["Model"] || "Unknown"}
-                            </div>
-                            <div style="font-size: 0.9rem;">
-                                IP: ${d["IP"]} | HHID: ${hhid === "NO_HHID" ? "—" : hhid} |
-                                <span id="latency-${ipId}" class="text-muted">ping...</span>
-                            </div>
-                            <div class="text-muted small">
-                                RoomName: ${d["Room Name"] || "-"} |
-                                Version: ${d["Software Version"] || "-"} |
-                                MAC: ${d["MAC Address"] || "-"} |
-                                UPD: ${upd || "-"}
-                            </div>
-                        </td>
-                    `;
+    <td style="width: 80px; vertical-align: top;">
+        <img src="${d["Image"]}" alt="Icon"
+             style="max-height: 56px; width: auto; object-fit: contain;">
+    </td>
+    <td class="align-top">
+        <div class="fw-semibold text-primary" style="font-size: 1rem;">
+            ${d["Model"] || "Unknown"}
+        </div>
+        <div style="font-size: 0.9rem;">
+            IP: ${d["IP"]} | HHID: ${hhid === "NO_HHID" ? "—" : hhid} |
+            <span id="latency-${ipId}" class="text-muted">ping...</span>
+        </div>
+        <div class="text-muted small">
+            RoomName: ${d["Room Name"] || "-"} |
+            Version: ${d["Software Version"] || "-"} |
+            MAC: ${d["MAC Address"] || "-"} |
+            UPD: ${upd || "-"}
+        </div>
+    </td>
+    <td class="align-top" style="white-space: nowrap; width: 160px;">
+        <button class="btn btn-sm btn-outline-danger mb-1" onclick="rebootDevice('${d["IP"]}')">
+            🔁 Reboot
+        </button>
+        <button class="btn btn-sm btn-outline-secondary mb-1" onclick="renameDevice('${d["IP"]}', '${d["Room Name"] || ''}')">
+            ✏️ Rename
+        </button>
+          <button class="btn btn-sm btn-outline-success mb-1" onclick="updateDevice('${d["IP"]}')">
+        🔄 Update
+    </button>
+    </td>
+`;
+
                     tbody.appendChild(row);
                 });
             });
@@ -247,6 +259,38 @@
                     });
                 });
         }, 5000);
+        function rebootDevice(ip) {
+            if (!confirm(`Reboot device at ${ip}?`)) return;
+            fetch("/sonos-action/reboot?ip=" + ip, { method: "POST" })
+                .then(res => res.text())
+                .then(msg => alert("🔁 Reboot: " + msg))
+                .catch(err => alert("❌ Error: " + err));
+        }
+
+        function renameDevice(ip, currentName) {
+            const newName = prompt("Enter new room name:", currentName);
+            if (!newName || newName === currentName) return;
+
+            const params = new URLSearchParams({ ip, name: newName });
+            fetch("/sonos-action/rename?" + params.toString(), { method: "POST" })
+                .then(res => res.text())
+                .then(msg => alert("✏️ Rename: " + msg))
+                .catch(err => alert("❌ Error: " + err));
+        }
+
+
+        function updateDevice(ip) {
+            const url = prompt("Enter the full URL to the .upd file:");
+            if (!url) return;
+
+            fetch("/sonos-action/update?ip=" + ip + "&url=" + encodeURIComponent(url), {
+                method: "POST"
+            })
+                .then(res => res.text())
+                .then(msg => alert("🔄 Update: " + msg))
+                .catch(err => alert("❌ Error: " + err));
+        }
+
 
     </script>
 
