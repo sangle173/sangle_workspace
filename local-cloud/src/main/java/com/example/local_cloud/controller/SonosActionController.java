@@ -4,6 +4,7 @@ import com.example.local_cloud.service.SonosService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import com.example.local_cloud.dto.BulkActionRequest;
 
 import javax.annotation.PostConstruct;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -119,8 +120,34 @@ public class SonosActionController {
         return emitter;
     }
 
+    @PostMapping("/bulk")
+    public String performBulkAction(@RequestBody BulkActionRequest request) {
+        List<String> results = new ArrayList<>();
 
-    
+        for (String ip : request.getDevices()) {
+            String msg;
+            switch (request.getAction()) {
+                case "reboot":
+                    msg = sonosService.rebootDevice(ip);
+                    break;
+                case "submit-diagnostics":
+                    msg = sonosService.submitDiagnostics(ip, true, "user");
+                    break;
+                case "update":
+                    msg = "🔄 Not supported in bulk yet";
+                    break;
+                default:
+                    msg = "❓ Unknown action: " + request.getAction();
+                    break;
+            }
+            results.add("<b>" + ip + "</b>: " + msg);
+        }
+
+        return "<div class='text-success'>✅ Action <b>" + request.getAction() + "</b> sent to "
+                + results.size() + " device(s).</div><ul><li>"
+                + String.join("</li><li>", results) + "</li></ul>";
+    }
+
     @PostConstruct
     public void startPingMonitor() {
         Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(() -> {
