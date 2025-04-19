@@ -40,17 +40,14 @@ public class UploadController {
                             name,
                             ext,
                             Files.size(entry),
-                            Files.getLastModifiedTime(entry).toMillis()));
-
+                            lastModifiedTime.toMillis()));
                 }
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
 
-        // Sort DESC by timestamp (latest first)
         files.sort(Comparator.comparingLong(FileInfo::getTimestamp).reversed());
-
         model.addAttribute("files", files);
         return "index";
     }
@@ -58,32 +55,22 @@ public class UploadController {
     @PostMapping("/upload")
     @ResponseBody
     public ResponseEntity<String> upload(@RequestParam("file") MultipartFile file,
-            @RequestParam(value = "convert", defaultValue = "false") boolean convert) {
+                                         @RequestParam(value = "convert", defaultValue = "false") boolean convert) {
         try {
-            Path uploadPath = Paths.get(UPLOAD_DIR);
-            Files.createDirectories(uploadPath);
-
             String originalFilename = file.getOriginalFilename();
             String extension = originalFilename.substring(originalFilename.lastIndexOf('.') + 1).toLowerCase();
-            Path dest = uploadPath.resolve(originalFilename);
-
-            System.out.println("🔁 Uploading file: " + originalFilename);
-            System.out.println("🌀 Convert option: " + convert + ", Extension: " + extension);
+            Path dest = Paths.get(UPLOAD_DIR, originalFilename);
 
             if (convert && (extension.equals("mp4") || extension.equals("mov") || extension.equals("webm"))) {
-                Path tempFile = uploadPath.resolve("temp_" + originalFilename);
+                Path tempFile = Paths.get(UPLOAD_DIR, "temp_" + originalFilename);
                 Files.copy(file.getInputStream(), tempFile, StandardCopyOption.REPLACE_EXISTING);
 
-                // 🔧 Use full path to ffmpeg
-                String ffmpegPath = "C:\\ffmpeg\\bin\\ffmpeg.exe";
-
                 List<String> command = Arrays.asList(
-                        ffmpegPath, "-i", tempFile.toString(),
+                        "ffmpeg", "-i", tempFile.toString(),
                         "-vf", "scale=-2:720",
                         "-preset", "fast", "-crf", "28",
-                        dest.toString());
-
-                System.out.println("▶️ Running FFmpeg: " + String.join(" ", command));
+                        dest.toString()
+                );
 
                 ProcessBuilder pb = new ProcessBuilder(command);
                 pb.redirectErrorStream(true);
@@ -99,9 +86,8 @@ public class UploadController {
                 int exitCode = process.waitFor();
                 Files.deleteIfExists(tempFile);
 
-                System.out.println("✅ FFmpeg exit code: " + exitCode);
                 if (exitCode != 0) {
-                    return ResponseEntity.status(500).body("FFmpeg conversion failed (exit code " + exitCode + ").");
+                    return ResponseEntity.status(500).body("FFmpeg conversion failed.");
                 }
             } else {
                 Files.copy(file.getInputStream(), dest, StandardCopyOption.REPLACE_EXISTING);
@@ -109,25 +95,21 @@ public class UploadController {
 
             return ResponseEntity.ok("Uploaded: " + originalFilename);
         } catch (Exception e) {
-            e.printStackTrace();
             return ResponseEntity.status(500).body("Upload failed: " + e.getMessage());
         }
     }
 
     @PostMapping("/upload-chunk")
     public ResponseEntity<String> uploadChunk(@RequestParam("chunk") MultipartFile chunk,
-            @RequestParam("filename") String filename,
-            @RequestParam("chunkIndex") int index) {
+                                              @RequestParam("filename") String filename,
+                                              @RequestParam("chunkIndex") int index) {
         try {
             Path chunkFolder = Paths.get(TEMP_DIR, filename);
             Files.createDirectories(chunkFolder);
             Path chunkPath = chunkFolder.resolve("chunk" + index);
-            try (InputStream in = chunk.getInputStream()) {
-                Files.copy(in, chunkPath, StandardCopyOption.REPLACE_EXISTING);
-            }
+            Files.copy(chunk.getInputStream(), chunkPath, StandardCopyOption.REPLACE_EXISTING);
             return ResponseEntity.ok("Chunk " + index + " received");
         } catch (IOException e) {
-            e.printStackTrace();
             return ResponseEntity.status(500).body("Chunk upload failed");
         }
     }
@@ -141,9 +123,6 @@ public class UploadController {
         Path chunkFolder = Paths.get(TEMP_DIR, filename);
         Path mergedFile = Paths.get(UPLOAD_DIR, filename);
 
-        System.out.println("🧩 Merging chunks for: " + filename);
-        System.out.println("🌀 Convert flag during merge: " + convert);
-
         try (OutputStream out = Files.newOutputStream(mergedFile)) {
             for (int i = 0; i < totalChunks; i++) {
                 Path chunk = chunkFolder.resolve("chunk" + i);
@@ -155,23 +134,17 @@ public class UploadController {
             return ResponseEntity.status(500).body("Merge failed: " + e.getMessage());
         }
 
-        // ✅ FFmpeg post-processing if convert = true and it's a video file
         String extension = filename.substring(filename.lastIndexOf('.') + 1).toLowerCase();
         if (convert && (extension.equals("mp4") || extension.equals("mov") || extension.equals("webm"))) {
             try {
-                Path tempInput = mergedFile;
-                Path tempOutput = Paths.get(UPLOAD_DIR, "converted_" + filename);
-
-                // ✅ Set full path to ffmpeg
-                String ffmpegPath = "C:\\ffmpeg\\bin\\ffmpeg.exe";
+                Path output = Paths.get(UPLOAD_DIR, "converted_" + filename);
 
                 List<String> command = Arrays.asList(
-                        ffmpegPath, "-i", tempInput.toString(),
+                        "ffmpeg", "-i", mergedFile.toString(),
                         "-vf", "scale=-2:720",
                         "-preset", "fast", "-crf", "28",
-                        tempOutput.toString());
-
-                System.out.println("▶️ Converting merged file: " + String.join(" ", command));
+                        output.toString()
+                );
 
                 ProcessBuilder pb = new ProcessBuilder(command);
                 pb.redirectErrorStream(true);
@@ -185,18 +158,14 @@ public class UploadController {
                 }
 
                 int exitCode = process.waitFor();
-                System.out.println("✅ FFmpeg exit code (merge): " + exitCode);
-
                 if (exitCode == 0) {
-                    Files.deleteIfExists(tempInput);
-                    Files.move(tempOutput, mergedFile, StandardCopyOption.REPLACE_EXISTING);
+                    Files.deleteIfExists(mergedFile);
+                    Files.move(output, mergedFile, StandardCopyOption.REPLACE_EXISTING);
                 } else {
-                    return ResponseEntity.status(500).body("FFmpeg failed after merge.");
+                    return ResponseEntity.status(500).body("FFmpeg conversion failed after merge.");
                 }
-
             } catch (Exception e) {
-                e.printStackTrace();
-                return ResponseEntity.status(500).body("FFmpeg conversion failed after merge.");
+                return ResponseEntity.status(500).body("Conversion error: " + e.getMessage());
             }
         }
 
@@ -232,5 +201,4 @@ public class UploadController {
             return timestamp;
         }
     }
-
 }

@@ -1,10 +1,11 @@
 package com.example.local_cloud.controller;
 
+import com.example.local_cloud.dto.BulkActionRequest;
 import com.example.local_cloud.service.SonosService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-import com.example.local_cloud.dto.BulkActionRequest;
+import org.w3c.dom.Document;
 
 import javax.annotation.PostConstruct;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -16,7 +17,6 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.w3c.dom.Document;
 
 @RestController
 @RequestMapping("/sonos-action")
@@ -69,24 +69,26 @@ public class SonosActionController {
     public SseEmitter streamSonos() {
         SseEmitter emitter = new SseEmitter(25000L);
 
-        new Thread(() -> {
+        Executors.newSingleThreadExecutor().submit(() -> {
             try {
                 Set<String> seenLocations = new HashSet<>();
-
                 String searchMessage = "M-SEARCH * HTTP/1.1\r\n" +
                         "HOST: 239.255.255.250:1900\r\n" +
                         "MAN: \"ssdp:discover\"\r\n" +
                         "MX: 3\r\n" +
                         "ST: urn:schemas-upnp-org:device:ZonePlayer:1\r\n\r\n";
 
-                InetAddress wifiAddress = getWifiInterfaceAddress();
-                DatagramSocket socket = new DatagramSocket(0, wifiAddress);
+                InetAddress localAddress = getWifiInterfaceAddress();
+                DatagramSocket socket = new DatagramSocket(0, localAddress);
                 socket.setSoTimeout(1000);
                 socket.send(new DatagramPacket(searchMessage.getBytes(), searchMessage.length(),
                         InetAddress.getByName("239.255.255.250"), 1900));
 
                 byte[] buf = new byte[2048];
-                long endTime = System.currentTimeMillis() + 20000;
+                long endTime = System.currentTimeMillis() + 10000;
+
+                ExecutorService pool = Executors.newFixedThreadPool(10);
+                List<Future<?>> futures = new ArrayList<>();
 
                 while (System.currentTimeMillis() < endTime) {
                     try {
@@ -96,15 +98,27 @@ public class SonosActionController {
                         String location = parseHeader(data, "LOCATION");
 
                         if (location != null && seenLocations.add(location)) {
-                            Map<String, String> info = fetchDeviceInfo(location);
-                            if (info != null)
-                                emitter.send(SseEmitter.event().name("device").data(info));
+                            futures.add(pool.submit(() -> {
+                                Map<String, String> info = fetchDeviceInfo(location);
+                                if (info != null) {
+                                    try {
+                                        emitter.send(SseEmitter.event().name("device").data(info));
+                                    } catch (IOException ignored) {
+                                    }
+                                }
+                            }));
                         }
-
                     } catch (SocketTimeoutException ignored) {
                     }
                 }
 
+                for (Future<?> future : futures) {
+                    try {
+                        future.get(2, TimeUnit.SECONDS);
+                    } catch (Exception ignored) {
+                    }
+                }
+                pool.shutdown();
                 socket.close();
                 emitter.complete();
 
@@ -115,7 +129,7 @@ public class SonosActionController {
                     ex.printStackTrace();
                 }
             }
-        }).start();
+        });
 
         return emitter;
     }
@@ -150,8 +164,10 @@ public class SonosActionController {
 
     @PostConstruct
     public void startPingMonitor() {
-        Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(() -> {
-            for (DeviceStatus status : deviceStatusMap.values()) {
+        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(4); // parallel threads
+
+        scheduler.scheduleAtFixedRate(() -> {
+            deviceStatusMap.values().parallelStream().forEach(status -> {
                 try {
                     long start = System.currentTimeMillis();
                     boolean reachable = InetAddress.getByName(status.getIp()).isReachable(1000);
@@ -160,7 +176,7 @@ public class SonosActionController {
                 } catch (IOException e) {
                     status.setLatency("lost");
                 }
-            }
+            });
         }, 0, 5, TimeUnit.SECONDS);
     }
 
@@ -172,8 +188,8 @@ public class SonosActionController {
             deviceStatusMap.putIfAbsent(ip, new DeviceStatus(ip));
 
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(2000);
-            conn.setReadTimeout(2000);
+            conn.setConnectTimeout(1500);
+            conn.setReadTimeout(1500);
 
             Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(conn.getInputStream());
             XPath xpath = XPathFactory.newInstance().newXPath();
@@ -225,21 +241,21 @@ public class SonosActionController {
         Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
         while (interfaces.hasMoreElements()) {
             NetworkInterface iface = interfaces.nextElement();
-            if (!iface.isUp() || iface.isLoopback())
+            if (!iface.isUp() || iface.isLoopback() || iface.isVirtual())
                 continue;
 
             String name = iface.getName().toLowerCase();
-            if (!(name.contains("wlan") || name.contains("wifi")))
-                continue;
-
-            Enumeration<InetAddress> addresses = iface.getInetAddresses();
-            while (addresses.hasMoreElements()) {
-                InetAddress addr = addresses.nextElement();
-                if (addr instanceof Inet4Address)
-                    return addr;
+            if (name.contains("eth") || name.contains("en") || name.contains("wlan") || name.contains("wifi")) {
+                Enumeration<InetAddress> addresses = iface.getInetAddresses();
+                while (addresses.hasMoreElements()) {
+                    InetAddress addr = addresses.nextElement();
+                    if (addr instanceof Inet4Address && !addr.isLoopbackAddress()) {
+                        return addr;
+                    }
+                }
             }
         }
-        throw new SocketException("Wi-Fi interface not found or no IPv4 address available.");
+        throw new SocketException("❌ No usable network interface with IPv4 address found.");
     }
 
     public static class DeviceStatus {
