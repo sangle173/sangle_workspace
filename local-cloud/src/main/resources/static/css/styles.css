@@ -1,0 +1,52 @@
+/* Attachment thumbnail styles */
+.attachment-thumbnail {
+    width: 30px;
+    height: 30px;
+    object-fit: cover;
+    border-radius: 3px;
+}
+
+/* Upload progress container */
+.upload-progress-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1050;
+    width: 300px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+/* Attachments list styling */
+#attachmentsList .list-group-item {
+    transition: background-color 0.2s;
+}
+
+#attachmentsList .list-group-item:hover {
+    background-color: rgba(0,0,0,0.03);
+}
+
+/* Attachment action buttons */
+#attachmentsList .btn {
+    padding: 0.15rem 0.4rem;
+    font-size: 0.7rem;
+}
+
+/* Image alignment classes for the editor and view page */
+.image-align-left {
+    float: left;
+    margin-right: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.image-align-center {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: 0.5rem;
+}
+
+.image-align-right {
+    float: right;
+    margin-left: 1rem;
+    margin-bottom: 0.5rem;
+} 
