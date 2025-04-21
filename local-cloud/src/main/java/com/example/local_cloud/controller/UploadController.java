@@ -1,5 +1,9 @@
 package com.example.local_cloud.controller;
 
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -55,9 +59,14 @@ public class UploadController {
     @PostMapping("/upload")
     @ResponseBody
     public ResponseEntity<String> upload(@RequestParam("file") MultipartFile file,
-                                         @RequestParam(value = "convert", defaultValue = "false") boolean convert) {
+                                         @RequestParam(value = "convert", defaultValue = "false") boolean convert,
+                                         @RequestParam(value = "quality", defaultValue = "720") String quality) {
         try {
             String originalFilename = file.getOriginalFilename();
+            if (originalFilename == null) {
+                return ResponseEntity.status(400).body("File name cannot be null");
+            }
+            
             String extension = originalFilename.substring(originalFilename.lastIndexOf('.') + 1).toLowerCase();
             Path dest = Paths.get(UPLOAD_DIR, originalFilename);
 
@@ -67,8 +76,13 @@ public class UploadController {
 
                 List<String> command = Arrays.asList(
                         "ffmpeg", "-i", tempFile.toString(),
-                        "-vf", "scale=-2:720",
-                        "-preset", "fast", "-crf", "28",
+                        "-vf", "scale=-2:" + quality,
+                        "-c:v", "libx264",
+                        "-preset", "fast",
+                        "-crf", "28",
+                        "-c:a", "aac",
+                        "-b:a", "128k",
+                        "-movflags", "+faststart",
                         dest.toString()
                 );
 
@@ -102,7 +116,8 @@ public class UploadController {
     @PostMapping("/upload-chunk")
     public ResponseEntity<String> uploadChunk(@RequestParam("chunk") MultipartFile chunk,
                                               @RequestParam("filename") String filename,
-                                              @RequestParam("chunkIndex") int index) {
+                                              @RequestParam("chunkIndex") int index,
+                                              @RequestParam(value = "quality", defaultValue = "720") String quality) {
         try {
             Path chunkFolder = Paths.get(TEMP_DIR, filename);
             Files.createDirectories(chunkFolder);
@@ -119,6 +134,7 @@ public class UploadController {
         String filename = (String) body.get("filename");
         int totalChunks = (int) body.get("totalChunks");
         boolean convert = body.get("convert") != null && (boolean) body.get("convert");
+        String quality = body.get("quality") != null ? (String) body.get("quality") : "720";
 
         Path chunkFolder = Paths.get(TEMP_DIR, filename);
         Path mergedFile = Paths.get(UPLOAD_DIR, filename);
@@ -141,8 +157,13 @@ public class UploadController {
 
                 List<String> command = Arrays.asList(
                         "ffmpeg", "-i", mergedFile.toString(),
-                        "-vf", "scale=-2:720",
-                        "-preset", "fast", "-crf", "28",
+                        "-vf", "scale=-2:" + quality,
+                        "-c:v", "libx264",
+                        "-preset", "fast",
+                        "-crf", "28",
+                        "-c:a", "aac",
+                        "-b:a", "128k",
+                        "-movflags", "+faststart",
                         output.toString()
                 );
 
@@ -170,6 +191,30 @@ public class UploadController {
         }
 
         return ResponseEntity.ok("File merged: " + filename);
+    }
+
+    @GetMapping("/uploads/{filename:.+}")
+    @ResponseBody
+    public ResponseEntity<Resource> serveFile(@PathVariable String filename) {
+        try {
+            Path file = Paths.get(UPLOAD_DIR, filename);
+            if (!Files.exists(file)) {
+                return ResponseEntity.notFound().build();
+            }
+
+            Resource resource = new FileSystemResource(file.toFile());
+            String contentType = Files.probeContentType(file);
+            if (contentType == null) {
+                contentType = "application/octet-stream";
+            }
+
+            return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(contentType))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
+                .body(resource);
+        } catch (IOException e) {
+            return ResponseEntity.status(500).build();
+        }
     }
 
     public static class FileInfo {

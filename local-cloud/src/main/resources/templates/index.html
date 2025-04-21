@@ -54,11 +54,28 @@
             <div class="text-center">
                 <button class="btn btn-upload mt-3" onclick="uploadFiles()">⬆️ Upload Selected Files</button>
             </div>
-            <div id="convertOption" class="form-check mt-2 d-none text-center">
-                <input class="form-check-input" type="checkbox" value="" id="convertToSmall" checked>
-                <label class="form-check-label" for="convertToSmall">
-                    Convert to smaller size before uploading to Jira (video only)
-                </label>
+            <div id="convertOption" class="d-none text-center">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="" id="convertToSmall" checked>
+                    <label class="form-check-label" for="convertToSmall">
+                        Convert video before uploading
+                    </label>
+                </div>
+                <div id="qualityOptions" class="mt-2">
+                    <div class="btn-group" role="group">
+                        <input type="radio" class="btn-check" name="quality" id="quality360" value="360" autocomplete="off">
+                        <label class="btn btn-outline-secondary btn-sm" for="quality360">360p (Low)</label>
+
+                        <input type="radio" class="btn-check" name="quality" id="quality480" value="480" autocomplete="off">
+                        <label class="btn btn-outline-secondary btn-sm" for="quality480">480p (Medium)</label>
+
+                        <input type="radio" class="btn-check" name="quality" id="quality720" value="720" autocomplete="off" checked>
+                        <label class="btn btn-outline-secondary btn-sm" for="quality720">720p (High)</label>
+
+                        <input type="radio" class="btn-check" name="quality" id="quality1080" value="1080" autocomplete="off">
+                        <label class="btn btn-outline-secondary btn-sm" for="quality1080">1080p (Ultra)</label>
+                    </div>
+                </div>
             </div>
             <div id="uploadProgressContainer" class="progress mt-3" style="height: 20px; display: none;">
                 <div id="uploadProgressBar" class="progress-bar progress-bar-striped progress-bar-animated"
@@ -158,7 +175,11 @@
                 </div>
                 <div class="modal-body text-center">
                     <img id="previewImage" class="img-fluid d-none" alt="Preview">
-                    <video id="previewVideo" class="w-100 d-none" controls></video>
+                    <video id="previewVideo" class="w-100 d-none" controls>
+                        <source id="videoSource" src="" type="">
+                        Your browser does not support the video tag.
+                    </video>
+
                     <div id="previewInfo" class="d-none">
                         <p class="text-muted">This file cannot be previewed directly. Please download it or check its
                             properties below:</p>
@@ -233,6 +254,7 @@
             const overlay = document.getElementById("uploadOverlay");
             const listContainer = document.getElementById("fileProgressList");
             const convertChecked = document.getElementById("convertToSmall").checked;
+            const selectedQuality = document.querySelector('input[name="quality"]:checked').value;
 
             listContainer.innerHTML = "";
             overlay.classList.remove("d-none");
@@ -248,7 +270,7 @@
           <div class="progress-bar progress-bar-striped" id="progress-${file.name}" style="width: 0%">0%</div>
         </div>`;
                 listContainer.appendChild(item);
-                return () => uploadFileChunks(file, CHUNK_SIZE, convertChecked);
+                return () => uploadFileChunks(file, CHUNK_SIZE, convertChecked, selectedQuality);
             });
 
             while (queue.length) {
@@ -261,7 +283,7 @@
             window.location.reload();
         }
 
-        async function uploadFileChunks(file, CHUNK_SIZE, convert) {
+        async function uploadFileChunks(file, CHUNK_SIZE, convert, quality) {
             const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
             const uploads = [];
 
@@ -272,6 +294,7 @@
                 formData.append("filename", file.name);
                 formData.append("chunkIndex", i);
                 formData.append("totalChunks", totalChunks);
+                formData.append("quality", quality);
                 uploads.push(fetch("/upload-chunk", { method: "POST", body: formData }));
             }
 
@@ -303,7 +326,12 @@
             await fetch("/merge-chunks", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ filename: file.name, totalChunks, convert })
+                body: JSON.stringify({
+                    filename: file.name,
+                    totalChunks,
+                    convert,
+                    quality
+                })
             });
 
             if (intervalId) clearInterval(intervalId);
@@ -316,6 +344,8 @@
         function showPreview(filePath) {
             const isImage = /\.(jpe?g|png|gif|webp)$/i.test(filePath);
             const isVideo = /\.(mp4|mov|webm)$/i.test(filePath);
+            const extMatch = filePath.match(/\.([a-z0-9]+)$/i);
+            const extension = extMatch ? extMatch[1].toLowerCase() : "";
 
             const img = document.getElementById("previewImage");
             const vid = document.getElementById("previewVideo");
@@ -323,29 +353,48 @@
             const filePathDisplay = document.getElementById("filePathDisplay");
             const fileExtDisplay = document.getElementById("fileExtDisplay");
             const downloadLink = document.getElementById("downloadLink");
+            const videoSource = document.getElementById("videoSource");
 
-            // Reset all
+            // Reset
             img.classList.add("d-none");
             vid.classList.add("d-none");
             info.classList.add("d-none");
 
             if (isImage) {
-                img.src = filePath;
+                img.src = filePath + '?v=' + Date.now();
                 img.classList.remove("d-none");
             } else if (isVideo) {
-                vid.src = filePath;
+                let mime = "video/mp4";
+                if (extension === "mov") mime = "video/quicktime";
+                if (extension === "webm") mime = "video/webm";
+
+                videoSource.src = filePath + '?v=' + Date.now();
+                videoSource.type = mime;
+
+                vid.load();
                 vid.classList.remove("d-none");
             } else {
+                // Unsupported preview
                 filePathDisplay.textContent = filePath;
-                const extMatch = filePath.match(/\.([a-z0-9]+)$/i);
-                fileExtDisplay.textContent = extMatch ? extMatch[1] : "unknown";
+                fileExtDisplay.textContent = extension || "unknown";
                 downloadLink.href = filePath;
                 info.classList.remove("d-none");
             }
 
             const modal = new bootstrap.Modal(document.getElementById('previewModal'));
+            
+            // Add event listener to stop video when modal is closed
+            const previewModal = document.getElementById('previewModal');
+            previewModal.addEventListener('hidden.bs.modal', function () {
+                if (vid) {
+                    vid.pause();
+                    vid.currentTime = 0;
+                }
+            });
+
             modal.show();
         }
+
 
         window.addEventListener("DOMContentLoaded", () => {
             document.querySelectorAll('.file-name-truncate').forEach(el => {

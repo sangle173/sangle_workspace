@@ -166,8 +166,4 @@ public class SonosService {
             return "❌ Exception: " + e.getMessage();
         }
     }
-
-
-    
-    
 }

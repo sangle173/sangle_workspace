@@ -49,4 +49,114 @@
     float: right;
     margin-left: 1rem;
     margin-bottom: 0.5rem;
-} 
+}
+
+/* Attachment panel styles */
+.attachment-panel {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+/* Drag and drop zone styles */
+#dropZone {
+    border: 2px dashed #ccc;
+    border-radius: 4px;
+    padding: 2rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    background: #f8f9fa;
+    cursor: pointer;
+}
+
+#dropZone.drag-over {
+    border-color: #0d6efd;
+    background: #e7f1ff;
+}
+
+#dropZone i {
+    font-size: 2rem;
+    color: #6c757d;
+    margin-bottom: 0.5rem;
+}
+
+/* File list styles */
+.file-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+/* Attachment preview styles */
+.attachment-preview {
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 0.5rem;
+    cursor: move;
+    background: white;
+    transition: all 0.2s ease;
+}
+
+.attachment-preview:hover {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.attachment-preview.dragging {
+    opacity: 0.5;
+}
+
+.attachment-preview img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+    margin-top: 0.5rem;
+}
+
+.attachment-preview video {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+    margin-top: 0.5rem;
+}
+
+/* File item styles */
+.file-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.file-item i {
+    font-size: 1.2rem;
+    color: #6c757d;
+}
+
+.file-item-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.file-item-size {
+    color: #6c757d;
+    font-size: 0.875rem;
+}
+
+/* Upload progress styles */
+.upload-progress {
+    height: 4px;
+    background: #e9ecef;
+    border-radius: 2px;
+    margin-top: 1rem;
+    overflow: hidden;
+}
+
+.upload-progress-bar {
+    height: 100%;
+    background: #0d6efd;
+    transition: width 0.3s ease;
+}

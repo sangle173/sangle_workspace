@@ -19,7 +19,6 @@ public class Note {
         this.updatedAt = LocalDateTime.now();
     }
 
-    // Getters and Setters
     public String getId() {
         return id;
     }
@@ -75,11 +74,11 @@ public class Note {
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
     }
-    
+
     public String getFolderName() {
         return folderName;
     }
-    
+
     public void setFolderName(String folderName) {
         this.folderName = folderName;
     }

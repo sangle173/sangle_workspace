@@ -10,4 +10,9 @@ public class ViewController {
     public String sonosPage() {
         return "sonos"; // returns templates/sonos.html
     }
+
+    @GetMapping("/url-converter")
+    public String showUrlConverter() {
+        return "url_converter";
+    }
 }

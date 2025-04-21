@@ -6,7 +6,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -16,10 +15,14 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Controller
@@ -52,7 +55,9 @@ public class NoteController {
         Note note = new Note();
         note.setSpace(space);
         note.setCategory(category);
+        note.setId(null); // Ensure ID is null for new notes
         model.addAttribute("note", note);
+        model.addAttribute("isNewNote", true); // Add flag to distinguish new notes
         return "note_form";
     }
 
@@ -65,9 +70,11 @@ public class NoteController {
         try {
             Note note = noteService.loadNote(space, category, noteId);
             model.addAttribute("note", note);
+            model.addAttribute("isNewNote", false);
             return "note_form";
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("toastMessage", "❌ Error: Note not found or corrupted");
+            logger.error("Error loading note for editing: {}", e.getMessage());
+            redirectAttributes.addFlashAttribute("toastMessage", "❌ Error: " + e.getMessage());
             redirectAttributes.addFlashAttribute("toastType", "danger");
             return "redirect:/spaces/" + space + "/categories/" + category + "/notes";
         }
@@ -94,24 +101,22 @@ public class NoteController {
         Map<String, Object> response = new HashMap<>();
         try {
             // Only save if title is not empty
-            if (note.getTitle() != null && !note.getTitle().isEmpty()) {
-                // Check if the note already exists by ID
-                if (note.getId() != null && !note.getId().isEmpty()) {
-                    // Try to find the existing note first to maintain the same folder
-                    try {
-                        Note existingNote = noteService.loadNote(note.getSpace(), note.getCategory(), note.getId());
-                        if (existingNote != null && existingNote.getFolderName() != null) {
-                            // Reuse the existing folder name
-                            note.setFolderName(existingNote.getFolderName());
-                            logger.info("Auto-save: Reusing existing note folder: {}", existingNote.getFolderName());
-                        }
-                    } catch (Exception e) {
-                        logger.warn("Could not find existing note for auto-save: {}", e.getMessage());
-                        // Continue with saving as new note would happen below
-                    }
+            if (note.getTitle() != null && !note.getTitle().trim().isEmpty()) {
+                // Generate new ID if not exists
+                if (note.getId() == null || note.getId().isEmpty()) {
+                    note.setId(UUID.randomUUID().toString());
+                    logger.info("Generated new ID for note: {}", note.getId());
                 }
                 
+                // Set timestamps if not set
+                if (note.getCreatedAt() == null) {
+                    note.setCreatedAt(LocalDateTime.now());
+                }
+                note.setUpdatedAt(LocalDateTime.now());
+                
+                // Save the note
                 noteService.saveNote(note);
+                
                 response.put("success", true);
                 response.put("id", note.getId());
                 response.put("folderName", note.getFolderName());
@@ -133,74 +138,80 @@ public class NoteController {
     public Map<String, Object> uploadFile(@PathVariable String space,
                                         @PathVariable String category,
                                         @PathVariable String noteId,
-                                        @RequestParam("upload") MultipartFile file) {
+                                        @RequestParam("file") MultipartFile file) {
         Map<String, Object> response = new HashMap<>();
+        logger.info("Starting file upload - space: {}, category: {}, noteId: {}, filename: {}", 
+            space, category, noteId, file.getOriginalFilename());
         
         try {
-            logger.info("Received file upload request for noteId: {}, file name: {}, size: {}", 
-                noteId, file.getOriginalFilename(), file.getSize());
-            
-            // Get the note to determine its folder
             Note note = noteService.loadNote(space, category, noteId);
-            if (note == null || note.getFolderName() == null) {
-                logger.error("Note not found or folder name is null for noteId: {}", noteId);
+            if (note == null) {
+                logger.error("Note not found - noteId: {}", noteId);
                 response.put("success", false);
-                response.put("error", "Note not found or not saved yet");
+                response.put("error", "Note not found");
                 return response;
             }
-            
-            // Create attachments directory if it doesn't exist
+
+            if (note.getFolderName() == null) {
+                logger.error("Note folder name is null - noteId: {}", noteId);
+                response.put("success", false);
+                response.put("error", "Note folder not initialized");
+                return response;
+            }
+
+            // Create attachments directory
             Path attachmentsDir = Paths.get(basePath, space, category, note.getFolderName(), "attachments");
+            logger.info("Creating attachments directory: {}", attachmentsDir);
             Files.createDirectories(attachmentsDir);
-            logger.info("Attachments directory: {}", attachmentsDir);
-            
-            // Save the file
+
+            // Process the file name
             String originalFilename = file.getOriginalFilename();
             if (originalFilename == null || originalFilename.isEmpty()) {
                 originalFilename = "file_" + System.currentTimeMillis();
             }
+
+            // Sanitize filename
+            String safeFilename = originalFilename.replaceAll("[^a-zA-Z0-9.-]", "_");
+            Path filePath = attachmentsDir.resolve(safeFilename);
             
-            Path filePath = attachmentsDir.resolve(originalFilename);
-            
-            // If file with same name exists, rename
+            // Handle duplicate filenames
             int count = 1;
-            String fileBaseName = originalFilename;
+            String baseName = safeFilename;
             String extension = "";
-            
-            int dotIndex = originalFilename.lastIndexOf('.');
+            int dotIndex = safeFilename.lastIndexOf('.');
             if (dotIndex > 0) {
-                fileBaseName = originalFilename.substring(0, dotIndex);
-                extension = originalFilename.substring(dotIndex);
+                baseName = safeFilename.substring(0, dotIndex);
+                extension = safeFilename.substring(dotIndex);
             }
-            
+
             while (Files.exists(filePath)) {
-                String newName = fileBaseName + "_" + count + extension;
-                filePath = attachmentsDir.resolve(newName);
+                safeFilename = baseName + "_" + count + extension;
+                filePath = attachmentsDir.resolve(safeFilename);
                 count++;
             }
+
+            // Save the file
+            logger.info("Saving file to: {}", filePath);
+            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+            // Generate URL for accessing the file
+            String url = String.format("/uploads/%s/%s/%s/attachments/%s", 
+                space, category, note.getFolderName(), safeFilename);
             
-            // Ensure the file is saved properly
-            Files.createDirectories(filePath.getParent());
-            file.transferTo(filePath.toFile());
-            
-            // Log the file path to help debug
-            logger.info("File saved to: {}", filePath.toAbsolutePath());
-            
-            // Calculate the URL - important for accessing the file later
-            String fileName = filePath.getFileName().toString();
-            String url = "/uploads/" + space + "/" + category + "/" + note.getFolderName() + "/attachments/" + fileName;
-            logger.info("Generated URL for file: {}", url);
-            
+            String contentType = file.getContentType();
             response.put("success", true);
             response.put("url", url);
-            response.put("filename", fileName);
-            
+            response.put("filename", safeFilename);
+            response.put("type", contentType);
+            response.put("size", file.getSize());
+            response.put("isImage", contentType != null && contentType.startsWith("image/"));
+
         } catch (Exception e) {
             logger.error("Error uploading file", e);
             response.put("success", false);
             response.put("error", e.getMessage());
         }
-        
+
         return response;
     }
 
@@ -227,9 +238,12 @@ public class NoteController {
         try {
             Note note = noteService.loadNote(space, category, noteId);
             model.addAttribute("note", note);
+            model.addAttribute("space", space);
+            model.addAttribute("category", category);
             return "note_view";
         } catch (IOException e) {
-            redirectAttributes.addFlashAttribute("toastMessage", "❌ Error: Note not found or corrupted");
+            logger.error("Error loading note: {}", e.getMessage());
+            redirectAttributes.addFlashAttribute("toastMessage", "❌ Error: " + e.getMessage());
             redirectAttributes.addFlashAttribute("toastType", "danger");
             return "redirect:/spaces/" + space + "/categories/" + category + "/notes";
         }
@@ -274,51 +288,125 @@ public class NoteController {
                                             @PathVariable String category,
                                             @PathVariable String noteId) {
         Map<String, Object> response = new HashMap<>();
-        List<Map<String, String>> attachments = new ArrayList<>();
-        
         try {
-            // Get the note to determine its folder
             Note note = noteService.loadNote(space, category, noteId);
             if (note == null || note.getFolderName() == null) {
                 response.put("success", false);
                 response.put("error", "Note not found");
                 return response;
             }
-            
-            // Look for attachments directory
+
             Path attachmentsDir = Paths.get(basePath, space, category, note.getFolderName(), "attachments");
-            if (Files.exists(attachmentsDir)) {
-                // List all files in the attachments directory
-                try (DirectoryStream<Path> stream = Files.newDirectoryStream(attachmentsDir)) {
-                    for (Path file : stream) {
-                        if (Files.isRegularFile(file)) {
-                            String fileName = file.getFileName().toString();
-                            String url = "/uploads/" + space + "/" + category + "/" + note.getFolderName() + "/attachments/" + fileName;
-                            String fileType = Files.probeContentType(file);
-                            boolean isImage = fileType != null && fileType.startsWith("image/");
-                            
-                            Map<String, String> fileInfo = new HashMap<>();
-                            fileInfo.put("name", fileName);
-                            fileInfo.put("url", url);
-                            fileInfo.put("type", fileType != null ? fileType : "application/octet-stream");
-                            fileInfo.put("isImage", String.valueOf(isImage));
-                            fileInfo.put("size", String.valueOf(Files.size(file)));
-                            
-                            attachments.add(fileInfo);
-                        }
+            if (!Files.exists(attachmentsDir)) {
+                response.put("success", true);
+                response.put("attachments", new ArrayList<>());
+                return response;
+            }
+
+            List<Map<String, Object>> attachments = new ArrayList<>();
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(attachmentsDir)) {
+                for (Path file : stream) {
+                    if (Files.isRegularFile(file)) {
+                        String fileName = file.getFileName().toString();
+                        String contentType = Files.probeContentType(file);
+                        Map<String, Object> fileInfo = new HashMap<>();
+                        fileInfo.put("name", fileName);
+                        fileInfo.put("url", String.format("/uploads/%s/%s/%s/attachments/%s", 
+                            space, category, note.getFolderName(), fileName));
+                        fileInfo.put("type", contentType);
+                        fileInfo.put("size", Files.size(file));
+                        fileInfo.put("isImage", contentType != null && contentType.startsWith("image/"));
+                        attachments.add(fileInfo);
                     }
                 }
             }
-            
+
             response.put("success", true);
             response.put("attachments", attachments);
-            
+
         } catch (Exception e) {
             logger.error("Error getting attachments", e);
             response.put("success", false);
             response.put("error", e.getMessage());
         }
-        
         return response;
+    }
+
+    @DeleteMapping("/{noteId}/attachments/{fileName}")
+    @ResponseBody
+    public Map<String, Object> deleteAttachment(@PathVariable String space,
+                                              @PathVariable String category,
+                                              @PathVariable String noteId,
+                                              @PathVariable String fileName) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            Note note = noteService.loadNote(space, category, noteId);
+            if (note == null || note.getFolderName() == null) {
+                response.put("success", false);
+                response.put("error", "Note not found");
+                return response;
+            }
+
+            Path attachmentPath = Paths.get(basePath, space, category, note.getFolderName(), "attachments", fileName);
+            if (Files.exists(attachmentPath)) {
+                Files.delete(attachmentPath);
+                response.put("success", true);
+                response.put("message", "File deleted successfully");
+            } else {
+                response.put("success", false);
+                response.put("error", "File not found");
+            }
+
+        } catch (Exception e) {
+            logger.error("Error deleting attachment", e);
+            response.put("success", false);
+            response.put("error", e.getMessage());
+        }
+        return response;
+    }
+    
+    @GetMapping("/file-info")
+    @ResponseBody
+    public Map<String, Object> getFileTypeInfo(@RequestParam String fileName) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            String contentType = Files.probeContentType(Paths.get(fileName));
+            response.put("success", true);
+            response.put("contentType", contentType);
+            response.put("isImage", contentType != null && contentType.startsWith("image/"));
+            response.put("isVideo", contentType != null && contentType.startsWith("video/"));
+            response.put("isAudio", contentType != null && contentType.startsWith("audio/"));
+            response.put("isPdf", contentType != null && contentType.equals("application/pdf"));
+        } catch (IOException e) {
+            response.put("success", false);
+            response.put("error", e.getMessage());
+        }
+        return response;
+    }
+
+    @Override
+    protected void finalize() {
+        // Clean up temporary files when the application shuts down
+        try {
+            Path tempDir = Paths.get(basePath);
+            if (Files.exists(tempDir)) {
+                Files.walk(tempDir)
+                    .filter(path -> Files.isRegularFile(path))
+                    .forEach(path -> {
+                        try {
+                            BasicFileAttributes attrs = Files.readAttributes(path, BasicFileAttributes.class);
+                            // Delete files older than 24 hours that haven't been accessed
+                            if (attrs.lastAccessTime().toInstant().plus(24, ChronoUnit.HOURS)
+                                    .isBefore(Instant.now())) {
+                                Files.deleteIfExists(path);
+                            }
+                        } catch (IOException e) {
+                            logger.error("Error cleaning up file: {}", path, e);
+                        }
+                    });
+            }
+        } catch (IOException e) {
+            logger.error("Error during cleanup", e);
+        }
     }
 }

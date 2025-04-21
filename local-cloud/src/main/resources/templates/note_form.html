@@ -4,354 +4,455 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>✏️ Note</title>
+    <title th:text="${isNewNote ? 'New Note' : 'Edit Note'}">Note</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <script src="https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/ckeditor.js"></script>
-    <script th:src="@{/js/utils.js}"></script>
-    <style>
-        /* CKEditor image styles */
-        .ck-content .image {
-            margin: 1em 0;
-            max-width: 100%;
-        }
-
-        .ck-content .image img {
-            display: block;
-            margin: 0 auto;
-            max-width: 100%;
-            min-width: 50px;
-        }
-
-        /* Default size for images */
-        .ck-content .image:not(.image-style-side):not(.image-style-align-left):not(.image-style-align-right) img {
-            max-width: 50%;
-        }
-
-        /* Image alignment styles */
-        .ck-content .image.image-style-align-center {
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        .ck-content .image.image-style-align-left {
-            float: left;
-            margin-right: 1.5em;
-            max-width: 50%;
-        }
-
-        .ck-content .image.image-style-align-right {
-            float: right;
-            margin-left: 1.5em;
-            max-width: 50%;
-        }
-
-        /* Side image style */
-        .ck-content .image.image-style-side {
-            float: right;
-            margin-left: 1.5em;
-            max-width: 50%;
-        }
-
-        /* Upload progress styles */
-        #uploadProgressContainer {
-            margin-top: 10px;
-            display: none;
-        }
-
-        /* Autosave status style */
-        #autosaveStatus {
-            position: fixed;
-            bottom: 10px;
-            right: 10px;
-            padding: 5px 10px;
-            background-color: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 4px;
-            font-size: 12px;
-            display: none;
-            z-index: 1000;
-        }
-
-        /* Drag over style for editor */
-        .ck-editor__editable.drag-over {
-            border: 2px dashed #1a73e8 !important;
-            background-color: rgba(26, 115, 232, 0.05);
-        }
-
-        /* Images in view mode */
-        .note-content-view img {
-            max-width: 50%;
-            height: auto;
-        }
-
-        .note-content-view img.image-style-align-left {
-            float: left;
-            margin-right: 1.5em;
-        }
-
-        .note-content-view img.image-style-align-right {
-            float: right;
-            margin-left: 1.5em;
-        }
-
-        .note-content-view img.image-style-align-center {
-            display: block;
-            margin-left: auto;
-            margin-right: auto;
-        }
-    </style>
+    <link rel="stylesheet" th:href="@{/css/note.css}">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.ckeditor.com/ckeditor5/40.0.0/classic/ckeditor.js"></script>
 </head>
 
 <body>
     <div th:replace="fragments/navbar :: navbar"></div>
 
-    <div class="container-fluid mt-4">
+    <div class="container mt-4">
         <div class="row">
-            <!-- Note Form -->
+            <!-- Main note editing area -->
             <div class="col-md-10">
-                <h2 th:text="${note.id} != null ? '✏️ Edit Note' : '🆕 Create Note'"></h2>
+                <div class="card">
+                    <div class="card-body">
+                        <form th:object="${note}" method="post"
+                            th:action="@{/spaces/{space}/categories/{category}/notes/save(space=${note.space}, category=${note.category})}"
+                            id="noteForm">
+                            <input type="hidden" th:field="*{id}">
+                            <input type="hidden" th:field="*{space}">
+                            <input type="hidden" th:field="*{category}">
+                            <input type="hidden" th:field="*{folderName}">
+                            <input type="hidden" th:field="*{createdAt}">
+                            <input type="hidden" th:field="*{updatedAt}">
 
-                <form id="noteForm" th:object="${note}"
-                    th:action="@{/spaces/{space}/categories/{category}/notes/save(space=${note.space}, category=${note.category})}"
-                    method="post">
-                    <input type="hidden" th:field="*{id}" id="noteId" />
-                    <input type="hidden" th:field="*{space}" />
-                    <input type="hidden" th:field="*{category}" />
-                    <input type="hidden" th:field="*{folderName}" />
+                            <div class="mb-3">
+                                <input type="text" class="form-control form-control-lg" th:field="*{title}"
+                                    placeholder="Title" required>
+                            </div>
 
-                    <div class="mb-3">
-                        <label for="title" class="form-label">Title <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="title" th:field="*{title}" required />
+                            <div class="mb-3">
+                                <textarea id="contentHtml" th:field="*{contentHtml}" style="display: none;"></textarea>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col">
+                                    <div id="editor">
+                                        <!-- CKEditor will be initialized here -->
+                                        <th:block th:utext="${note != null ? note.contentHtml : ''}"></th:block>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-between mt-4">
+                                <a th:href="@{/spaces/{space}/categories/{category}/notes(space=${note.space}, category=${note.category})}"
+                                    class="btn btn-secondary">
+                                    <i class="bi bi-arrow-left"></i> Back
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-save"></i> Save
+                                </button>
+                            </div>
+                        </form>
                     </div>
-
-                    <div class="mb-3">
-                        <label for="contentHtml" class="form-label">Content</label>
-                        <textarea id="contentHtml" th:field="*{contentHtml}" class="form-control" rows="15"></textarea>
-                    </div>
-
-                    <div class="d-flex justify-content-between mt-4">
-                        <a th:href="@{/spaces/{space}/categories/{category}/notes(space=${note.space}, category=${note.category})}"
-                            class="btn btn-secondary">
-                            <i class="bi bi-arrow-left"></i> Back to Notes
-                        </a>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-save"></i> Save Note
-                        </button>
-                    </div>
-                </form>
+                </div>
             </div>
 
-            <!-- Attachments Sidebar -->
+            <!-- Attachments panel -->
             <div class="col-md-2">
-                <div class="card mb-3">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0">📎</h6>
-                        <input type="file" id="fileInput" multiple style="display: none">
-                        <button id="triggerFileInput" class="btn btn-sm btn-outline-primary">
-                            <i class="bi bi-folder2-open"></i>
-                        </button>
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Attachments</h5>
                     </div>
-                    <div id="dropZone" class="card-body p-2 border border-dashed text-muted text-center"
-                        style="min-height: 120px;">
-                        Drop files here or click
-                    </div>
-                    <div class="card-footer text-end">
-                        <button id="uploadBtn" class="btn btn-sm btn-success" disabled>
-                            <i class="bi bi-upload"></i>
-                        </button>
+                    <div class="card-body">
+                        <div id="dropZone" class="border rounded p-3 mb-3 text-center">
+                            <i class="bi bi-cloud-upload fs-2"></i>
+                            <p class="mb-0">Drop files here or click to upload</p>
+                            <input type="file" id="fileInput" multiple style="display: none;">
+                        </div>
+
+                        <div id="attachmentsList" class="file-list"></div>
+                        
+                        <div id="uploadProgress" class="upload-progress" style="display: none;">
+                            <div class="upload-progress-bar" style="width: 0%"></div>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
-    <!-- Toast -->
-    <div id="toastContainer" class="position-fixed bottom-0 end-0 p-3" style="z-index: 1050">
-        <div id="autoSaveToast" class="toast align-items-center text-bg-light border-0" role="alert" aria-live="polite"
-            aria-atomic="true">
-            <div class="d-flex">
-                <div class="toast-body" id="toastMessage">
-                    Auto-saved
-                </div>
-                <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
             </div>
         </div>
     </div>
 
-    <!-- JS -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script th:src="@{/js/utils.js}"></script>
     <script th:inline="javascript">
         let editor;
-        let selectedFiles = [];
-        let isNoteSaved = false;
+        const noteId = /*[[${note.id}]]*/ '';
+        const space = /*[[${note.space}]]*/ '';
+        const category = /*[[${note.category}]]*/ '';
+        let autoSaveTimeout;
 
-        $(document).ready(function () {
-            // Initialize CKEditor
-            ClassicEditor
-                .create(document.querySelector('#contentHtml'))
-                .then(newEditor => {
-                    editor = newEditor;
-                });
+        // Initialize CKEditor
+        ClassicEditor
+            .create(document.querySelector('#editor'), {
+                // Prevent base64 encoding of pasted images
+                clipboard: {
+                    uploadImage: false
+                },
 
-            // File picker
-            $('#triggerFileInput').click(() => $('#fileInput').click());
-
-            $('#fileInput').on('change', function () {
-                if (this.files.length > 0) {
-                    selectedFiles = Array.from(this.files);
-                    renderFileList();
-                    $('#uploadBtn').prop('disabled', !isNoteSaved);
-                }
-            });
-
-            // Drag and drop
-            const dropZone = document.getElementById('dropZone');
-            dropZone.addEventListener('dragover', e => {
-                e.preventDefault();
-                dropZone.classList.add('drag-over');
-            });
-            dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-            dropZone.addEventListener('drop', e => {
-                e.preventDefault();
-                dropZone.classList.remove('drag-over');
-                selectedFiles = Array.from(e.dataTransfer.files);
-                renderFileList();
-                $('#uploadBtn').prop('disabled', !isNoteSaved);
-            });
-
-            // Upload
-            $('#uploadBtn').click(function () {
-                const noteId = $('#noteId').val();
-                const space = $('#noteForm input[name="space"]').val();
-                const category = $('#noteForm input[name="category"]').val();
-
-                const button = $(this);
-                button.prop('disabled', true);
-
-                selectedFiles.forEach(file => {
-                    const formData = new FormData();
-                    formData.append('file', file);
-
-                    $.ajax({
-                        url: `/api/notes/${space}/${category}/${noteId}/upload`,
-                        type: 'POST',
-                        data: formData,
-                        processData: false,
-                        contentType: false,
-                        success: function (res) {
-                            if (res.url) {
-                                if (file.type.startsWith('image/')) {
-                                    insertMediaToEditor(res.url, true);
-                                } else {
-                                    insertMediaToEditor(res.url, false);
-                                }
-                            }
+                // Configure image upload
+                image: {
+                    upload: {
+                        types: ['jpeg', 'png', 'gif', 'bmp', 'webp', 'tiff', 'svg'],
+                    },
+                    toolbar: [
+                        'imageStyle:inline',
+                        'imageStyle:wrapText',
+                        'imageStyle:breakText',
+                        '|',
+                        'toggleImageCaption',
+                        'imageTextAlternative',
+                        '|',
+                        'resizeImage'
+                    ],
+                    resizeUnit: '%',
+                    resizeOptions: [
+                        {
+                            name: 'resizeImage:original',
+                            value: null,
+                            icon: 'original'
                         },
-                        error: function (xhr) {
-                            console.error('Upload error:', xhr);
+                        {
+                            name: 'resizeImage:25',
+                            value: '25',
+                            icon: 'small'
+                        },
+                        {
+                            name: 'resizeImage:50',
+                            value: '50',
+                            icon: 'medium'
+                        },
+                        {
+                            name: 'resizeImage:75',
+                            value: '75',
+                            icon: 'large'
                         }
-                    });
-                });
-
-                selectedFiles = [];
-                renderFileList();
-            });
-
-            // Title input triggers auto-save
-            $('#title').on('input', function () {
-                const title = $(this).val().trim();
-                if (title.length > 0 && !isNoteSaved) {
-                    autoSaveNote();
-                }
-            });
-        });
-
-        function renderFileList() {
-            const list = $('#dropZone');
-            list.empty();
-
-            if (selectedFiles.length === 0) {
-                list.html(`<div class="text-muted p-2 text-center">No files selected</div>`);
-                return;
-            }
-
-            selectedFiles.forEach(file => {
-                const item = `<div class="list-group-item small d-flex justify-content-between align-items-center">
-                    ${file.name} <span class="text-muted">${(file.size / 1024).toFixed(1)} KB</span>
-                </div>`;
-                list.append(item);
-            });
-        }
-
-        function insertMediaToEditor(url, isImage) {
-            if (!editor) return;
-
-            if (isImage) {
-                editor.model.change(writer => {
-                    const imageElement = writer.createElement('imageBlock', { src: url });
-                    editor.model.insertContent(imageElement, editor.model.document.selection);
-                });
-            } else {
-                const fileName = url.split('/').pop();
-                const html = `<p><a href="${url}" target="_blank">${fileName}</a></p>`;
-                const viewFragment = editor.data.processor.toView(html);
-                const modelFragment = editor.data.toModel(viewFragment);
-                editor.model.insertContent(modelFragment);
-            }
-        }
-
-        function autoSaveNote() {
-            const title = $('#title').val().trim();
-            const noteId = $('#noteId').val();
-            const space = $('#noteForm input[name="space"]').val();
-            const category = $('#noteForm input[name="category"]').val();
-            const folderName = $('#noteForm input[name="folderName"]').val();
-
-            const payload = {
-                id: noteId || null,
-                title: title,
-                space: space,
-                category: category,
-                folderName: folderName
-            };
-
-            $.ajax({
-                url: `/spaces/${space}/categories/${category}/notes/autosave`,
-                type: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify(payload),
-                success: function (res) {
-                    if (res.success) {
-                        $('#noteId').val(res.id);
-                        $('#noteForm input[name="folderName"]').val(res.folderName);
-                        isNoteSaved = true;
-                        $('#uploadBtn').prop('disabled', selectedFiles.length === 0 ? true : false);
-                        showToast("✅ Note auto-saved");
-                    } else {
-                        showToast("❌ Auto-save failed: " + res.error, true);
+                    ],
+                    styles: {
+                        options: [
+                            'inline',
+                            'alignLeft',
+                            'alignCenter',
+                            'alignRight',
+                            'block',
+                            'side'
+                        ]
                     }
                 },
-                error: function (err) {
-                    showToast("❌ Auto-save error", true);
-                    console.error("Auto-save error", err);
+
+                // Configure media embed for videos
+                mediaEmbed: {
+                    previewsInData: true,
+                    elementName: 'figure',
+                    className: 'media'
+                }
+            })
+            .then(newEditor => {
+                editor = newEditor;
+
+                // Auto-save on content change
+                editor.model.document.on('change:data', () => {
+                    if (autoSaveTimeout) clearTimeout(autoSaveTimeout);
+                    autoSaveTimeout = setTimeout(autoSave, 2000);
+                    
+                    // Update the hidden textarea with current editor content
+                    document.getElementById('contentHtml').value = editor.getData();
+                });
+
+                // Handle form submission
+                document.getElementById('noteForm').addEventListener('submit', function(e) {
+                    // Ensure the hidden textarea has the latest editor content
+                    document.getElementById('contentHtml').value = editor.getData();
+                });
+
+                // Handle paste events
+                editor.editing.view.document.on('paste', (evt, data) => {
+                    if (data.dataTransfer && data.dataTransfer.files.length > 0) {
+                        evt.stop();
+                        handlePastedFiles(Array.from(data.dataTransfer.files));
+                    }
+                });
+
+                // Handle drop events
+                editor.editing.view.document.on('drop', (evt, data) => {
+                    if (data.dataTransfer && data.dataTransfer.files.length > 0) {
+                        evt.stop();
+                        handlePastedFiles(Array.from(data.dataTransfer.files));
+                    }
+                });
+
+                // Only load attachments if we have a noteId
+                if (noteId) {
+                    loadAttachments();
+                }
+            })
+            .catch(error => console.error(error));
+
+        // Auto-save functionality
+        function autoSave() {
+            const titleInput = document.querySelector('input[name="title"]');
+            const title = titleInput.value.trim();
+
+            if (!title) return; // Don't auto-save if title is empty
+
+            const formData = {
+                id: noteId,
+                space: space,
+                category: category,
+                title: title,
+                contentHtml: editor.getData()
+            };
+
+            fetch(`/spaces/${space}/categories/${category}/notes/autosave`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.id) {
+                    noteId = data.id;
+                    // Load attachments after first successful save
+                    if (!document.querySelector('#attachmentsList').children.length) {
+                        loadAttachments();
+                    }
+                }
+            })
+            .catch(error => console.error('Auto-save error:', error));
+        }
+
+        // Handle file uploads
+        async function handlePastedFiles(files) {
+            for (const file of files) {
+                await uploadFile(file);
+            }
+        }
+
+        async function uploadFile(file) {
+            // If note hasn't been saved yet, save it first
+            if (!noteId) {
+                const titleInput = document.querySelector('input[name="title"]');
+                const title = titleInput.value.trim();
+                
+                if (!title) {
+                    alert('Please enter a title before uploading files');
+                    return;
                 }
 
-            });
+                const formData = {
+                    id: noteId,
+                    space: space,
+                    category: category,
+                    title: title,
+                    contentHtml: editor.getData()
+                };
+
+                try {
+                    const saveResponse = await fetch(`/spaces/${space}/categories/${category}/notes/autosave`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(formData)
+                    });
+
+                    const saveData = await saveResponse.json();
+                    if (!saveData.success || !saveData.id) {
+                        throw new Error('Failed to save note');
+                    }
+                    noteId = saveData.id;
+                } catch (error) {
+                    console.error('Error saving note:', error);
+                    alert('Please save the note first before uploading files');
+                    return;
+                }
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch(`/spaces/${space}/categories/${category}/notes/${noteId}/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    if (fileTypeUtils.isImage(file)) {
+                        insertContentIntoCKEditor(editor, createImageElement(data.url, file.name));
+                    } else if (fileTypeUtils.isVideo(file)) {
+                        insertContentIntoCKEditor(editor, createVideoElement(data.url, file.type));
+                    }
+                    await loadAttachments(); // Refresh attachments list
+                }
+            } catch (error) {
+                console.error('Upload error:', error);
+            }
         }
 
-        function showToast(message, isError = false) {
-            const toastEl = document.getElementById('autoSaveToast');
-            const toastBody = document.getElementById('toastMessage');
+        // Load existing attachments
+        async function loadAttachments() {
+            try {
+                const response = await fetch(`/spaces/${space}/categories/${category}/notes/${noteId}/attachments`);
+                const data = await response.json();
 
-            toastBody.textContent = message;
-            toastEl.classList.remove('text-bg-danger', 'text-bg-success', 'text-bg-light');
-            toastEl.classList.add(isError ? 'text-bg-danger' : 'text-bg-success');
+                if (data.success) {
+                    const attachmentsList = document.getElementById('attachmentsList');
+                    attachmentsList.innerHTML = '';
 
-            const toast = new bootstrap.Toast(toastEl);
-            toast.show();
+                    for (const file of data.attachments) {
+                        const preview = await createAttachmentPreview(file);
+                        attachmentsList.appendChild(preview);
+
+                        preview.addEventListener('dragstart', (e) => {
+                            preview.classList.add('dragging');
+                            e.dataTransfer.setData('text/plain', file.url);
+                            e.dataTransfer.effectAllowed = 'copy';
+                        });
+
+                        preview.addEventListener('dragend', () => {
+                            preview.classList.remove('dragging');
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading attachments:', error);
+            }
         }
 
+        // Set up drag and drop for the drop zone
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+
+        dropZone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => {
+            handlePastedFiles(Array.from(e.target.files));
+            fileInput.value = ''; // Reset input
+        });
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-over');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            if (e.dataTransfer.files.length > 0) {
+                handlePastedFiles(Array.from(e.dataTransfer.files));
+            }
+        });
+
+        // Handle drag and drop from attachments panel to editor
+        document.querySelector('.ck-editor__editable').addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+            document.querySelector('.ck-editor__editable').classList.add('drop-target');
+        });
+
+        document.querySelector('.ck-editor__editable').addEventListener('dragleave', () => {
+            document.querySelector('.ck-editor__editable').classList.remove('drop-target');
+        });
+
+        document.querySelector('.ck-editor__editable').addEventListener('drop', (e) => {
+            e.preventDefault();
+            document.querySelector('.ck-editor__editable').classList.remove('drop-target');
+
+            const url = e.dataTransfer.getData('text/plain');
+            if (url) {
+                const preview = document.querySelector(`[data-url="${url}"]`);
+                if (preview) {
+                    if (preview.querySelector('img')) {
+                        insertContentIntoCKEditor(editor, createImageElement(url));
+                    } else if (preview.querySelector('video')) {
+                        insertContentIntoCKEditor(editor, createVideoElement(url, preview.dataset.type));
+                    }
+                }
+            }
+        });
+
+        // Additional script for handling file uploads and drag-and-drop
+        const attachmentsList = document.getElementById('attachmentsList');
+        const uploadProgress = document.getElementById('uploadProgress');
+        const progressBar = uploadProgress.querySelector('.upload-progress-bar');
+
+        async function handleFileUpload(file, insertIntoEditor) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // Show progress bar
+            uploadProgress.style.display = 'block';
+            progressBar.style.width = '0%';
+
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) throw new Error('Upload failed');
+
+                const data = await response.json();
+
+                if (insertIntoEditor) {
+                    if (fileTypeUtils.isImage(file)) {
+                        const imageHtml = createImageElement(data.url, '');
+                        insertContentIntoCKEditor(editor, imageHtml);
+                    } else if (fileTypeUtils.isVideo(file)) {
+                        const videoHtml = createVideoElement(data.url, file.type);
+                        insertContentIntoCKEditor(editor, videoHtml);
+                    }
+                }
+
+                // Add to attachments list
+                const preview = await createAttachmentPreview({
+                    url: data.url,
+                    name: file.name,
+                    type: file.type,
+                    size: file.size,
+                    isImage: fileTypeUtils.isImage(file)
+                });
+
+                attachmentsList.appendChild(preview);
+
+                // Set up drag from attachment list to editor
+                preview.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('text/plain', preview.getAttribute('data-url'));
+                    preview.classList.add('dragging');
+                });
+
+                preview.addEventListener('dragend', () => {
+                    preview.classList.remove('dragging');
+                });
+
+            } catch (error) {
+                console.error('Upload failed:', error);
+                alert('Failed to upload file: ' + file.name);
+            } finally {
+                // Hide progress bar
+                uploadProgress.style.display = 'none';
+            }
+        }
     </script>
 </body>
 
