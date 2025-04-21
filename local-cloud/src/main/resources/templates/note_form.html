@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,49 +15,50 @@
             margin: 1em 0;
             max-width: 100%;
         }
+
         .ck-content .image img {
             display: block;
             margin: 0 auto;
             max-width: 100%;
             min-width: 50px;
         }
-        
+
         /* Default size for images */
         .ck-content .image:not(.image-style-side):not(.image-style-align-left):not(.image-style-align-right) img {
             max-width: 50%;
         }
-        
+
         /* Image alignment styles */
         .ck-content .image.image-style-align-center {
             margin-left: auto;
             margin-right: auto;
         }
-        
+
         .ck-content .image.image-style-align-left {
             float: left;
             margin-right: 1.5em;
             max-width: 50%;
         }
-        
+
         .ck-content .image.image-style-align-right {
             float: right;
             margin-left: 1.5em;
             max-width: 50%;
         }
-        
+
         /* Side image style */
         .ck-content .image.image-style-side {
             float: right;
             margin-left: 1.5em;
             max-width: 50%;
         }
-        
+
         /* Upload progress styles */
         #uploadProgressContainer {
             margin-top: 10px;
             display: none;
         }
-        
+
         /* Autosave status style */
         #autosaveStatus {
             position: fixed;
@@ -70,29 +72,29 @@
             display: none;
             z-index: 1000;
         }
-        
+
         /* Drag over style for editor */
         .ck-editor__editable.drag-over {
             border: 2px dashed #1a73e8 !important;
             background-color: rgba(26, 115, 232, 0.05);
         }
-        
+
         /* Images in view mode */
         .note-content-view img {
             max-width: 50%;
             height: auto;
         }
-        
+
         .note-content-view img.image-style-align-left {
             float: left;
             margin-right: 1.5em;
         }
-        
+
         .note-content-view img.image-style-align-right {
             float: right;
             margin-left: 1.5em;
         }
-        
+
         .note-content-view img.image-style-align-center {
             display: block;
             margin-left: auto;
@@ -100,614 +102,257 @@
         }
     </style>
 </head>
+
 <body>
-<div th:replace="fragments/navbar :: navbar"></div>
+    <div th:replace="fragments/navbar :: navbar"></div>
 
-<div class="container-fluid mt-4">
-    <div class="row">
-        <div class="col-md-9">
-            <h2 th:text="${note.id} != null ? '✏️ Edit Note' : '🆕 Create Note'"></h2>
-            
-            <div id="autosaveStatus"></div>
-            
-            <form id="noteForm" th:object="${note}"
-                  th:action="@{/spaces/{space}/categories/{category}/notes/save(space=${note.space}, category=${note.category})}"
-                  method="post" enctype="multipart/form-data">
-                <input type="hidden" th:field="*{id}" id="noteId"/>
-                <input type="hidden" th:field="*{space}"/>
-                <input type="hidden" th:field="*{category}"/>
-                <input type="hidden" th:field="*{folderName}"/>
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <!-- Note Form -->
+            <div class="col-md-10">
+                <h2 th:text="${note.id} != null ? '✏️ Edit Note' : '🆕 Create Note'"></h2>
 
-                <div class="mb-3">
-                    <label for="title" class="form-label">Title <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" id="title" th:field="*{title}" required/>
-                </div>
+                <form id="noteForm" th:object="${note}"
+                    th:action="@{/spaces/{space}/categories/{category}/notes/save(space=${note.space}, category=${note.category})}"
+                    method="post">
+                    <input type="hidden" th:field="*{id}" id="noteId" />
+                    <input type="hidden" th:field="*{space}" />
+                    <input type="hidden" th:field="*{category}" />
+                    <input type="hidden" th:field="*{folderName}" />
 
-                <div class="mb-3">
-                    <label for="contentHtml" class="form-label">Content</label>
-                    <textarea id="contentHtml" th:field="*{contentHtml}" class="form-control" rows="15"></textarea>
-                </div>
-                
-                <!-- File Upload Section -->
-                <div class="mb-3">
-                    <button type="button" class="btn btn-sm btn-outline-primary" id="uploadBtn" disabled>
-                        <i class="bi bi-upload"></i> Upload File(s)
-                    </button>
-                    <input type="file" id="fileInput" multiple style="display: none;"/>
-                    <small class="text-muted ms-2">Save note first to enable uploading</small>
-                    
-                    <div id="uploadProgressContainer">
-                        <div class="progress mt-2">
-                            <div id="uploadProgressBar" class="progress-bar" role="progressbar" style="width: 0%;" 
-                                aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
-                        </div>
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Title <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="title" th:field="*{title}" required />
                     </div>
-                </div>
 
-                <div class="d-flex justify-content-between mt-4">
-                    <a th:href="@{/spaces/{space}/categories/{category}/notes(space=${note.space}, category=${note.category})}" 
-                       class="btn btn-secondary">
-                        <i class="bi bi-arrow-left"></i> Back to Notes
-                    </a>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-save"></i> Save Note
-                    </button>
-                </div>
-            </form>
-        </div>
-        <div class="col-md-3">
-            <div class="card mb-3">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0">Attachments</h6>
-                    <div>
-                        <button id="uploadBtn" class="btn btn-sm btn-outline-primary" disabled>
-                            <i class="fas fa-upload"></i> Upload
+                    <div class="mb-3">
+                        <label for="contentHtml" class="form-label">Content</label>
+                        <textarea id="contentHtml" th:field="*{contentHtml}" class="form-control" rows="15"></textarea>
+                    </div>
+
+                    <div class="d-flex justify-content-between mt-4">
+                        <a th:href="@{/spaces/{space}/categories/{category}/notes(space=${note.space}, category=${note.category})}"
+                            class="btn btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Back to Notes
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> Save Note
                         </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Attachments Sidebar -->
+            <div class="col-md-2">
+                <div class="card mb-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">📎</h6>
                         <input type="file" id="fileInput" multiple style="display: none">
+                        <button id="triggerFileInput" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-folder2-open"></i>
+                        </button>
                     </div>
-                </div>
-                <div class="card-body p-0">
-                    <div id="attachmentsList" class="list-group list-group-flush">
-                        <div class="text-muted text-center p-3">No attachments</div>
+                    <div id="dropZone" class="card-body p-2 border border-dashed text-muted text-center"
+                        style="min-height: 120px;">
+                        Drop files here or click
                     </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Upload progress container -->
-<div id="uploadProgressContainer" class="upload-progress-container" style="display:none">
-    <div class="card">
-        <div class="card-header">
-            <h6 class="mb-0">Uploading Files</h6>
-        </div>
-        <div class="card-body">
-            <div class="progress">
-                <div id="uploadProgressBar" class="progress-bar" role="progressbar" style="width: 0%;" 
-                     aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Image resize modal -->
-<div class="modal fade" id="imageResizeModal" tabindex="-1" role="dialog" aria-labelledby="imageResizeModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="imageResizeModalLabel">Resize Image</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="imageWidthSlider">Width (%): <span id="widthValue">50</span>%</label>
-                    <input type="range" class="form-control-range" id="imageWidthSlider" min="10" max="100" step="5" value="50">
-                </div>
-                <div class="form-group">
-                    <label>Alignment:</label>
-                    <div class="btn-group btn-group-toggle" data-toggle="buttons">
-                        <label class="btn btn-outline-secondary active">
-                            <input type="radio" name="options" id="alignNone" checked> None
-                        </label>
-                        <label class="btn btn-outline-secondary">
-                            <input type="radio" name="options" id="alignLeft"> Left
-                        </label>
-                        <label class="btn btn-outline-secondary">
-                            <input type="radio" name="options" id="alignCenter"> Center
-                        </label>
-                        <label class="btn btn-outline-secondary">
-                            <input type="radio" name="options" id="alignRight"> Right
-                        </label>
-                    </div>
-                </div>
-                <div class="text-center mt-3">
-                    <img id="previewImage" class="img-fluid border" src="" alt="Preview">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="applyResize">Apply</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script th:inline="javascript">
-    let editor;
-    let selectedImage = null;
-    let lastAutosaveContent = "";
-    let saveTimeout = null;
-    
-    $(document).ready(function() {
-        const noteId = $('#noteId').val();
-        
-        // Initialize CKEditor
-        ClassicEditor
-            .create(document.querySelector('#contentHtml'), {
-                toolbar: {
-                    items: [
-                        'heading', '|',
-                        'bold', 'italic', 'link', 'bulletedList', 'numberedList', '|',
-                        'insertImage', 'blockQuote', 'insertTable', '|',
-                        'undo', 'redo'
-                    ]
-                },
-                image: {
-                    toolbar: ['imageStyle:alignLeft', 'imageStyle:alignCenter', 'imageStyle:alignRight'],
-                    styles: [
-                        'alignLeft',
-                        'alignCenter',
-                        'alignRight'
-                    ]
-                }
-            })
-            .then(newEditor => {
-                editor = newEditor;
-                
-                // Add double-click event for images
-                editor.editing.view.document.on('dblclick', (evt, data) => {
-                    if (data.domTarget.tagName.toLowerCase() === 'img') {
-                        const img = data.domTarget;
-                        
-                        // Store reference to the current image
-                        selectedImage = img;
-                        
-                        // Set the preview image
-                        $('#previewImage').attr('src', img.src);
-                        
-                        // Get current width percentage (defaulting to 50 if not set)
-                        const widthStyle = img.style.width || '50%';
-                        const widthPercent = parseInt(widthStyle) || 50;
-                        
-                        // Update slider and display value
-                        $('#imageWidthSlider').val(widthPercent);
-                        $('#widthValue').text(widthPercent);
-                        
-                        // Check alignment
-                        $('#alignNone').prop('checked', true).parent().addClass('active');
-                        $('#alignLeft').parent().removeClass('active');
-                        $('#alignCenter').parent().removeClass('active');
-                        $('#alignRight').parent().removeClass('active');
-                        
-                        if (img.classList.contains('image-style-align-left')) {
-                            $('#alignLeft').prop('checked', true).parent().addClass('active');
-                            $('#alignNone').parent().removeClass('active');
-                        } else if (img.classList.contains('image-style-align-center')) {
-                            $('#alignCenter').prop('checked', true).parent().addClass('active');
-                            $('#alignNone').parent().removeClass('active');
-                        } else if (img.classList.contains('image-style-align-right')) {
-                            $('#alignRight').prop('checked', true).parent().addClass('active');
-                            $('#alignNone').parent().removeClass('active');
-                        }
-                        
-                        // Show modal
-                        $('#imageResizeModal').modal('show');
-                        
-                        // Prevent other actions
-                        evt.stop();
-                    }
-                });
-                
-                // Enable auto-saving when content changes
-                editor.model.document.on('change:data', () => {
-                    checkTitleAndToggleUploadButton();
-                    startAutoSaveTimer();
-                });
-                
-                // Load existing content if available
-                if (noteId) {
-                    setupAutosave();
-                    $('#uploadBtn').prop('disabled', false);
-                    loadExistingAttachments(); // Load existing attachments
-                }
-            })
-            .catch(error => {
-                console.error(error);
-            });
-        
-        // Handle image width slider change
-        $('#imageWidthSlider').on('input', function() {
-            const widthValue = $(this).val();
-            $('#widthValue').text(widthValue);
-            $('#previewImage').css('width', widthValue + '%');
-        });
-        
-        // Apply resize to image
-        $('#applyResize').on('click', function() {
-            if (selectedImage) {
-                const widthValue = $('#imageWidthSlider').val();
-                
-                // Apply width
-                selectedImage.style.width = widthValue + '%';
-                
-                // Remove existing alignment classes
-                selectedImage.classList.remove('image-style-align-left', 'image-style-align-center', 'image-style-align-right');
-                
-                // Apply selected alignment
-                if ($('#alignLeft').prop('checked')) {
-                    selectedImage.classList.add('image-style-align-left');
-                } else if ($('#alignCenter').prop('checked')) {
-                    selectedImage.classList.add('image-style-align-center');
-                } else if ($('#alignRight').prop('checked')) {
-                    selectedImage.classList.add('image-style-align-right');
-                }
-                
-                $('#imageResizeModal').modal('hide');
-                
-                // Trigger autosave
-                triggerAutosave();
-            }
-        });
-        
-        // Handle file uploads
-        $('#uploadBtn').click(function() {
-            $('#fileInput').click();
-        });
-        
-        $('#fileInput').change(function() {
-            if (this.files.length > 0) {
-                uploadFiles(this.files);
-            }
-        });
-        
-        // Title field change listener to enable upload button
-        $('#title').on('input', function() {
-            if ($(this).val().trim() !== '') {
-                $('#uploadBtn').prop('disabled', false);
-            } else {
-                $('#uploadBtn').prop('disabled', true);
-            }
-        });
-        
-        // Prevent double form submission
-        $('#noteForm').submit(function() {
-            $(this).find('button[type="submit"]').prop('disabled', true);
-            return true;
-        });
-        
-        // Drag and drop for editor
-        const editorElement = document.querySelector('.ck-editor__editable');
-        if (editorElement) {
-            editorElement.addEventListener('dragover', function(e) {
-                e.preventDefault();
-                editorElement.classList.add('drag-over');
-            });
-            
-            editorElement.addEventListener('dragleave', function() {
-                editorElement.classList.remove('drag-over');
-            });
-            
-            editorElement.addEventListener('drop', function(e) {
-                e.preventDefault();
-                editorElement.classList.remove('drag-over');
-                
-                if (e.dataTransfer.files.length > 0) {
-                    uploadFiles(e.dataTransfer.files);
-                }
-            });
-        }
-    });
-    
-    // Function to setup autosave
-    function setupAutosave() {
-        editor.model.document.on('change:data', function() {
-            triggerAutosave();
-        });
-    }
-    
-    // Function to trigger autosave
-    function triggerAutosave() {
-        const currentContent = editor.getData();
-        
-        if (currentContent !== lastAutosaveContent) {
-            if (saveTimeout) {
-                clearTimeout(saveTimeout);
-            }
-            
-            saveTimeout = setTimeout(function() {
-                saveNote(currentContent);
-            }, 2000);
-        }
-    }
-    
-    // Function to save note content
-    function saveNote(content) {
-        const space = /*[[${space}]]*/ '';
-        const category = /*[[${category}]]*/ '';
-        const noteId = $('#noteId').val();
-        const title = $('#title').val();
-        
-        if (!title || !noteId) return;
-        
-        $.ajax({
-            url: `/api/notes/${space}/${category}/${noteId}`,
-            type: 'PUT',
-            contentType: 'application/json',
-            data: JSON.stringify({ 
-                title: title,
-                content: content
-            }),
-            success: function() {
-                lastAutosaveContent = content;
-                const now = new Date().toLocaleTimeString();
-                showAutosaveMessage(`Saved at ${now}`);
-            },
-            error: function() {
-                showAutosaveMessage('Failed to save changes', true);
-            }
-        });
-    }
-    
-    // Function to show autosave message
-    function showAutosaveMessage(message, isError) {
-        const status = $('#autosaveStatus');
-        status.text(message).show();
-        
-        if (isError) {
-            status.css('background-color', '#f8d7da');
-            status.css('border-color', '#f5c6cb');
-        } else {
-            status.css('background-color', '#f8f9fa');
-            status.css('border-color', '#dee2e6');
-        }
-        
-        setTimeout(function() {
-            status.fadeOut();
-        }, 3000);
-    }
-    
-    // Function to load existing attachments
-    function loadExistingAttachments() {
-        const space = /*[[${space}]]*/ '';
-        const category = /*[[${category}]]*/ '';
-        const noteId = $('#noteId').val();
-        
-        if (!noteId) return;
-        
-        $.ajax({
-            url: `/api/notes/${space}/${category}/${noteId}/attachments`,
-            method: 'GET',
-            success: function(response) {
-                if (response.success && response.data) {
-                    renderAttachments(response.data);
-                }
-            },
-            error: function(xhr) {
-                console.error('Failed to load attachments:', xhr);
-            }
-        });
-    }
-    
-    // Function to render attachments in the sidebar
-    function renderAttachments(attachments) {
-        const $attachmentsList = $('#attachmentsList');
-        $attachmentsList.empty();
-        
-        if (attachments.length === 0) {
-            $attachmentsList.append('<div class="text-muted text-center p-3">No attachments</div>');
-            return;
-        }
-        
-        attachments.forEach(attachment => {
-            const iconClass = attachment.isImage ? 'fas fa-image' : 'fas fa-file';
-            const thumbHtml = attachment.isImage 
-                ? `<img src="${attachment.url}" class="attachment-thumbnail mr-2" alt="${attachment.name}">`
-                : `<i class="${iconClass} fa-2x mr-2"></i>`;
-            
-            const item = `
-                <div class="list-group-item d-flex align-items-center p-2">
-                    <div class="mr-2">
-                        ${thumbHtml}
-                    </div>
-                    <div class="flex-grow-1 text-truncate small">
-                        <div class="text-truncate">${attachment.name}</div>
-                        <div class="text-muted smaller">${formatFileSize(attachment.size)}</div>
-                    </div>
-                    <div class="ml-2">
-                        <button type="button" class="btn btn-sm btn-outline-primary insert-btn" 
-                            data-url="${attachment.url}" 
-                            data-is-image="${attachment.isImage}">
-                            Insert
+                    <div class="card-footer text-end">
+                        <button id="uploadBtn" class="btn btn-sm btn-success" disabled>
+                            <i class="bi bi-upload"></i>
                         </button>
                     </div>
                 </div>
-            `;
-            $attachmentsList.append(item);
-        });
-        
-        // Add click handler for insert buttons
-        $('.insert-btn').on('click', function() {
-            const url = $(this).data('url');
-            const isImage = $(this).data('is-image') === true;
-            
-            insertMediaToEditor(url, isImage);
-        });
-    }
-    
-    // Function to insert media into the editor
-    function insertMediaToEditor(url, isImage) {
-        if (!url) return;
-        
-        if (isImage) {
-            // Insert image with default styling
-            editor.execute('insertImage', { source: url });
-            
-            // Apply default size and alignment to the inserted image
-            setTimeout(() => {
-                const editorImages = document.querySelectorAll('.ck-editor__editable img');
-                const lastImage = editorImages[editorImages.length - 1];
-                
-                if (lastImage && lastImage.src === url) {
-                    lastImage.style.width = '50%';
-                    lastImage.style.display = 'block';
-                    lastImage.style.margin = '0 auto';
-                    lastImage.classList.add('image-align-center');
+            </div>
+        </div>
+    </div>
+    <!-- Toast -->
+    <div id="toastContainer" class="position-fixed bottom-0 end-0 p-3" style="z-index: 1050">
+        <div id="autoSaveToast" class="toast align-items-center text-bg-light border-0" role="alert" aria-live="polite"
+            aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body" id="toastMessage">
+                    Auto-saved
+                </div>
+                <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JS -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script th:inline="javascript">
+        let editor;
+        let selectedFiles = [];
+        let isNoteSaved = false;
+
+        $(document).ready(function () {
+            // Initialize CKEditor
+            ClassicEditor
+                .create(document.querySelector('#contentHtml'))
+                .then(newEditor => {
+                    editor = newEditor;
+                });
+
+            // File picker
+            $('#triggerFileInput').click(() => $('#fileInput').click());
+
+            $('#fileInput').on('change', function () {
+                if (this.files.length > 0) {
+                    selectedFiles = Array.from(this.files);
+                    renderFileList();
+                    $('#uploadBtn').prop('disabled', !isNoteSaved);
                 }
-            }, 100);
-        } else {
-            // Insert as download link
-            const fileName = url.split('/').pop();
-            const linkHtml = `<p><a href="${url}" target="_blank">${fileName}</a></p>`;
-            const viewFragment = editor.data.processor.toView(linkHtml);
-            const modelFragment = editor.data.toModel(viewFragment);
-            editor.model.insertContent(modelFragment);
-        }
-        
-        // Trigger autosave
-        triggerAutosave();
-    }
-    
-    // Function to check title and enable/disable upload button
-    function checkTitleAndToggleUploadButton() {
-        const titleValue = $('#title').val().trim();
-        $('#uploadBtn').prop('disabled', !titleValue);
-    }
-    
-    // Initialize title check
-    $('#title').on('input', checkTitleAndToggleUploadButton);
-    checkTitleAndToggleUploadButton();
-    
-    // Handle file uploads
-    $('#fileInput').on('change', function(e) {
-        if (e.target.files.length > 0) {
-            uploadFiles(e.target.files);
-        }
-    });
-    
-    // Click handler for the upload button
-    $('#uploadBtn').on('click', function() {
-        $('#fileInput').click();
-    });
-    
-    // Upload files function
-    function uploadFiles(files) {
-        const space = /*[[${space}]]*/ '';
-        const category = /*[[${category}]]*/ '';
-        const noteId = $('#noteId').val();
-        
-        if (!noteId) {
-            // Save the note first if it doesn't have an ID
-            saveNote(function(savedNoteId) {
-                noteId = savedNoteId;
-                actualUpload(files);
             });
-        } else {
-            actualUpload(files);
-        }
-    }
-    
-    // Function to handle the actual upload
-    function actualUpload(files) {
-        const totalFiles = files.length;
-        let uploadedCount = 0;
-        
-        // Show progress container
-        $('#uploadProgressContainer').show();
-        
-        Array.from(files).forEach(file => {
-            const formData = new FormData();
-            formData.append('files', file);
-            
-            $.ajax({
-                url: `/api/notes/${space}/${category}/${noteId}/upload`,
-                type: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
-                xhr: function() {
-                    const xhr = new window.XMLHttpRequest();
-                    xhr.upload.addEventListener('progress', function(e) {
-                        if (e.lengthComputable) {
-                            const percentComplete = Math.round((e.loaded / e.total) * 100);
-                            $('#uploadProgressBar').css('width', percentComplete + '%')
-                                    .attr('aria-valuenow', percentComplete)
-                                    .text(percentComplete + '%');
-                        }
-                    }, false);
-                    return xhr;
-                },
-                success: function(response) {
-                    uploadedCount++;
-                    // Update progress
-                    const progress = Math.round((uploadedCount / totalFiles) * 100);
-                    $('#uploadProgressBar').css('width', progress + '%').attr('aria-valuenow', progress);
-                    
-                    if (uploadedCount === totalFiles) {
-                        // All files uploaded, reload attachments
-                        setTimeout(() => {
-                            $('#uploadProgressContainer').hide();
-                            $('#uploadProgressBar').css('width', '0%').attr('aria-valuenow', 0);
-                            loadExistingAttachments();
-                            
-                            // Ask if user wants to insert images
-                            const imageFiles = Array.from(files).filter(file => 
-                                file.type.startsWith('image/'));
-                            if (imageFiles.length > 0) {
-                                if (confirm(`Insert ${imageFiles.length} image(s) into the editor?`)) {
-                                    // Call the endpoint again to get the URLs of the uploaded files
-                                    $.ajax({
-                                        url: `/api/notes/${space}/${category}/${noteId}/attachments`,
-                                        type: 'GET',
-                                        success: function(data) {
-                                            if (data.success && data.attachments) {
-                                                // Filter for recently uploaded images
-                                                const imageAttachments = data.attachments.filter(
-                                                    a => a.isImage === 'true'
-                                                ).slice(-imageFiles.length);
-                                                
-                                                // Insert each image
-                                                imageAttachments.forEach(img => {
-                                                    insertMediaToEditor(img.url, true);
-                                                });
-                                            }
-                                        }
-                                    });
+
+            // Drag and drop
+            const dropZone = document.getElementById('dropZone');
+            dropZone.addEventListener('dragover', e => {
+                e.preventDefault();
+                dropZone.classList.add('drag-over');
+            });
+            dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+            dropZone.addEventListener('drop', e => {
+                e.preventDefault();
+                dropZone.classList.remove('drag-over');
+                selectedFiles = Array.from(e.dataTransfer.files);
+                renderFileList();
+                $('#uploadBtn').prop('disabled', !isNoteSaved);
+            });
+
+            // Upload
+            $('#uploadBtn').click(function () {
+                const noteId = $('#noteId').val();
+                const space = $('#noteForm input[name="space"]').val();
+                const category = $('#noteForm input[name="category"]').val();
+
+                const button = $(this);
+                button.prop('disabled', true);
+
+                selectedFiles.forEach(file => {
+                    const formData = new FormData();
+                    formData.append('file', file);
+
+                    $.ajax({
+                        url: `/api/notes/${space}/${category}/${noteId}/upload`,
+                        type: 'POST',
+                        data: formData,
+                        processData: false,
+                        contentType: false,
+                        success: function (res) {
+                            if (res.url) {
+                                if (file.type.startsWith('image/')) {
+                                    insertMediaToEditor(res.url, true);
+                                } else {
+                                    insertMediaToEditor(res.url, false);
                                 }
                             }
-                        }, 1000);
-                    }
-                },
-                error: function(xhr) {
-                    console.error('Upload failed:', xhr);
-                    uploadedCount++;
-                    
-                    if (uploadedCount === totalFiles) {
-                        // Hide progress even if some failed
-                        setTimeout(() => {
-                            $('#uploadProgressContainer').hide();
-                            $('#uploadProgressBar').css('width', '0%').attr('aria-valuenow', 0);
-                            loadExistingAttachments();
-                        }, 1000);
-                    }
+                        },
+                        error: function (xhr) {
+                            console.error('Upload error:', xhr);
+                        }
+                    });
+                });
+
+                selectedFiles = [];
+                renderFileList();
+            });
+
+            // Title input triggers auto-save
+            $('#title').on('input', function () {
+                const title = $(this).val().trim();
+                if (title.length > 0 && !isNoteSaved) {
+                    autoSaveNote();
                 }
             });
         });
-    }
-</script>
+
+        function renderFileList() {
+            const list = $('#dropZone');
+            list.empty();
+
+            if (selectedFiles.length === 0) {
+                list.html(`<div class="text-muted p-2 text-center">No files selected</div>`);
+                return;
+            }
+
+            selectedFiles.forEach(file => {
+                const item = `<div class="list-group-item small d-flex justify-content-between align-items-center">
+                    ${file.name} <span class="text-muted">${(file.size / 1024).toFixed(1)} KB</span>
+                </div>`;
+                list.append(item);
+            });
+        }
+
+        function insertMediaToEditor(url, isImage) {
+            if (!editor) return;
+
+            if (isImage) {
+                editor.model.change(writer => {
+                    const imageElement = writer.createElement('imageBlock', { src: url });
+                    editor.model.insertContent(imageElement, editor.model.document.selection);
+                });
+            } else {
+                const fileName = url.split('/').pop();
+                const html = `<p><a href="${url}" target="_blank">${fileName}</a></p>`;
+                const viewFragment = editor.data.processor.toView(html);
+                const modelFragment = editor.data.toModel(viewFragment);
+                editor.model.insertContent(modelFragment);
+            }
+        }
+
+        function autoSaveNote() {
+            const title = $('#title').val().trim();
+            const noteId = $('#noteId').val();
+            const space = $('#noteForm input[name="space"]').val();
+            const category = $('#noteForm input[name="category"]').val();
+            const folderName = $('#noteForm input[name="folderName"]').val();
+
+            const payload = {
+                id: noteId || null,
+                title: title,
+                space: space,
+                category: category,
+                folderName: folderName
+            };
+
+            $.ajax({
+                url: `/spaces/${space}/categories/${category}/notes/autosave`,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                success: function (res) {
+                    if (res.success) {
+                        $('#noteId').val(res.id);
+                        $('#noteForm input[name="folderName"]').val(res.folderName);
+                        isNoteSaved = true;
+                        $('#uploadBtn').prop('disabled', selectedFiles.length === 0 ? true : false);
+                        showToast("✅ Note auto-saved");
+                    } else {
+                        showToast("❌ Auto-save failed: " + res.error, true);
+                    }
+                },
+                error: function (err) {
+                    showToast("❌ Auto-save error", true);
+                    console.error("Auto-save error", err);
+                }
+
+            });
+        }
+
+        function showToast(message, isError = false) {
+            const toastEl = document.getElementById('autoSaveToast');
+            const toastBody = document.getElementById('toastMessage');
+
+            toastBody.textContent = message;
+            toastEl.classList.remove('text-bg-danger', 'text-bg-success', 'text-bg-light');
+            toastEl.classList.add(isError ? 'text-bg-danger' : 'text-bg-success');
+
+            const toast = new bootstrap.Toast(toastEl);
+            toast.show();
+        }
+
+    </script>
 </body>
-</html> 
+
+</html>
