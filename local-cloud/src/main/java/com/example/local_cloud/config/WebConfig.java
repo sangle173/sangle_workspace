@@ -24,12 +24,19 @@ public class WebConfig implements WebMvcConfigurer {
         if (!path.endsWith(File.separator)) {
             path += File.separator;
         }
-        
-        // Log the path for debugging
-        logger.info("Serving files from: {}", path);
-        
-        // Serve files from the notes directory
+
+        // Log the upload path for debugging
+        logger.info("Serving uploaded files from: {}", path);
+
+        // Serve files from the notes directory (/uploads/**)
         registry.addResourceHandler("/uploads/**")
                 .addResourceLocations("file:" + path);
+
+        // Serve cut video files from a separate folder (/cuts/**)
+        String cutPath = System.getProperty("user.home") + File.separator + "Desktop" + File.separator + "LocalCloudCuts" + File.separator;
+        logger.info("Serving cut videos from: {}", cutPath);
+
+        registry.addResourceHandler("/cuts/**")
+                .addResourceLocations("file:" + cutPath);
     }
-} 
+}
