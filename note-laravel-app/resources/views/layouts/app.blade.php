@@ -55,6 +55,14 @@
         #toggleSidebar {
             width: 100%;
         }
+
+        a.active-note {
+    background-color: #d1e7dd;
+    border-radius: 5px;
+    padding: 4px 8px;
+    color: #0f5132 !important;
+    font-weight: bold;
+}
     </style>
 </head>
 

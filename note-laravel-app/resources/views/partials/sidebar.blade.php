@@ -29,13 +29,16 @@
         </div>
 
         <div class="ms-4 notes-list">
-            @foreach($notebook->notes as $note)
-                <div class="note-item">
-                    <a href="{{ route('notes.edit', $note) }}" class="d-block small text-dark text-decoration-none">
-                        📝 {{ $note->title }}
-                    </a>
-                </div>
-            @endforeach
+        @foreach($notebook->notes as $noteItem)
+    <div class="note-item">
+        <a href="{{ route('notes.edit', $noteItem) }}" 
+           class="d-block small text-dark text-decoration-none
+                  {{ (isset($note) && $note->id === $noteItem->id) ? 'active-note' : '' }}">
+            📝 {{ $noteItem->title }}
+        </a>
+    </div>
+@endforeach
+
         </div>
     </div>
     @endforeach
