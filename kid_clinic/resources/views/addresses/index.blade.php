@@ -1,0 +1,63 @@
+@extends('layouts.app')
+
+@section('content')
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h1 class="h4 mb-0"><i class="fa-solid fa-location-dot me-2"></i> {{ __('messages.addresses') }}</h1>
+                <a href="{{ route('addresses.create') }}" class="btn btn-primary">
+                    <i class="fa-solid fa-plus me-1"></i> {{ __('messages.add_new') }}
+                </a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-striped table-hover align-middle">
+                    <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>{{ __('messages.name') }}</th>
+                        <th>{{ __('messages.actions') }}</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @forelse($addresses as $index => $address)
+                        <tr>
+                            <td>{{ $loop->iteration + ($addresses->currentPage() - 1) * $addresses->perPage() }}</td>
+                            <td>{{ $address->name }}</td>
+                            <td class="d-flex gap-1">
+                                <a href="{{ route('addresses.edit', $address) }}" class="btn btn-warning btn-sm" title="Edit" data-bs-toggle="tooltip" data-bs-title="Edit">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </a>
+                                <form action="{{ route('addresses.destroy', $address) }}" method="POST" class="d-inline">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button class="btn btn-danger btn-sm" onclick="return confirm('Are you sure?')" title="Delete" data-bs-toggle="tooltip" data-bs-title="Delete">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="3" class="text-center text-muted py-5">
+                                <i class="fa-solid fa-folder-open fa-2x mb-2"></i><br>
+                                <span>{{ __('messages.no_results') }}</span>
+                            </td>
+                        </tr>
+                    @endforelse
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-3">
+                {{ $addresses->links() }}
+            </div>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        });
+    </script>
+@endsection
