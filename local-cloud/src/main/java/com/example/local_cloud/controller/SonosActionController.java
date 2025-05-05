@@ -17,6 +17,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.concurrent.atomic.AtomicLong;
 
 @RestController
 @RequestMapping("/sonos-action")
@@ -24,6 +25,18 @@ public class SonosActionController {
 
     private final SonosService sonosService;
     private final Map<String, DeviceStatus> deviceStatusMap = new ConcurrentHashMap<>();
+
+    // Device info cache: IP -> CachedDeviceInfo
+    private static class CachedDeviceInfo {
+        final Map<String, String> info;
+        final long timestamp;
+        CachedDeviceInfo(Map<String, String> info, long timestamp) {
+            this.info = info;
+            this.timestamp = timestamp;
+        }
+    }
+    private final ConcurrentHashMap<String, CachedDeviceInfo> deviceInfoCache = new ConcurrentHashMap<>();
+    private static final long DEVICE_INFO_CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes
 
     @Autowired
     public SonosActionController(SonosService sonosService) {
@@ -147,9 +160,41 @@ public class SonosActionController {
                 case "submit-diagnostics":
                     msg = sonosService.submitDiagnostics(ip, true, "user");
                     break;
-                case "update":
-                    msg = "🔄 Not supported in bulk yet";
+                case "update": {
+                    // Bulk update logic: fetch device info, extract UPD, build update URL
+                    try {
+                        // Fetch device info from description.xml
+                        String location = "http://" + ip + ":1400/xml/device_description.xml";
+                        Map<String, String> info = fetchDeviceInfo(location);
+                        if (info == null) {
+                            msg = "❌ Could not fetch device info";
+                            break;
+                        }
+                        String hwv = info.getOrDefault("Hardware Version", "");
+                        // Extract UPD number from hardware version (e.g., 1.49.1.2 -> 49)
+                        String upd = "";
+                        java.util.regex.Matcher m = java.util.regex.Pattern.compile("^1\\.(\\d+)\\.").matcher(hwv);
+                        if (m.find()) {
+                            upd = m.group(1);
+                        }
+                        if (upd.isEmpty()) {
+                            msg = "❌ Could not extract UPD from hardware version: " + hwv;
+                            break;
+                        }
+                        String updateFile = "90.0-65020-1-" + upd + ".upd";
+                        String baseUrl = request.getBaseUrl();
+                        if (baseUrl == null || baseUrl.isEmpty()) {
+                            msg = "❌ No base URL provided";
+                            break;
+                        }
+                        if (!baseUrl.endsWith("/")) baseUrl += "/";
+                        String updateUrl = baseUrl + updateFile;
+                        msg = sonosService.sendSoftwareUpdate(ip, updateUrl);
+                    } catch (Exception e) {
+                        msg = "❌ Update error: " + e.getMessage();
+                    }
                     break;
+                }
                 default:
                     msg = "❓ Unknown action: " + request.getAction();
                     break;
@@ -163,27 +208,31 @@ public class SonosActionController {
     }
 
     @PostConstruct
-    public void startPingMonitor() {
-        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(4); // parallel threads
-
-        scheduler.scheduleAtFixedRate(() -> {
-            deviceStatusMap.values().parallelStream().forEach(status -> {
-                try {
-                    long start = System.currentTimeMillis();
-                    boolean reachable = InetAddress.getByName(status.getIp()).isReachable(1000);
-                    String latency = reachable ? (System.currentTimeMillis() - start) + " ms" : "lost";
-                    status.setLatency(latency);
-                } catch (IOException e) {
-                    status.setLatency("lost");
-                }
-            });
-        }, 0, 5, TimeUnit.SECONDS);
+    public void startDeviceInfoRefresher() {
+        ScheduledExecutorService refresher = Executors.newSingleThreadScheduledExecutor();
+        refresher.scheduleAtFixedRate(() -> {
+            try {
+                Set<String> ips = new HashSet<>(deviceInfoCache.keySet());
+                ips.parallelStream().forEach(ip -> {
+                    try {
+                        fetchDeviceInfo("http://" + ip + ":1400/xml/device_description.xml");
+                    } catch (Exception ignored) {}
+                });
+            } catch (Exception ignored) {}
+        }, 30, 30, TimeUnit.SECONDS);
     }
 
     private Map<String, String> fetchDeviceInfo(String location) {
         try {
             URL url = new URL(location);
             String ip = url.getHost();
+
+            // Check cache first
+            CachedDeviceInfo cached = deviceInfoCache.get(ip);
+            long now = System.currentTimeMillis();
+            if (cached != null && (now - cached.timestamp) < DEVICE_INFO_CACHE_TTL_MS) {
+                return cached.info;
+            }
 
             deviceStatusMap.putIfAbsent(ip, new DeviceStatus(ip));
 
@@ -206,6 +255,7 @@ public class SonosActionController {
                     .evaluate("//*[local-name()='iconList']/*[local-name()='icon']/*[local-name()='url']", doc);
             map.put("Image", (iconPath != null && !iconPath.isEmpty()) ? "http://" + ip + ":1400" + iconPath : "");
 
+            // Restore: get HHID from /status/zp
             try {
                 URL statusUrl = new URL("http://" + ip + ":1400/status/zp");
                 HttpURLConnection statusConn = (HttpURLConnection) statusUrl.openConnection();
@@ -221,6 +271,9 @@ public class SonosActionController {
             } catch (Exception e) {
                 map.put("HHID", "—");
             }
+
+            // Update cache
+            deviceInfoCache.put(ip, new CachedDeviceInfo(map, now));
 
             return map;
         } catch (Exception e) {
@@ -256,6 +309,133 @@ public class SonosActionController {
             }
         }
         throw new SocketException("❌ No usable network interface with IPv4 address found.");
+    }
+
+    // Enhanced ping: use system ping on Linux for better performance
+    private String pingDevice(String ip) {
+        String os = System.getProperty("os.name").toLowerCase();
+        try {
+            if (os.contains("linux")) {
+                Process proc = Runtime.getRuntime().exec(new String[]{"ping", "-c", "1", "-W", "1", ip});
+                Scanner s = new Scanner(proc.getInputStream()).useDelimiter("\n");
+                String latency = "lost";
+                while (s.hasNext()) {
+                    String line = s.next();
+                    if (line.contains("time=")) {
+                        int idx = line.indexOf("time=");
+                        int end = line.indexOf(" ms", idx);
+                        if (idx != -1 && end != -1) {
+                            latency = line.substring(idx + 5, end) + " ms";
+                            break;
+                        }
+                    }
+                }
+                proc.waitFor();
+                return latency;
+            } else if (os.contains("win")) {
+                Process proc = Runtime.getRuntime().exec(new String[]{"ping", "-n", "1", "-w", "1000", ip});
+                Scanner s = new Scanner(proc.getInputStream()).useDelimiter("\n");
+                String latency = "lost";
+                while (s.hasNext()) {
+                    String line = s.next();
+                    if (line.contains("Average = ")) {
+                        int idx = line.indexOf("Average = ");
+                        int end = line.indexOf("ms", idx);
+                        if (idx != -1 && end != -1) {
+                            latency = line.substring(idx + 10, end).trim() + " ms";
+                            break;
+                        }
+                    }
+                }
+                proc.waitFor();
+                return latency;
+            } else {
+                // Fallback to Java's isReachable
+                long start = System.currentTimeMillis();
+                boolean reachable = InetAddress.getByName(ip).isReachable(1000);
+                return reachable ? (System.currentTimeMillis() - start) + " ms" : "lost";
+            }
+        } catch (Exception e) {
+            return "lost";
+        }
+    }
+
+    @PostConstruct
+    public void startPingMonitor() {
+        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(4); // parallel threads
+
+        scheduler.scheduleAtFixedRate(() -> {
+            deviceStatusMap.values().parallelStream().forEach(status -> {
+                try {
+                    status.setLatency(pingDevice(status.getIp()));
+                } catch (Exception e) {
+                    status.setLatency("lost");
+                }
+            });
+        }, 0, 5, TimeUnit.SECONDS);
+    }
+
+    @GetMapping("/get-system-string")
+    public String getSystemString(@RequestParam String ip, @RequestParam(defaultValue = "OnlineUpdateBaseURL") String variableName) {
+        try {
+            String soapBody = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                    "<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\" " +
+                    "s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\">" +
+                    "<s:Body>" +
+                    "<u:GetString xmlns:u=\"urn:schemas-upnp-org:service:SystemProperties:1\">" +
+                    "<VariableName>" + variableName + "</VariableName>" +
+                    "</u:GetString>" +
+                    "</s:Body>" +
+                    "</s:Envelope>";
+            URL url = new URL("http://" + ip + ":1400/SystemProperties/Control");
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setDoOutput(true);
+            conn.setRequestProperty("Content-Type", "text/xml; charset=\"utf-8\"");
+            conn.setRequestProperty("SOAPACTION", "\"urn:schemas-upnp-org:service:SystemProperties:1#GetString\"");
+            conn.getOutputStream().write(soapBody.getBytes());
+            conn.getOutputStream().flush();
+            conn.getOutputStream().close();
+            if (conn.getResponseCode() != 200) throw new Exception("SOAP GetString error: " + conn.getResponseCode());
+            Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(conn.getInputStream());
+            XPath xpath = XPathFactory.newInstance().newXPath();
+            String value = xpath.evaluate("//*[local-name()='StringValue']", doc);
+            return value != null ? value : "";
+        } catch (Exception e) {
+            return "❌ Error: " + e.getMessage();
+        }
+    }
+
+    @PostMapping("/set-system-string")
+    public String setSystemString(@RequestParam String ip,
+                                  @RequestParam(defaultValue = "OnlineUpdateBaseURL") String variableName,
+                                  @RequestParam String stringValue) {
+        try {
+            String soapBody = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                    "<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\" " +
+                    "s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\">" +
+                    "<s:Body>" +
+                    "<u:SetString xmlns:u=\"urn:schemas-upnp-org:service:SystemProperties:1\">" +
+                    "<VariableName>" + variableName + "</VariableName>" +
+                    "<StringValue>" + stringValue + "</StringValue>" +
+                    "</u:SetString>" +
+                    "</s:Body>" +
+                    "</s:Envelope>";
+            URL url = new URL("http://" + ip + ":1400/SystemProperties/Control");
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setDoOutput(true);
+            conn.setRequestProperty("Content-Type", "text/xml; charset=\"utf-8\"");
+            conn.setRequestProperty("SOAPACTION", "\"urn:schemas-upnp-org:service:SystemProperties:1#SetString\"");
+            conn.getOutputStream().write(soapBody.getBytes());
+            conn.getOutputStream().flush();
+            conn.getOutputStream().close();
+            if (conn.getResponseCode() != 200) throw new Exception("SOAP SetString error: " + conn.getResponseCode());
+            // Success if 200 OK
+            return "✅ SetString succeeded.";
+        } catch (Exception e) {
+            return "❌ Error: " + e.getMessage();
+        }
     }
 
     public static class DeviceStatus {

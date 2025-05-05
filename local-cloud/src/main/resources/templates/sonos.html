@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 
     <style>
         /* Zebra stripe rows */
@@ -105,13 +106,17 @@
             <span id="statusMsg" class="text-muted small d-block d-sm-inline"></span>
         </div>
 
-        <!-- Results table -->
+        <!-- Filter and search controls -->
         <div class="sticky-top bg-white py-2 d-flex align-items-center gap-3 flex-wrap border-bottom shadow-sm"
             style="z-index: 1020;">
             <label for="hhidFilter" class="fw-semibold mb-0">Filter:</label>
             <select id="hhidFilter" class="form-select w-auto" onchange="renderGroupedResults(currentGroups)">
                 <option value="ALL">All HHIDs</option>
             </select>
+            <input id="searchInput" type="text" class="form-control w-auto" placeholder="Search Model, MAC, UPD..."
+                oninput="renderGroupedResults(currentGroups)" style="min-width: 220px;">
+            <input id="nameSearchInput" type="text" class="form-control w-auto" placeholder="Search by Name..."
+                oninput="renderGroupedResults(currentGroups)" style="min-width: 180px;">
 
             <div class="dropdown ms-auto">
                 <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button"
@@ -154,9 +159,87 @@
         </div>
     </div>
 
+    <!-- Modal for bulk update base URL -->
+    <div class="modal fade" id="bulkUpdateModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Bulk Update</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <label for="bulkUpdateUrlInput" class="form-label">Enter the base URL for the update files:</label>
+                    <input type="text" class="form-control" id="bulkUpdateUrlInput" placeholder="http://host/path/to/RELEASEALL/">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="confirmBulkUpdate()">Update Devices</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Set String modal HTML -->
+    <div class="modal fade" id="setStringModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Set System String</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2"><b>HHID:</b> <span id="setStringHhid"></span></div>
+                    <label for="setStringValueInput" class="form-label">New String Value:</label>
+                    <input type="text" class="form-control" id="setStringValueInput" placeholder="Enter new value">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="confirmSetString()">Set String</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add a large modal for group info -->
+    <div class="modal fade" id="groupInfoModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Household Info</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <ul class="nav nav-tabs mb-3" id="groupInfoTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="table-tab" data-bs-toggle="tab" data-bs-target="#tableTabPane" type="button" role="tab" aria-controls="tableTabPane" aria-selected="true">Table</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="list-tab" data-bs-toggle="tab" data-bs-target="#listTabPane" type="button" role="tab" aria-controls="listTabPane" aria-selected="false">List</button>
+                        </li>
+                    </ul>
+                    <div class="tab-content" id="groupInfoTabContent">
+                        <div class="tab-pane fade show active" id="tableTabPane" role="tabpanel" aria-labelledby="table-tab">
+                            <div id="groupInfoModalBodyTable">Loading...</div>
+                        </div>
+                        <div class="tab-pane fade" id="listTabPane" role="tabpanel" aria-labelledby="list-tab">
+                            <div id="groupInfoModalBodyList">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         let currentGroups = {}; // HHID → list of devices
         let modalInstance = null;
+        let pendingBulkAction = null;
+        let pendingBulkDevices = null;
+        let setStringIp = null;
+        let setStringHhid = null;
 
         function showModal(title, body) {
             const modalTitle = document.getElementById("commonModalTitle");
@@ -280,19 +363,50 @@
 
         function renderGroupedResults(groups) {
             const filter = document.getElementById("hhidFilter");
-            const selected = filter.value;
+            const selectedHHID = filter.value;
+            const searchInput = document.getElementById("searchInput").value.trim().toLowerCase();
+            const nameSearchInput = document.getElementById("nameSearchInput").value.trim().toLowerCase();
             const results = document.getElementById("resultsTable");
             results.innerHTML = "";
 
             let html = "";
 
             Object.entries(groups).forEach(([hhid, devices]) => {
-                if (selected !== "ALL" && selected !== hhid) return;
+                if (selectedHHID !== "ALL" && selectedHHID !== hhid) return;
+
+                let filteredDevices = devices;
+
+                // Apply search filter (model, mac, upd)
+                if (searchInput.length > 0) {
+                    filteredDevices = filteredDevices.filter(d => {
+                        const model = (d["Model"] || "").toLowerCase();
+                        const mac = (d["MAC Address"] || "").toLowerCase();
+                        const hwv = (d["Hardware Version"] || "").toLowerCase();
+                        let upd = "";
+                        const match = hwv.match(/^1\.(\d+)\./);
+                        if (match) upd = match[1] + "s";
+                        return (
+                            model.includes(searchInput) ||
+                            mac.includes(searchInput) ||
+                            upd.includes(searchInput)
+                        );
+                    });
+                }
+                // Apply name search filter
+                if (nameSearchInput.length > 0) {
+                    filteredDevices = filteredDevices.filter(d => {
+                        const name = (d["Room Name"] || "").toLowerCase();
+                        return name.includes(nameSearchInput);
+                    });
+                }
+
+                if (filteredDevices.length === 0) return; // Skip if no match
 
                 const label = (hhid === "NO_HHID") ? "No HHID ⚠️" : hhid;
+                const firstDeviceIp = filteredDevices.length > 0 ? filteredDevices[0]["IP"] : null;
 
                 let tableRows = "";
-                devices.forEach(d => {
+                filteredDevices.forEach(d => {
                     const ipId = d["IP"].replaceAll('.', '-');
                     let upd = "";
                     if (d["Hardware Version"]) {
@@ -311,7 +425,13 @@
   </td>
   <td>
     <div class="fw-semibold text-primary">${d["Model"] || "Unknown"}</div>
-    <div>IP: ${d["IP"]} | HHID: ${label} | <span id="latency-${ipId}">ping...</span></div>
+    <div>
+  IP: 
+  <a href="http://${d["IP"]}:1400/status/zp" target="_blank" style="text-decoration: none; color: inherit;">
+    ${d["IP"]}
+  </a> 
+  | <span id="latency-${ipId}">ping...</span>
+</div>
     <div class="text-muted small">
       RoomName: ${d["Room Name"] || "-"} |
       Version: ${d["Software Version"] || "-"} |
@@ -322,13 +442,14 @@
 </tr>`;
                 });
 
-                html += `
+                let groupHeader = `
 <div class="mb-3 border rounded shadow-sm">
   <div class="px-3 py-2 d-flex align-items-center justify-content-between bg-primary-subtle border-bottom">
     <div class="d-flex align-items-center gap-2">
       <input type="checkbox" class="form-check-input form-check-sm" onclick="toggleAllInGroup(this, '${hhid}')">
       <span class="text-light-emphasis small">HHID:</span>
       <span class="fw-semibold text-dark-emphasis">${label}</span>
+      ${firstDeviceIp && hhid !== "NO_HHID" ? `<a href='#' class='ms-2' title='Get System String' onclick='getSystemStringModal("${firstDeviceIp}", "${hhid}"); return false;'><i class="bi bi-info-circle text-info"></i></a> <a href='#' class='ms-1' title='Set System String' onclick='showSetStringModal("${firstDeviceIp}", "${hhid}"); return false;'><i class="bi bi-pencil-square text-primary"></i></a>` : ''}
     </div>
   </div>
   <div class="accordion-body p-0">
@@ -341,6 +462,7 @@
     </div>
   </div>
 </div>`;
+                html += groupHeader;
             });
 
             results.innerHTML = html;
@@ -409,17 +531,249 @@
                 return;
             }
 
+            if (action === 'update') {
+                pendingBulkAction = action;
+                pendingBulkDevices = selected;
+                document.getElementById('bulkUpdateUrlInput').value = '';
+                const modalEl = document.getElementById('bulkUpdateModal');
+                const modal = new bootstrap.Modal(modalEl, { backdrop: 'static', keyboard: true });
+                modal.show();
+                return;
+            }
+
             showModal("Sending Action", `⏳ Sending <b>${action}</b> to ${selected.length} device(s)...`);
+
+            const payload = { action, devices: selected };
 
             fetch("/sonos-action/bulk", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action, devices: selected })
+                body: JSON.stringify(payload)
             })
                 .then(res => res.text())
                 .then(msg => showModal("Bulk Action Complete", msg))
                 .catch(err => showModal("Error", "❌ Failed: " + err));
         }
+
+        function confirmBulkUpdate() {
+            const baseUrl = document.getElementById('bulkUpdateUrlInput').value.trim();
+            if (!baseUrl) {
+                alert('Please enter a base URL.');
+                return;
+            }
+            const action = pendingBulkAction;
+            const selected = pendingBulkDevices;
+            const modalEl = document.getElementById('bulkUpdateModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            modal.hide();
+
+            showModal("Sending Action", `⏳ Sending <b>${action}</b> to ${selected.length} device(s)...`);
+
+            const payload = { action, devices: selected, baseUrl };
+
+            fetch("/sonos-action/bulk", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            })
+                .then(res => res.text())
+                .then(msg => showModal("Bulk Action Complete", msg))
+                .catch(err => showModal("Error", "❌ Failed: " + err));
+        }
+
+        function getSystemStringModal(ip, hhid) {
+            window._modalHHID = hhid;
+            window._modalSystemString = null;
+            const devices = (currentGroups[hhid] || []);
+            // Classify devices by UPD
+            const cep20 = [], cep25 = [];
+            devices.forEach(d => {
+                let upd = '';
+                if (d["Hardware Version"]) {
+                    const match = d["Hardware Version"].match(/^1\.(\d+)\./);
+                    if (match) upd = match[1];
+                }
+                const updNum = parseInt(upd, 10);
+                if (!isNaN(updNum) && (updNum <= 20 || updNum === 22)) {
+                    cep20.push({ ...d, upd: upd });
+                } else {
+                    cep25.push({ ...d, upd: upd });
+                }
+            });
+            // Default sort by IP
+            function sortDevices(arr, col, asc) {
+                arr.sort((a, b) => {
+                    let v1 = a[col] || '';
+                    let v2 = b[col] || '';
+                    if (col === 'upd') { v1 = parseInt(v1, 10) || 0; v2 = parseInt(v2, 10) || 0; }
+                    if (asc) {
+                        if (v1 < v2) return -1;
+                        if (v1 > v2) return 1;
+                        return 0;
+                    } else {
+                        if (v1 > v2) return -1;
+                        if (v1 < v2) return 1;
+                        return 0;
+                    }
+                });
+            }
+            let sortCol = 'IP', sortAsc = true, sortTable = 'cep20';
+            // Table view
+            function renderTable(devices, tableId, label) {
+                let html = `<div class='mb-2'><b>${label}</b> <span class='text-muted'>(Count: ${devices.length})</span></div><table class='table table-bordered table-sm' id='${tableId}'><thead><tr>`;
+                const headers = [
+                    { key: 'index', label: '#' },
+                    { key: 'IP', label: 'IP' },
+                    { key: 'Software Version', label: 'Software Version' },
+                    { key: 'Model', label: 'Model' },
+                    { key: 'upd', label: 'UPD' }
+                ];
+                headers.forEach(h => {
+                    if (h.key === 'index') {
+                        html += `<th style='width:40px'>${h.label}</th>`;
+                    } else {
+                        html += `<th style='cursor:pointer' onclick='window.sortGroupInfoTable("${tableId}", "${h.key}")'>${h.label} <span id='${tableId}_sort_${h.key}'></span></th>`;
+                    }
+                });
+                html += `</tr></thead><tbody>`;
+                devices.forEach((d, i) => {
+                    html += `<tr><td>${i + 1}</td><td><a href='http://${d["IP"]}:1400/status/zp' target='_blank'>${d["IP"]}</a></td><td>${d["Software Version"] || "-"}</td><td>${d["Model"] || "-"}</td><td>${d.upd || "-"}</td></tr>`;
+                });
+                html += `</tbody></table>`;
+                return html;
+            }
+            // List view
+            function renderList(devices, label) {
+                // Deduplicate by Model + Software Version
+                const seen = new Set();
+                const unique = [];
+                devices.forEach((d) => {
+                    const key = (d["Model"] || "-") + '|' + (d["Software Version"] || "-");
+                    if (!seen.has(key)) {
+                        seen.add(key);
+                        unique.push(d);
+                    }
+                });
+                let html = `<div class='mb-2'><b>${label} (${unique.length})</b></div><ul class='mb-3'>`;
+                unique.forEach((d) => {
+                    html += `<li>${d["Model"] || "-"} (${d["Software Version"] || "-"})</li>`;
+                });
+                html += `</ul>`;
+                return html;
+            }
+            // Initial sort
+            sortDevices(cep20, sortCol, sortAsc);
+            sortDevices(cep25, sortCol, sortAsc);
+            const firstDevice = devices[0];
+            let top = `<div class='mb-3'><b>HHID:</b> <span class='fw-semibold'>${hhid}</span></div>`;
+            if (firstDevice) {
+                top += `<div class='mb-3'><b>OnlineUpdateBaseURL:</b> <span id='groupInfoSystemString'>⏳ Loading...</span></div>`;
+            }
+            let tableHtml = '';
+            if (cep20.length > 0) tableHtml += renderTable(cep20, 'cep20', 'CEP20 Devices');
+            if (cep25.length > 0) tableHtml += renderTable(cep25, 'cep25', 'CEP25 Devices');
+            let listHtml = '';
+            if (cep20.length > 0) listHtml += renderList(cep20, 'CEP20 Devices');
+            if (cep25.length > 0) listHtml += renderList(cep25, 'CEP25 Devices');
+            document.getElementById('groupInfoModalBodyTable').innerHTML = top + tableHtml;
+            document.getElementById('groupInfoModalBodyList').innerHTML = top + listHtml;
+            const modalEl = document.getElementById('groupInfoModal');
+            const modal = new bootstrap.Modal(modalEl, { backdrop: 'static', keyboard: true });
+            modal.show();
+            // Fetch the system string for the first device
+            if (firstDevice) {
+                fetch(`/sonos-action/get-system-string?ip=${firstDevice["IP"]}`)
+                    .then(res => res.text())
+                    .then(val => {
+                        document.getElementById('groupInfoSystemString').innerHTML = `<code>${val}</code>`;
+                        window._modalSystemString = `<code>${val}</code>`;
+                    })
+                    .catch(err => {
+                        document.getElementById('groupInfoSystemString').innerHTML = `<span class='text-danger'>❌ Failed: ${err}</span>`;
+                        window._modalSystemString = `<span class='text-danger'>❌ Failed: ${err}</span>`;
+                    });
+            }
+            // Save for sorting
+            window._cep20 = cep20;
+            window._cep25 = cep25;
+            window._sortCol = sortCol;
+            window._sortAsc = sortAsc;
+            window._sortTable = sortTable;
+            window.renderTable = renderTable;
+            window.renderList = renderList;
+        }
+
+        function showSetStringModal(ip, hhid) {
+            setStringIp = ip;
+            setStringHhid = hhid;
+            document.getElementById('setStringHhid').textContent = hhid;
+            document.getElementById('setStringValueInput').value = '';
+            const modalEl = document.getElementById('setStringModal');
+            const modal = new bootstrap.Modal(modalEl, { backdrop: 'static', keyboard: true });
+            modal.show();
+        }
+
+        function confirmSetString() {
+            const value = document.getElementById('setStringValueInput').value.trim();
+            if (!value) {
+                alert('Please enter a value.');
+                return;
+            }
+            const modalEl = document.getElementById('setStringModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            modal.hide();
+            showModal('Setting System String', '⏳ Sending request...');
+            fetch(`/sonos-action/set-system-string?ip=${encodeURIComponent(setStringIp)}&stringValue=${encodeURIComponent(value)}`, {
+                method: 'POST'
+            })
+                .then(res => res.text())
+                .then(msg => showModal('Set System String Result', msg))
+                .catch(err => showModal('Error', '❌ Failed: ' + err));
+        }
+
+        // Patch: Attach sorting functions to window for modal tables
+        window.sortGroupInfoTable = function(tableId, col) {
+            let arr = tableId === 'cep20' ? window._cep20 : window._cep25;
+            if (window._sortTable === tableId && window._sortCol === col) {
+                window._sortAsc = !window._sortAsc;
+            } else {
+                window._sortCol = col;
+                window._sortAsc = true;
+                window._sortTable = tableId;
+            }
+            // Resort
+            const sortDevices = (arr, col, asc) => {
+                arr.sort((a, b) => {
+                    let v1 = a[col] || '';
+                    let v2 = b[col] || '';
+                    if (col === 'upd') { v1 = parseInt(v1, 10) || 0; v2 = parseInt(v2, 10) || 0; }
+                    if (asc) {
+                        if (v1 < v2) return -1;
+                        if (v1 > v2) return 1;
+                        return 0;
+                    } else {
+                        if (v1 > v2) return -1;
+                        if (v1 < v2) return 1;
+                        return 0;
+                    }
+                });
+            };
+            sortDevices(arr, col, window._sortAsc);
+            // Re-render only the table tab
+            let tableHtml = '';
+            if (window._cep20.length > 0) tableHtml += window.renderTable(window._cep20, 'cep20', 'CEP20 Devices');
+            if (window._cep25.length > 0) tableHtml += window.renderTable(window._cep25, 'cep25', 'CEP25 Devices');
+            let top = `<div class='mb-3'><b>HHID:</b> <span class='fw-semibold'>${window._modalHHID || ''}</span></div>`;
+            if (window._modalSystemString !== null) top += `<div class='mb-3'><b>OnlineUpdateBaseURL:</b> ${window._modalSystemString}</div>`;
+            document.getElementById('groupInfoModalBodyTable').innerHTML = top + tableHtml;
+            // Update sort indicators
+            ['cep20','cep25'].forEach(tid => {
+                ['IP','Software Version','Model','upd'].forEach(k => {
+                    const el = document.getElementById(`${tid}_sort_${k}`);
+                    if (el) el.innerHTML = (window._sortTable === tid && window._sortCol === k) ? (window._sortAsc ? '▲' : '▼') : '';
+                });
+            });
+        };
 
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

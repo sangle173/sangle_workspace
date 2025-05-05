@@ -5,6 +5,7 @@ import java.util.List;
 public class BulkActionRequest {
     private String action;
     private List<String> devices;
+    private String baseUrl;
 
     public String getAction() {
         return action;
@@ -20,5 +21,13 @@ public class BulkActionRequest {
 
     public void setDevices(List<String> devices) {
         this.devices = devices;
+    }
+
+    public String getBaseUrl() {
+        return baseUrl;
+    }
+
+    public void setBaseUrl(String baseUrl) {
+        this.baseUrl = baseUrl;
     }
 }
