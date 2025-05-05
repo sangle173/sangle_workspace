@@ -26,9 +26,6 @@ public class PathUtils {
                 desktopPath = Paths.get(userHome, "Desktop");
             }
         }
-        
-        String path = desktopPath.resolve("note").toString();
-        logger.info("Resolved desktop note path: {}", path);
-        return path;
+        return desktopPath.toString();
     }
 }

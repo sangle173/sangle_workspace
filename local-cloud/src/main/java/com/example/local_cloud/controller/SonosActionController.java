@@ -80,6 +80,9 @@ public class SonosActionController {
 
     @GetMapping("/stream-sonos")
     public SseEmitter streamSonos() {
+        // Clear device caches and status before each scan
+        deviceStatusMap.clear();
+        deviceInfoCache.clear();
         SseEmitter emitter = new SseEmitter(25000L);
 
         Executors.newSingleThreadExecutor().submit(() -> {
@@ -307,22 +310,36 @@ public class SonosActionController {
     }
 
     private InetAddress getWifiInterfaceAddress() throws SocketException {
+        List<String> preferred = Arrays.asList("wlan", "wifi", "wl", "en", "eth");
+        InetAddress fallback = null;
+        StringBuilder debug = new StringBuilder("Available interfaces:\n");
         Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
         while (interfaces.hasMoreElements()) {
             NetworkInterface iface = interfaces.nextElement();
+            debug.append("  ").append(iface.getName()).append(" (up=").append(iface.isUp())
+                .append(", loopback=").append(iface.isLoopback())
+                .append(", virtual=").append(iface.isVirtual()).append(")\n");
             if (!iface.isUp() || iface.isLoopback() || iface.isVirtual())
                 continue;
-
             String name = iface.getName().toLowerCase();
-            if (name.contains("eth") || name.contains("en") || name.contains("wlan") || name.contains("wifi")) {
-                Enumeration<InetAddress> addresses = iface.getInetAddresses();
-                while (addresses.hasMoreElements()) {
-                    InetAddress addr = addresses.nextElement();
-                    if (addr instanceof Inet4Address && !addr.isLoopbackAddress()) {
+            Enumeration<InetAddress> addresses = iface.getInetAddresses();
+            while (addresses.hasMoreElements()) {
+                InetAddress addr = addresses.nextElement();
+                if (addr instanceof Inet4Address && !addr.isLoopbackAddress()) {
+                    if (preferred.stream().anyMatch(name::contains)) {
+                        System.out.println("[Sonos] Using preferred interface: " + name + " (" + addr + ")");
                         return addr;
+                    }
+                    if (fallback == null) {
+                        fallback = addr;
                     }
                 }
             }
+        }
+        System.out.println(debug.toString());
+        if (fallback != null) {
+            System.out.println("[Sonos] Using fallback interface: " + fallback);
+            return fallback;
         }
         throw new SocketException("❌ No usable network interface with IPv4 address found.");
     }
