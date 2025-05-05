@@ -100,7 +100,7 @@ public class SonosActionController {
                 byte[] buf = new byte[2048];
                 long endTime = System.currentTimeMillis() + 10000;
 
-                ExecutorService pool = Executors.newFixedThreadPool(10);
+                ExecutorService pool = Executors.newFixedThreadPool(24);
                 List<Future<?>> futures = new ArrayList<>();
 
                 while (System.currentTimeMillis() < endTime) {
@@ -112,7 +112,7 @@ public class SonosActionController {
 
                         if (location != null && seenLocations.add(location)) {
                             futures.add(pool.submit(() -> {
-                                Map<String, String> info = fetchDeviceInfo(location);
+                                Map<String, String> info = fetchDeviceInfoWithTimeout(location, 700, 700);
                                 if (info != null) {
                                     try {
                                         emitter.send(SseEmitter.event().name("device").data(info));
@@ -255,19 +255,10 @@ public class SonosActionController {
                     .evaluate("//*[local-name()='iconList']/*[local-name()='icon']/*[local-name()='url']", doc);
             map.put("Image", (iconPath != null && !iconPath.isEmpty()) ? "http://" + ip + ":1400" + iconPath : "");
 
-            // Restore: get HHID from /status/zp
+            // Get HHID using SOAP DeviceProperties/GetHouseholdID
             try {
-                URL statusUrl = new URL("http://" + ip + ":1400/status/zp");
-                HttpURLConnection statusConn = (HttpURLConnection) statusUrl.openConnection();
-                statusConn.setConnectTimeout(1000);
-                statusConn.setReadTimeout(1000);
-
-                Scanner scanner = new Scanner(statusConn.getInputStream()).useDelimiter("\\A");
-                String html = scanner.hasNext() ? scanner.next() : "";
-
-                Matcher matcher = Pattern.compile("<HouseholdControlID>(Sonos_[^<]+?)\\.").matcher(html);
-                map.put("HHID", matcher.find() ? matcher.group(1) : "—");
-
+                String hhid = getHouseholdIDViaDeviceProperties(ip);
+                map.put("HHID", hhid != null ? hhid : "—");
             } catch (Exception e) {
                 map.put("HHID", "—");
             }
@@ -279,6 +270,31 @@ public class SonosActionController {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    // Helper to get HHID via DeviceProperties SOAP
+    private String getHouseholdIDViaDeviceProperties(String ip) throws Exception {
+        String soapBody = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                "<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\" " +
+                "s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\">" +
+                "<s:Body>" +
+                "<u:GetHouseholdID xmlns:u=\"urn:schemas-upnp-org:service:DeviceProperties:1\"/>" +
+                "</s:Body>" +
+                "</s:Envelope>";
+        URL url = new URL("http://" + ip + ":1400/DeviceProperties/Control");
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("POST");
+        conn.setDoOutput(true);
+        conn.setRequestProperty("Content-Type", "text/xml; charset=\"utf-8\"");
+        conn.setRequestProperty("SOAPACTION", "\"urn:schemas-upnp-org:service:DeviceProperties:1#GetHouseholdID\"");
+        conn.getOutputStream().write(soapBody.getBytes());
+        conn.getOutputStream().flush();
+        conn.getOutputStream().close();
+        if (conn.getResponseCode() != 200) throw new Exception("SOAP HHID error: " + conn.getResponseCode());
+        Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(conn.getInputStream());
+        XPath xpath = XPathFactory.newInstance().newXPath();
+        String hhid = xpath.evaluate("//*[local-name()='CurrentHouseholdID']", doc);
+        return (hhid != null && !hhid.isEmpty()) ? hhid : null;
     }
 
     private String parseHeader(String data, String header) {
@@ -311,48 +327,59 @@ public class SonosActionController {
         throw new SocketException("❌ No usable network interface with IPv4 address found.");
     }
 
-    // Enhanced ping: use system ping on Linux for better performance
+    // Enhanced ping: optimized for speed, lower timeout, and process cleanup
     private String pingDevice(String ip) {
         String os = System.getProperty("os.name").toLowerCase();
+        int timeoutMs = 200; // Lowered timeout for even faster response
         try {
             if (os.contains("linux")) {
-                Process proc = Runtime.getRuntime().exec(new String[]{"ping", "-c", "1", "-W", "1", ip});
-                Scanner s = new Scanner(proc.getInputStream()).useDelimiter("\n");
-                String latency = "lost";
-                while (s.hasNext()) {
-                    String line = s.next();
-                    if (line.contains("time=")) {
-                        int idx = line.indexOf("time=");
-                        int end = line.indexOf(" ms", idx);
-                        if (idx != -1 && end != -1) {
-                            latency = line.substring(idx + 5, end) + " ms";
-                            break;
+                Process proc = Runtime.getRuntime().exec(new String[]{"/usr/bin/ping", "-c", "1", "-W", "1", ip});
+                boolean finished = proc.waitFor(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS);
+                if (!finished) {
+                    proc.destroyForcibly();
+                    return "lost";
+                }
+                try (Scanner s = new Scanner(proc.getInputStream())) {
+                    String latency = "lost";
+                    while (s.hasNextLine()) {
+                        String line = s.nextLine();
+                        if (line.contains("time=")) {
+                            int idx = line.indexOf("time=");
+                            int end = line.indexOf(" ms", idx);
+                            if (idx != -1 && end != -1) {
+                                latency = line.substring(idx + 5, end) + " ms";
+                                break;
+                            }
                         }
                     }
+                    return latency;
                 }
-                proc.waitFor();
-                return latency;
             } else if (os.contains("win")) {
-                Process proc = Runtime.getRuntime().exec(new String[]{"ping", "-n", "1", "-w", "1000", ip});
-                Scanner s = new Scanner(proc.getInputStream()).useDelimiter("\n");
-                String latency = "lost";
-                while (s.hasNext()) {
-                    String line = s.next();
-                    if (line.contains("Average = ")) {
-                        int idx = line.indexOf("Average = ");
-                        int end = line.indexOf("ms", idx);
-                        if (idx != -1 && end != -1) {
-                            latency = line.substring(idx + 10, end).trim() + " ms";
-                            break;
+                Process proc = Runtime.getRuntime().exec(new String[]{"ping", "-n", "1", "-w", String.valueOf(timeoutMs), ip});
+                boolean finished = proc.waitFor(timeoutMs + 100, java.util.concurrent.TimeUnit.MILLISECONDS);
+                if (!finished) {
+                    proc.destroyForcibly();
+                    return "lost";
+                }
+                try (Scanner s = new Scanner(proc.getInputStream())) {
+                    String latency = "lost";
+                    while (s.hasNextLine()) {
+                        String line = s.nextLine();
+                        if (line.contains("Average = ")) {
+                            int idx = line.indexOf("Average = ");
+                            int end = line.indexOf("ms", idx);
+                            if (idx != -1 && end != -1) {
+                                latency = line.substring(idx + 10, end).trim() + " ms";
+                                break;
+                            }
                         }
                     }
+                    return latency;
                 }
-                proc.waitFor();
-                return latency;
             } else {
                 // Fallback to Java's isReachable
                 long start = System.currentTimeMillis();
-                boolean reachable = InetAddress.getByName(ip).isReachable(1000);
+                boolean reachable = InetAddress.getByName(ip).isReachable(timeoutMs);
                 return reachable ? (System.currentTimeMillis() - start) + " ms" : "lost";
             }
         } catch (Exception e) {
@@ -362,7 +389,7 @@ public class SonosActionController {
 
     @PostConstruct
     public void startPingMonitor() {
-        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(4); // parallel threads
+        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(24); // Increased pool size
 
         scheduler.scheduleAtFixedRate(() -> {
             deviceStatusMap.values().parallelStream().forEach(status -> {
@@ -435,6 +462,57 @@ public class SonosActionController {
             return "✅ SetString succeeded.";
         } catch (Exception e) {
             return "❌ Error: " + e.getMessage();
+        }
+    }
+
+    // Helper to fetch device info with custom timeouts
+    private Map<String, String> fetchDeviceInfoWithTimeout(String location, int connectTimeoutMs, int readTimeoutMs) {
+        try {
+            URL url = new URL(location);
+            String ip = url.getHost();
+
+            // Check cache first
+            CachedDeviceInfo cached = deviceInfoCache.get(ip);
+            long now = System.currentTimeMillis();
+            if (cached != null && (now - cached.timestamp) < DEVICE_INFO_CACHE_TTL_MS) {
+                return cached.info;
+            }
+
+            deviceStatusMap.putIfAbsent(ip, new DeviceStatus(ip));
+
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setConnectTimeout(connectTimeoutMs);
+            conn.setReadTimeout(readTimeoutMs);
+
+            Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(conn.getInputStream());
+            XPath xpath = XPathFactory.newInstance().newXPath();
+
+            Map<String, String> map = new LinkedHashMap<>();
+            map.put("IP", ip);
+            map.put("MAC Address", xpath.evaluate("//*[local-name()='serialNum']", doc));
+            map.put("Room Name", xpath.evaluate("//*[local-name()='roomName']", doc));
+            map.put("Model", xpath.evaluate("//*[local-name()='modelName']", doc));
+            map.put("Software Version", xpath.evaluate("//*[local-name()='softwareVersion']", doc));
+            map.put("Hardware Version", xpath.evaluate("//*[local-name()='hardwareVersion']", doc));
+
+            String iconPath = xpath
+                    .evaluate("//*[local-name()='iconList']/*[local-name()='icon']/*[local-name()='url']", doc);
+            map.put("Image", (iconPath != null && !iconPath.isEmpty()) ? "http://" + ip + ":1400" + iconPath : "");
+
+            // Get HHID using SOAP DeviceProperties/GetHouseholdID
+            try {
+                String hhid = getHouseholdIDViaDeviceProperties(ip);
+                map.put("HHID", hhid != null ? hhid : "—");
+            } catch (Exception e) {
+                map.put("HHID", "—");
+            }
+
+            // Update cache
+            deviceInfoCache.put(ip, new CachedDeviceInfo(map, now));
+
+            return map;
+        } catch (Exception e) {
+            return null;
         }
     }
 
