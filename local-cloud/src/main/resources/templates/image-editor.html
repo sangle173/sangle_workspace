@@ -90,68 +90,73 @@
     <div th:replace="fragments/navbar :: navbar"></div>
 
     <div class="container-fluid my-4">
-        <div class="d-flex align-items-center justify-content-between mb-3">
-            <h5 class="mb-0 fw-semibold">Image Editor</h5>
-            <div>
-                <button class="btn btn-primary" onclick="exportImage()">
-                    <i class="bi bi-download"></i> Export Image
+        <div class="d-flex align-items-center justify-content-end mb-3">
+            <!-- Drawing Tools -->
+            <div class="btn-group me-2">
+                <button class="btn btn-outline-primary" id="penTool" onclick="togglePenTool()" title="Pen Tool">
+                    <i class="bi bi-pencil"></i> Pen
+                </button>
+                <button class="btn btn-outline-primary" onclick="undo()" title="Undo">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                </button>
+                <button class="btn btn-outline-primary" onclick="redo()" title="Redo">
+                    <i class="bi bi-arrow-clockwise"></i>
                 </button>
             </div>
-        </div>
 
-        <!-- Toolbar -->
-        <div class="toolbar">
-            <div class="d-flex flex-wrap gap-2 align-items-center">
-                <!-- Drawing Tools -->
-                <div class="btn-group">
-                    <button class="btn btn-outline-primary" id="penTool" onclick="togglePenTool()" title="Pen Tool">
-                        <i class="bi bi-pencil"></i> Pen
-                    </button>
-                    <button class="btn btn-outline-primary" onclick="undo()" title="Undo">
-                        <i class="bi bi-arrow-counterclockwise"></i>
-                    </button>
-                    <button class="btn btn-outline-primary" onclick="redo()" title="Redo">
-                        <i class="bi bi-arrow-clockwise"></i>
-                    </button>
-                </div>
-
-                <!-- Shapes -->
-                <div class="btn-group">
-                    <button class="shape-btn" onclick="addShape('rect')" title="Rectangle">
-                        <i class="bi bi-square"></i>
-                    </button>
-                    <button class="shape-btn" onclick="addShape('circle')" title="Circle">
-                        <i class="bi bi-circle"></i>
-                    </button>
-                    <button class="shape-btn" onclick="addShape('arrow')" title="Arrow">
-                        <i class="bi bi-arrow-right"></i>
-                    </button>
-                </div>
-
-                <!-- Text -->
-                <button class="btn btn-outline-primary" onclick="addText()">
-                    <i class="bi bi-type"></i> Add Text
+            <!-- Shapes -->
+            <div class="btn-group me-2">
+                <button class="shape-btn" onclick="addShape('rect')" title="Rectangle">
+                    <i class="bi bi-aspect-ratio"></i>
                 </button>
-
-                <!-- Image Upload -->
-                <input type="file" id="imageInput" accept="image/*" style="display: none" onchange="addImage(event)" multiple>
-                <button class="btn btn-outline-primary" onclick="document.getElementById('imageInput').click()">
-                    <i class="bi bi-image"></i> Add Image
+                <button class="shape-btn" onclick="addShape('square')" title="Square">
+                    <i class="bi bi-square"></i>
                 </button>
-
-                <!-- Color Picker -->
-                <input type="color" class="color-picker" id="colorPicker" value="#ff0000" onchange="updateColor(this.value)">
-
-                <!-- Delete -->
-                <button class="btn btn-outline-danger" onclick="deleteSelected()">
-                    <i class="bi bi-trash"></i> Delete
+                <button class="shape-btn" onclick="addShape('circle')" title="Circle">
+                    <i class="bi bi-circle"></i>
                 </button>
-
-                <!-- Clear All -->
-                <button class="btn btn-outline-secondary" onclick="clearCanvas()">
-                    <i class="bi bi-x-circle"></i> Clear All
+                <button class="shape-btn" onclick="addShape('arrow-right')" title="Right Arrow">
+                    <i class="bi bi-arrow-right"></i>
+                </button>
+                <button class="shape-btn" onclick="addShape('arrow-left')" title="Left Arrow">
+                    <i class="bi bi-arrow-left"></i>
+                </button>
+                <button class="shape-btn" onclick="addShape('arrow-up')" title="Up Arrow">
+                    <i class="bi bi-arrow-up"></i>
+                </button>
+                <button class="shape-btn" onclick="addShape('arrow-down')" title="Down Arrow">
+                    <i class="bi bi-arrow-down"></i>
                 </button>
             </div>
+
+            <!-- Text -->
+            <button class="btn btn-outline-primary me-2" onclick="addText()">
+                <i class="bi bi-type"></i> Add Text
+            </button>
+
+            <!-- Image Upload -->
+            <input type="file" id="imageInput" accept="image/*" style="display: none" onchange="addImage(event)" multiple>
+            <button class="btn btn-outline-primary me-2" onclick="document.getElementById('imageInput').click()">
+                <i class="bi bi-image"></i> Add Image
+            </button>
+
+            <!-- Color Picker -->
+            <input type="color" class="color-picker me-2" id="colorPicker" value="#ff0000" onchange="updateColor(this.value)">
+
+            <!-- Delete -->
+            <button class="btn btn-outline-danger me-2" onclick="deleteSelected()">
+                <i class="bi bi-trash"></i> Delete
+            </button>
+
+            <!-- Clear All -->
+            <button class="btn btn-outline-secondary me-2" onclick="clearCanvas()">
+                <i class="bi bi-x-circle"></i> Clear All
+            </button>
+
+            <!-- Export -->
+            <button class="btn btn-primary" onclick="exportImage()">
+                <i class="bi bi-download"></i> Export Image
+            </button>
         </div>
 
         <!-- Canvas -->
@@ -268,6 +273,17 @@
                     shape = new fabric.Rect({
                         left: 100,
                         top: 100,
+                        width: 150,
+                        height: 100,
+                        fill: 'transparent',
+                        stroke: defaultColor,
+                        strokeWidth: 2
+                    });
+                    break;
+                case 'square':
+                    shape = new fabric.Rect({
+                        left: 100,
+                        top: 100,
                         width: 100,
                         height: 100,
                         fill: 'transparent',
@@ -285,8 +301,35 @@
                         strokeWidth: 2
                     });
                     break;
-                case 'arrow':
+                case 'arrow-right':
                     shape = new fabric.Path('M 0 0 L 100 0 L 100 -10 L 120 0 L 100 10 L 100 0', {
+                        left: 100,
+                        top: 100,
+                        fill: 'transparent',
+                        stroke: defaultColor,
+                        strokeWidth: 2
+                    });
+                    break;
+                case 'arrow-left':
+                    shape = new fabric.Path('M 120 0 L 20 0 L 20 -10 L 0 0 L 20 10 L 20 0', {
+                        left: 100,
+                        top: 100,
+                        fill: 'transparent',
+                        stroke: defaultColor,
+                        strokeWidth: 2
+                    });
+                    break;
+                case 'arrow-up':
+                    shape = new fabric.Path('M 60 0 L 60 -100 L 50 -100 L 60 -120 L 70 -100 L 60 -100', {
+                        left: 100,
+                        top: 100,
+                        fill: 'transparent',
+                        stroke: defaultColor,
+                        strokeWidth: 2
+                    });
+                    break;
+                case 'arrow-down':
+                    shape = new fabric.Path('M 60 0 L 60 100 L 50 100 L 60 120 L 70 100 L 60 100', {
                         left: 100,
                         top: 100,
                         fill: 'transparent',
@@ -336,9 +379,14 @@
                                     scale = maxHeight / img.height;
                                 }
 
+                                // Calculate new canvas height based on image
+                                const newHeight = Math.max(canvas.height, (img.height * scale) + 40); // Add some padding
+                                canvas.setHeight(newHeight);
+                                updateSizeDisplay();
+
                                 img.set({
-                                    left: 1, // Position at left with 1px padding
-                                    top: 1,  // Position at top with 1px padding
+                                    left: 1,
+                                    top: 1,
                                     scaleX: scale,
                                     scaleY: scale,
                                     selectable: true,
@@ -396,7 +444,8 @@
         function resizeCanvas() {
             const container = document.querySelector('.canvas-wrapper');
             const width = container.clientWidth - 40;
-            const height = width * 1.5;
+            // Only set initial height, will be adjusted by images
+            const height = Math.max(600, width * 0.75); // Minimum height of 600px
             canvas.setWidth(width);
             canvas.setHeight(height);
             canvas.renderAll();
