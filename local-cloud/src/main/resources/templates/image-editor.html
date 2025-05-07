@@ -56,6 +56,11 @@
         }
         .toolbar button {
             margin: 0 5px;
+            transition: all 0.3s ease;
+        }
+        .toolbar button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
         .color-picker {
             width: 40px;
@@ -64,6 +69,10 @@
             border: none;
             border-radius: 4px;
             cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .color-picker:hover {
+            transform: scale(1.1);
         }
         .shape-btn {
             width: 40px;
@@ -74,14 +83,33 @@
             border-radius: 4px;
             background: white;
             cursor: pointer;
+            transition: all 0.3s ease;
         }
         .shape-btn:hover {
             background: #e9ecef;
+            transform: translateY(-2px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
         .shape-btn.active {
             background: #0d6efd;
             color: white;
             border-color: #0d6efd;
+        }
+        .btn-group .btn {
+            border-radius: 4px !important;
+        }
+        .btn-group .btn:not(:last-child) {
+            margin-right: 2px;
+        }
+        .btn i {
+            font-size: 1.1em;
+            vertical-align: middle;
+        }
+        .btn-outline-primary:hover i,
+        .btn-outline-danger:hover i,
+        .btn-outline-secondary:hover i {
+            transform: scale(1.1);
+            transition: transform 0.3s ease;
         }
     </style>
 </head>
@@ -94,7 +122,7 @@
             <!-- Drawing Tools -->
             <div class="btn-group me-2">
                 <button class="btn btn-outline-primary" id="penTool" onclick="togglePenTool()" title="Pen Tool">
-                    <i class="bi bi-pencil"></i> Pen
+                    <i class="bi bi-pencil-fill"></i> Pen
                 </button>
                 <button class="btn btn-outline-primary" onclick="undo()" title="Undo">
                     <i class="bi bi-arrow-counterclockwise"></i>
@@ -131,13 +159,13 @@
 
             <!-- Text -->
             <button class="btn btn-outline-primary me-2" onclick="addText()">
-                <i class="bi bi-type"></i> Add Text
+                <i class="bi bi-type-h1"></i> Add Text
             </button>
 
             <!-- Image Upload -->
             <input type="file" id="imageInput" accept="image/*" style="display: none" onchange="addImage(event)" multiple>
             <button class="btn btn-outline-primary me-2" onclick="document.getElementById('imageInput').click()">
-                <i class="bi bi-image"></i> Add Image
+                <i class="bi bi-image-fill"></i> Add Image
             </button>
 
             <!-- Color Picker -->
@@ -145,17 +173,17 @@
 
             <!-- Delete -->
             <button class="btn btn-outline-danger me-2" onclick="deleteSelected()">
-                <i class="bi bi-trash"></i> Delete
+                <i class="bi bi-trash-fill"></i> Delete
             </button>
 
             <!-- Clear All -->
             <button class="btn btn-outline-secondary me-2" onclick="clearCanvas()">
-                <i class="bi bi-x-circle"></i> Clear All
+                <i class="bi bi-x-circle-fill"></i> Clear All
             </button>
 
             <!-- Export -->
             <button class="btn btn-primary" onclick="exportImage()">
-                <i class="bi bi-download"></i> Export Image
+                <i class="bi bi-download-fill"></i> Export Image
             </button>
         </div>
 
