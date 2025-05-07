@@ -14,6 +14,7 @@ import java.nio.file.attribute.FileTime;
 import java.io.*;
 import java.nio.file.*;
 import java.util.*;
+import org.springframework.http.HttpStatus;
 
 @Controller
 public class UploadController {
@@ -225,6 +226,26 @@ public class UploadController {
                     .body(resource);
         } catch (IOException e) {
             return ResponseEntity.status(500).build();
+        }
+    }
+
+    @PostMapping("/open-uploadsfolder")
+    @ResponseBody
+    public ResponseEntity<?> openUploadsFolder() {
+        try {
+            ProcessBuilder pb = new ProcessBuilder("nautilus", "--new-window", UPLOAD_DIR);
+            pb.environment().put("DISPLAY", ":0");
+            pb.start();
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            try {
+                ProcessBuilder pb2 = new ProcessBuilder("xdg-open", UPLOAD_DIR);
+                pb2.environment().put("DISPLAY", ":0");
+                pb2.start();
+                return ResponseEntity.ok().build();
+            } catch (Exception ex) {
+                return ResponseEntity.status(500).body("Failed to open folder: " + ex.getMessage());
+            }
         }
     }
 

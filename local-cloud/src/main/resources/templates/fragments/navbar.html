@@ -4,7 +4,7 @@
 <div th:fragment="navbar">
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm mb-4">
         <div class="container">
-            <a class="navbar-brand fw-bold text-light" href="/">🌐 Local Cloud</a>
+            <a class="navbar-brand fw-bold text-light" href="/">🌐 Local Tools</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
                     data-bs-target="#navbarNav" aria-controls="navbarNav"
                     aria-expanded="false" aria-label="Toggle navigation">
@@ -13,9 +13,11 @@
 
             <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
                 <ul class="navbar-nav">
-                    <li class="nav-item"><a class="nav-link text-light" href="/">Home</a></li>
-                    <li class="nav-item"><a class="nav-link text-light" href="/sonos">Sonos Devices</a></li>
-                    <li class="nav-item"><a class="nav-link text-light" href="/url-converter">🔄 URL Converter</a></li>
+                    <li class="nav-item"><a class="nav-link text-light" th:classappend="${#httpServletRequest.requestURI == '/'} ? 'active'" href="/"><i class="bi bi-house-door-fill me-1"></i>Home</a></li>
+                    <li class="nav-item"><a class="nav-link text-light" th:classappend="${#httpServletRequest.requestURI.startsWith('/sonos')} ? 'active'" href="/sonos"><i class="bi bi-speaker-fill me-1"></i>Sonos Devices</a></li>
+                    <li class="nav-item"><a class="nav-link text-light" th:classappend="${#httpServletRequest.requestURI.startsWith('/url-converter')} ? 'active'" href="/url-converter"><i class="bi bi-arrow-repeat me-1"></i>URL Converter</a></li>
+                    <li class="nav-item"><a class="nav-link text-light" th:classappend="${#httpServletRequest.requestURI.startsWith('/files')} ? 'active'" href="/files"><i class="bi bi-download me-1"></i>Downloads</a></li>
+                    <li class="nav-item"><a class="nav-link text-light" th:classappend="${#httpServletRequest.requestURI.startsWith('/server-files')} ? 'active'" href="/server-files"><i class="bi bi-folder2-open me-1"></i>LocalServerFolder</a></li>
             
 
                     <!-- <li class="nav-item dropdown">

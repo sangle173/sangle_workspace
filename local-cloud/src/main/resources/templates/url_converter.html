@@ -31,7 +31,11 @@
 
     <div class="container">
         <div class="converter-container">
-            <h2>Sonos → Artifactory URL Converter</h2>
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <h5 class="mb-0 fw-semibold">Sonos → Artifactory URL Converter
+                    <i class="bi bi-info-circle ms-2" tabindex="0" data-bs-toggle="tooltip" data-bs-placement="right" title="Convert Sonos URLs to Artifactory links." onclick="showFeatureHelp('urlConverter')" style="cursor:pointer;"></i>
+                </h5>
+            </div>
             <p class="text-muted">Paste a Sonos mobile-apps URL:</p>
             
             <div class="form-group">
@@ -43,6 +47,21 @@
             <div class="output mt-3" id="outputUrl"></div>
         </div>
     </div>
+
+    <!-- Feature Help Modal -->
+    <div class="modal fade" id="featureHelpModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="featureHelpModalTitle"></h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body" id="featureHelpModalBody"></div>
+        </div>
+      </div>
+    </div>
+
+    <div th:replace="fragments/footer :: footer"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -79,6 +98,29 @@
                     '<div class="alert alert-danger">❌ Invalid URL</div>';
             }
         }
+
+        // Feature instructions
+        const featureInstructions = {
+          urlConverter: {
+            title: "URL Converter",
+            body: `Paste a Sonos mobile-apps URL and click Convert.\n\nThe tool will generate a direct Artifactory download link for you.\n\nUse this to quickly get the correct file URL for Sonos device updates or downloads.`
+          }
+        };
+        function showFeatureHelp(featureKey) {
+          const instr = featureInstructions[featureKey];
+          if (!instr) return;
+          document.getElementById('featureHelpModalTitle').innerText = instr.title;
+          document.getElementById('featureHelpModalBody').innerText = instr.body;
+          const modal = new bootstrap.Modal(document.getElementById('featureHelpModal'));
+          modal.show();
+        }
+        // Initialize Bootstrap tooltips
+        document.addEventListener('DOMContentLoaded', function () {
+          var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+          tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+            new bootstrap.Tooltip(tooltipTriggerEl);
+          });
+        });
     </script>
 </body>
 </html>

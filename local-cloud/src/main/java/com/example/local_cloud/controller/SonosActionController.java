@@ -198,6 +198,16 @@ public class SonosActionController {
                     }
                     break;
                 }
+                case "update-by-link": {
+                    // Use the provided baseUrl directly as the update URL
+                    String baseUrl = request.getBaseUrl();
+                    if (baseUrl == null || baseUrl.isEmpty()) {
+                        msg = "❌ No update URL provided";
+                        break;
+                    }
+                    msg = sonosService.sendSoftwareUpdate(ip, baseUrl);
+                    break;
+                }
                 default:
                     msg = "❓ Unknown action: " + request.getAction();
                     break;
@@ -217,7 +227,7 @@ public class SonosActionController {
             try {
                 Set<String> ips = new HashSet<>(deviceInfoCache.keySet());
                 ips.parallelStream().forEach(ip -> {
-                    try {
+                try {
                         fetchDeviceInfo("http://" + ip + ":1400/xml/device_description.xml");
                     } catch (Exception ignored) {}
                 });
@@ -322,10 +332,10 @@ public class SonosActionController {
             if (!iface.isUp() || iface.isLoopback() || iface.isVirtual())
                 continue;
             String name = iface.getName().toLowerCase();
-            Enumeration<InetAddress> addresses = iface.getInetAddresses();
-            while (addresses.hasMoreElements()) {
-                InetAddress addr = addresses.nextElement();
-                if (addr instanceof Inet4Address && !addr.isLoopbackAddress()) {
+                Enumeration<InetAddress> addresses = iface.getInetAddresses();
+                while (addresses.hasMoreElements()) {
+                    InetAddress addr = addresses.nextElement();
+                    if (addr instanceof Inet4Address && !addr.isLoopbackAddress()) {
                     if (preferred.stream().anyMatch(name::contains)) {
                         System.out.println("[Sonos] Using preferred interface: " + name + " (" + addr + ")");
                         return addr;
@@ -342,6 +352,22 @@ public class SonosActionController {
             return fallback;
         }
         throw new SocketException("❌ No usable network interface with IPv4 address found.");
+    }
+
+    @GetMapping("/get-network-info")
+    public Map<String, String> getNetworkInfo() {
+        Map<String, String> info = new HashMap<>();
+        try {
+            InetAddress addr = getWifiInterfaceAddress();
+            NetworkInterface iface = NetworkInterface.getByInetAddress(addr);
+            if (iface != null) {
+                info.put("interface", iface.getDisplayName());
+                info.put("address", addr.getHostAddress());
+            }
+        } catch (Exception e) {
+            info.put("error", e.getMessage());
+        }
+        return info;
     }
 
     // Enhanced ping: optimized for speed, lower timeout, and process cleanup
