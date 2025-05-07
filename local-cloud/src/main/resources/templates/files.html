@@ -190,7 +190,7 @@
     <div th:replace="fragments/navbar :: navbar"></div>
     <div class="container py-4">
         <div class="d-flex align-items-center justify-content-between mb-3">
-            <h5 class="mb-0 fw-semibold">Downloads
+            <h5 class="mb-0 fw-semibold">Fetch and Download Files
                 <i class="bi bi-info-circle ms-2" tabindex="0" data-bs-toggle="tooltip" data-bs-placement="right" title="Download files from external sources or manage server downloads." onclick="showFeatureHelp('downloads')" style="cursor:pointer;"></i>
             </h5>
         </div>
@@ -199,9 +199,12 @@
             <button class="btn btn-primary" onclick="fetchLinks()">Fetch Links</button>
         </div>
         <div class="mb-3 d-flex flex-wrap align-items-center gap-2" id="extFilters"></div>
-        <div class="mb-3 d-flex flex-wrap gap-2">
-            <button class="btn btn-outline-secondary" onclick="selectAllLinks(true)">Select All</button>
-            <button class="btn btn-outline-secondary" onclick="selectAllLinks(false)">Deselect All</button>
+        <div class="mb-3 d-flex justify-content-between align-items-center">
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-secondary" onclick="selectAllLinks(true)">Select All</button>
+                <button class="btn btn-outline-secondary" onclick="selectAllLinks(false)">Deselect All</button>
+            </div>
+            <button type="button" class="btn btn-info" onclick="downloadToServer()">Download Files</button>
         </div>
         <form>
             <ul id="fileList">
@@ -213,7 +216,6 @@
                 </li>
             </ul>
         </form>
-        <button type="button" class="btn btn-info mt-2" onclick="downloadToServer()">Download to Server</button>
     </div>
     <div id="downloadProgressContainer" style="display:none"></div>
     <div style="position:fixed;top:0;left:0;width:100%;z-index:3000;display:none;background:#f8f9fa;" id="topDownloadBar">
