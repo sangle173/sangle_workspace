@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Image Editor</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <style>
+        .canvas-container {
+            margin: 20px auto;
+            border: 1px solid #ccc;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            width: 100% !important;
+            height: auto !important;
+        }
+        .canvas-wrapper {
+            width: 100%;
+            margin: 0 auto;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            position: relative;
+            resize: both;
+            overflow: auto;
+            min-width: 400px;
+            min-height: 600px;
+        }
+        .canvas-wrapper::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            bottom: 0;
+            width: 20px;
+            height: 20px;
+            background: linear-gradient(135deg, transparent 50%, #dee2e6 50%);
+            cursor: se-resize;
+        }
+        .size-display {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 1000;
+        }
+        .toolbar {
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .toolbar button {
+            margin: 0 5px;
+        }
+        .color-picker {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .shape-btn {
+            width: 40px;
+            height: 40px;
+            padding: 5px;
+            margin: 0 5px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+        }
+        .shape-btn:hover {
+            background: #e9ecef;
+        }
+        .shape-btn.active {
+            background: #0d6efd;
+            color: white;
+            border-color: #0d6efd;
+        }
+    </style>
+</head>
+<body>
+    <!-- Shared navbar -->
+    <div th:replace="fragments/navbar :: navbar"></div>
+
+    <div class="container-fluid my-4">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h5 class="mb-0 fw-semibold">Image Editor</h5>
+            <div>
+                <button class="btn btn-primary" onclick="exportImage()">
+                    <i class="bi bi-download"></i> Export Image
+                </button>
+            </div>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                <!-- Drawing Tools -->
+                <div class="btn-group">
+                    <button class="btn btn-outline-primary" id="penTool" onclick="togglePenTool()" title="Pen Tool">
+                        <i class="bi bi-pencil"></i> Pen
+                    </button>
+                    <button class="btn btn-outline-primary" onclick="undo()" title="Undo">
+                        <i class="bi bi-arrow-counterclockwise"></i>
+                    </button>
+                    <button class="btn btn-outline-primary" onclick="redo()" title="Redo">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                </div>
+
+                <!-- Shapes -->
+                <div class="btn-group">
+                    <button class="shape-btn" onclick="addShape('rect')" title="Rectangle">
+                        <i class="bi bi-square"></i>
+                    </button>
+                    <button class="shape-btn" onclick="addShape('circle')" title="Circle">
+                        <i class="bi bi-circle"></i>
+                    </button>
+                    <button class="shape-btn" onclick="addShape('arrow')" title="Arrow">
+                        <i class="bi bi-arrow-right"></i>
+                    </button>
+                </div>
+
+                <!-- Text -->
+                <button class="btn btn-outline-primary" onclick="addText()">
+                    <i class="bi bi-type"></i> Add Text
+                </button>
+
+                <!-- Image Upload -->
+                <input type="file" id="imageInput" accept="image/*" style="display: none" onchange="addImage(event)" multiple>
+                <button class="btn btn-outline-primary" onclick="document.getElementById('imageInput').click()">
+                    <i class="bi bi-image"></i> Add Image
+                </button>
+
+                <!-- Color Picker -->
+                <input type="color" class="color-picker" id="colorPicker" value="#ff0000" onchange="updateColor(this.value)">
+
+                <!-- Delete -->
+                <button class="btn btn-outline-danger" onclick="deleteSelected()">
+                    <i class="bi bi-trash"></i> Delete
+                </button>
+
+                <!-- Clear All -->
+                <button class="btn btn-outline-secondary" onclick="clearCanvas()">
+                    <i class="bi bi-x-circle"></i> Clear All
+                </button>
+            </div>
+        </div>
+
+        <!-- Canvas -->
+        <div class="canvas-wrapper">
+            <div class="size-display">Size: <span id="canvasSize">800 x 600</span></div>
+            <canvas id="canvas"></canvas>
+        </div>
+    </div>
+
+    <div th:replace="fragments/footer :: footer"></div>
+
+    <script>
+        // Initialize Fabric.js canvas
+        const canvas = new fabric.Canvas('canvas', {
+            backgroundColor: '#ffffff',
+            preserveObjectStacking: true,
+            imageSmoothingEnabled: true,
+            imageSmoothingQuality: 'high',
+            enableRetinaScaling: true,
+            objectCaching: false,
+            preserveAspectRatio: true
+        });
+
+        // Drawing state
+        let isDrawingMode = false;
+        let currentPath = null;
+        let history = [];
+        let historyIndex = -1;
+
+        // Toggle pen tool
+        function togglePenTool() {
+            isDrawingMode = !isDrawingMode;
+            canvas.isDrawingMode = isDrawingMode;
+            const penButton = document.getElementById('penTool');
+            
+            if (isDrawingMode) {
+                penButton.classList.add('active');
+                canvas.freeDrawingBrush.color = document.getElementById('colorPicker').value;
+                canvas.freeDrawingBrush.width = 2;
+            } else {
+                penButton.classList.remove('active');
+            }
+        }
+
+        // Undo function
+        function undo() {
+            if (historyIndex > 0) {
+                historyIndex--;
+                canvas.loadFromJSON(history[historyIndex], canvas.renderAll.bind(canvas));
+            }
+        }
+
+        // Redo function
+        function redo() {
+            if (historyIndex < history.length - 1) {
+                historyIndex++;
+                canvas.loadFromJSON(history[historyIndex], canvas.renderAll.bind(canvas));
+            }
+        }
+
+        // Save state to history
+        function saveState() {
+            // Remove any future states if we're not at the end
+            if (historyIndex < history.length - 1) {
+                history = history.slice(0, historyIndex + 1);
+            }
+            
+            // Add current state to history
+            history.push(JSON.stringify(canvas));
+            historyIndex = history.length - 1;
+            
+            // Limit history size to prevent memory issues
+            if (history.length > 50) {
+                history.shift();
+                historyIndex--;
+            }
+        }
+
+        // Initialize history with empty canvas
+        saveState();
+
+        // Add event listeners for history
+        canvas.on('object:added', saveState);
+        canvas.on('object:modified', saveState);
+        canvas.on('object:removed', saveState);
+        canvas.on('path:created', saveState);
+
+        // Update color function
+        function updateColor(color) {
+            const activeObject = canvas.getActiveObject();
+            if (activeObject) {
+                if (activeObject.type === 'i-text') {
+                    activeObject.set('fill', color);
+                } else if (activeObject.type === 'path') {
+                    activeObject.set('stroke', color);
+                } else {
+                    activeObject.set('stroke', color);
+                }
+                canvas.renderAll();
+            }
+            // Update pen color if in drawing mode
+            if (isDrawingMode) {
+                canvas.freeDrawingBrush.color = color;
+            }
+        }
+
+        // Add shape function
+        function addShape(type) {
+            let shape;
+            const defaultColor = document.getElementById('colorPicker').value;
+            
+            switch(type) {
+                case 'rect':
+                    shape = new fabric.Rect({
+                        left: 100,
+                        top: 100,
+                        width: 100,
+                        height: 100,
+                        fill: 'transparent',
+                        stroke: defaultColor,
+                        strokeWidth: 2
+                    });
+                    break;
+                case 'circle':
+                    shape = new fabric.Circle({
+                        left: 100,
+                        top: 100,
+                        radius: 50,
+                        fill: 'transparent',
+                        stroke: defaultColor,
+                        strokeWidth: 2
+                    });
+                    break;
+                case 'arrow':
+                    shape = new fabric.Path('M 0 0 L 100 0 L 100 -10 L 120 0 L 100 10 L 100 0', {
+                        left: 100,
+                        top: 100,
+                        fill: 'transparent',
+                        stroke: defaultColor,
+                        strokeWidth: 2
+                    });
+                    break;
+            }
+            
+            canvas.add(shape);
+            shape.bringToFront();
+            canvas.setActiveObject(shape);
+        }
+
+        // Add text function
+        function addText() {
+            const text = new fabric.IText('Double click to edit', {
+                left: 100,
+                top: 100,
+                fontFamily: 'Arial',
+                fontSize: 40,
+                fill: document.getElementById('colorPicker').value
+            });
+            canvas.add(text);
+            text.bringToFront();
+            canvas.setActiveObject(text);
+        }
+
+        // Add image function
+        function addImage(event) {
+            const files = event.target.files;
+            if (files) {
+                Array.from(files).forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const tempImg = new Image();
+                        tempImg.onload = function() {
+                            fabric.Image.fromURL(e.target.result, function(img) {
+                                const maxWidth = canvas.width * 0.8;
+                                const maxHeight = canvas.height * 0.8;
+                                let scale = 1;
+                                
+                                if (img.width > maxWidth) {
+                                    scale = maxWidth / img.width;
+                                }
+                                if (img.height * scale > maxHeight) {
+                                    scale = maxHeight / img.height;
+                                }
+
+                                img.set({
+                                    left: 1, // Position at left with 1px padding
+                                    top: 1,  // Position at top with 1px padding
+                                    scaleX: scale,
+                                    scaleY: scale,
+                                    selectable: true,
+                                    hasControls: true,
+                                    hasBorders: true,
+                                    lockScalingX: false,
+                                    lockScalingY: false,
+                                    lockRotation: false,
+                                    lockMovementX: false,
+                                    lockMovementY: false,
+                                    cornerColor: 'rgba(0,0,255,0.5)',
+                                    cornerSize: 10,
+                                    transparentCorners: false,
+                                    imageSmoothingEnabled: true,
+                                    imageSmoothingQuality: 'high',
+                                    objectCaching: false,
+                                    originalWidth: img.width,
+                                    originalHeight: img.height
+                                });
+
+                                canvas.add(img);
+                                img.sendToBack();
+                                canvas.renderAll();
+                            }, { 
+                                crossOrigin: 'anonymous',
+                                imageSmoothingEnabled: true,
+                                imageSmoothingQuality: 'high',
+                                preserveAspectRatio: true
+                            });
+                        };
+                        tempImg.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+        }
+
+        // Delete selected object
+        function deleteSelected() {
+            const activeObject = canvas.getActiveObject();
+            if (activeObject) {
+                canvas.remove(activeObject);
+            }
+        }
+
+        // Clear canvas
+        function clearCanvas() {
+            if (confirm('Are you sure you want to clear the canvas?')) {
+                canvas.clear();
+                saveState();
+            }
+        }
+
+        // Initialize canvas size
+        function resizeCanvas() {
+            const container = document.querySelector('.canvas-wrapper');
+            const width = container.clientWidth - 40;
+            const height = width * 1.5;
+            canvas.setWidth(width);
+            canvas.setHeight(height);
+            canvas.renderAll();
+            updateSizeDisplay();
+        }
+
+        // Update size display
+        function updateSizeDisplay() {
+            const sizeDisplay = document.getElementById('canvasSize');
+            sizeDisplay.textContent = `${canvas.width} x ${canvas.height}`;
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', resizeCanvas);
+
+        // Handle wrapper resize
+        const wrapper = document.querySelector('.canvas-wrapper');
+        const resizeObserver = new ResizeObserver(entries => {
+            for (let entry of entries) {
+                resizeCanvas();
+            }
+        });
+        resizeObserver.observe(wrapper);
+
+        // Set minimum height for wrapper
+        wrapper.style.minHeight = '600px';
+
+        // Export image with maximum quality
+        function exportImage() {
+            if (canvas.getObjects().length === 0) {
+                alert('Canvas is empty!');
+                return;
+            }
+
+            // Calculate the boundaries of all objects
+            let minX = Infinity;
+            let minY = Infinity;
+            let maxX = -Infinity;
+            let maxY = -Infinity;
+
+            canvas.getObjects().forEach(obj => {
+                const boundingRect = obj.getBoundingRect();
+                minX = Math.min(minX, boundingRect.left);
+                minY = Math.min(minY, boundingRect.top);
+                maxX = Math.max(maxX, boundingRect.left + boundingRect.width);
+                maxY = Math.max(maxY, boundingRect.top + boundingRect.height);
+            });
+
+            // Add some padding
+            const padding = 20;
+            minX = Math.max(0, minX - padding);
+            minY = Math.max(0, minY - padding);
+            maxX = Math.min(canvas.width, maxX + padding);
+            maxY = Math.min(canvas.height, maxY + padding);
+
+            // Calculate the dimensions of the content area
+            const contentWidth = maxX - minX;
+            const contentHeight = maxY - minY;
+
+            // Create a temporary canvas with the content dimensions
+            const tempCanvas = document.createElement('canvas');
+            const scale = 2; // Increase resolution for better quality
+            tempCanvas.width = contentWidth * scale;
+            tempCanvas.height = contentHeight * scale;
+            const tempCtx = tempCanvas.getContext('2d');
+
+            // Enable high-quality image smoothing
+            tempCtx.imageSmoothingEnabled = true;
+            tempCtx.imageSmoothingQuality = 'high';
+
+            // Scale the context to increase resolution
+            tempCtx.scale(scale, scale);
+
+            // Draw the content area
+            tempCtx.drawImage(
+                canvas.lowerCanvasEl,
+                minX, minY, contentWidth, contentHeight,  // Source rectangle
+                0, 0, contentWidth, contentHeight        // Destination rectangle
+            );
+
+            // Export with maximum quality
+            const dataURL = tempCanvas.toDataURL({
+                format: 'png',
+                quality: 1,
+                multiplier: scale
+            });
+
+            const link = document.createElement('a');
+            link.download = 'edited-image.png';
+            link.href = dataURL;
+            link.click();
+        }
+
+        resizeCanvas();
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html> 
