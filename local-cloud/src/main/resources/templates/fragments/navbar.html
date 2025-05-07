@@ -19,18 +19,7 @@
                     <li class="nav-item"><a class="nav-link text-light" th:classappend="${#httpServletRequest.requestURI.startsWith('/files')} ? 'active'" href="/files"><i class="bi bi-download me-1"></i>Downloads</a></li>
                     <li class="nav-item"><a class="nav-link text-light" th:classappend="${#httpServletRequest.requestURI.startsWith('/server-files')} ? 'active'" href="/server-files"><i class="bi bi-folder2-open me-1"></i>LocalServerFolder</a></li>
                     <li class="nav-item"><a class="nav-link text-light" th:classappend="${#httpServletRequest.requestURI.startsWith('/image-editor')} ? 'active'" href="/image-editor"><i class="bi bi-pencil-square me-1"></i>Image Editor</a></li>
-            
-
-                    <!-- <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle text-light" href="#" id="notesDropdown"
-                           role="button" data-bs-toggle="dropdown" aria-expanded="false">📝 My Notes</a>
-                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notesDropdown">
-                            <li><a class="dropdown-item" href="/spaces">📁 Spaces</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item disabled">📂 Categories</a></li>
-                            <li><a class="dropdown-item disabled">📝 Notes</a></li>
-                        </ul>
-                    </li> -->
+                    <li class="nav-item"><a class="nav-link text-light" th:classappend="${#httpServletRequest.requestURI.startsWith('/cut')} ? 'active'" href="/cut"><i class="bi bi-scissors me-1"></i>Video Cutter</a></li>
                 </ul>
             </div>
         </div>

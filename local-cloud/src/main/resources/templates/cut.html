@@ -4,6 +4,7 @@
 <head>
     <title>✂️ Video Cutter</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <style>
         video {
             width: 100%;
@@ -13,62 +14,69 @@
     </style>
 </head>
 
-<body class="container py-4">
+<body>
+    <!-- Shared navbar -->
+    <div th:replace="fragments/navbar :: navbar"></div>
 
-    <h2 class="mb-4">✂️ Cut Uploaded Video</h2>
+    <div class="container py-4">
+        <h2 class="mb-4">✂️ Cut Uploaded Video</h2>
 
-    <div class="row">
-        <!-- Left: Form and original video -->
-        <div class="col-md-6">
-            <form method="post" th:action="@{/cut}" class="mb-4">
-                <div class="mb-3">
-                    <label class="form-label">🎞️ Select Video:</label>
-                    <select name="video" id="videoSelect" class="form-select" required onchange="previewVideo()">
-                        <option th:each="v : ${videos}" th:value="${v}" th:selected="${v == selectedVideo}"
-                            th:text="${v}">Video name</option>
-                    </select>
-                </div>
+        <div class="row">
+            <!-- Left: Form and original video -->
+            <div class="col-md-6">
+                <form method="post" th:action="@{/cut}" class="mb-4">
+                    <div class="mb-3">
+                        <label class="form-label">🎞️ Select Video:</label>
+                        <select name="video" id="videoSelect" class="form-select" required onchange="previewVideo()">
+                            <option th:each="v : ${videos}" th:value="${v}" th:selected="${v == selectedVideo}"
+                                th:text="${v}">Video name</option>
+                        </select>
+                    </div>
 
-                <div class="mb-3">
-                    <label class="form-label">⏱ Start Time (e.g., 00:00:05):</label>
-                    <input type="text" name="start" class="form-control" th:value="${startValue}" required>
-                </div>
+                    <div class="mb-3">
+                        <label class="form-label">⏱ Start Time (e.g., 00:00:05):</label>
+                        <input type="text" name="start" class="form-control" th:value="${startValue}" required>
+                    </div>
 
-                <div class="mb-3">
-                    <label class="form-label">🏁 End Time (e.g., 00:00:15):</label>
-                    <input type="text" name="end" class="form-control" th:value="${endValue}" required>
-                </div>
+                    <div class="mb-3">
+                        <label class="form-label">🏁 End Time (e.g., 00:00:15):</label>
+                        <input type="text" name="end" class="form-control" th:value="${endValue}" required>
+                    </div>
 
-                <button type="submit" class="btn btn-success">✂️ Cut Video</button>
-                <a href="/" class="btn btn-secondary ms-2">🏠 Home</a>
-            </form>
+                    <button type="submit" class="btn btn-success">✂️ Cut Video</button>
+                </form>
 
-            <h5>🎬 Original Video:</h5>
-            <video id="videoPreview" controls class="border rounded shadow">
-                <source th:src="'/uploads/' + ${selectedVideo}" type="video/mp4">
-                Your browser does not support the video tag.
-            </video>
-        </div>
-
-        <!-- Right: Cut video -->
-        <div class="col-md-6">
-            <div th:if="${success}">
-                <h5>✅ Cut Result:</h5>
-                <video controls class="border rounded shadow mb-3">
-                    <source th:src="${download}" type="video/mp4">
+                <h5>🎬 Original Video:</h5>
+                <video id="videoPreview" controls class="border rounded shadow">
+                    <source th:src="'/uploads/' + ${selectedVideo}" type="video/mp4">
                     Your browser does not support the video tag.
                 </video>
-
-                <div class="alert alert-success" th:text="${success}"></div>
-                <a class="btn btn-primary" th:href="${download}" download>📥 Download Cut Video</a>
             </div>
 
-            <div th:if="${error}" class="mt-3">
-                <div class="alert alert-danger" th:text="${error}"></div>
+            <!-- Right: Cut video -->
+            <div class="col-md-6">
+                <div th:if="${success}">
+                    <h5>✅ Cut Result:</h5>
+                    <video controls class="border rounded shadow mb-3">
+                        <source th:src="${download}" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+
+                    <div class="alert alert-success" th:text="${success}"></div>
+                    <a class="btn btn-primary" th:href="${download}" download>📥 Download Cut Video</a>
+                </div>
+
+                <div th:if="${error}" class="mt-3">
+                    <div class="alert alert-danger" th:text="${error}"></div>
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- Shared footer -->
+    <div th:replace="fragments/footer :: footer"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         function previewVideo() {
             const select = document.getElementById('videoSelect');
