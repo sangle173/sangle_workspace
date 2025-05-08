@@ -14,6 +14,7 @@ import java.nio.file.attribute.FileTime;
 import java.io.*;
 import java.nio.file.*;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import org.springframework.http.HttpStatus;
 
 @Controller
@@ -30,6 +31,51 @@ public class UploadController {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+    
+    /**
+     * Check if FFmpeg is installed and available in the system path
+     * @return true if FFmpeg is installed, false otherwise
+     */
+    private boolean isFFmpegInstalled() {
+        try {
+            ProcessBuilder pb = new ProcessBuilder("ffmpeg", "-version");
+            pb.redirectErrorStream(true);
+            Process process = pb.start();
+            
+            StringBuilder output = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    output.append(line);
+                    if (line.contains("ffmpeg version")) {
+                        // Found version info, no need to read more
+                        break;
+                    }
+                }
+            }
+            
+            boolean finished = process.waitFor(5, TimeUnit.SECONDS);
+            if (!finished) {
+                process.destroyForcibly();
+                return false;
+            }
+            
+            return process.exitValue() == 0 && output.toString().contains("ffmpeg version");
+        } catch (IOException | InterruptedException e) {
+            return false;
+        }
+    }
+    
+    /**
+     * Get installation instructions for FFmpeg on Ubuntu
+     * @return A string with the installation instructions
+     */
+    private String getFFmpegInstallInstructions() {
+        return "FFmpeg is not installed. Please install it using the following commands in terminal:\n\n" +
+               "sudo apt update\n" +
+               "sudo apt install ffmpeg\n\n" +
+               "After installation, please try again.";
     }
 
     @GetMapping("/")
@@ -77,6 +123,12 @@ public class UploadController {
                     : Paths.get(UPLOAD_DIR, originalFilename);
 
             if (shouldConvert && (extension.equals("mp4") || extension.equals("mov") || extension.equals("webm"))) {
+                // Check if FFmpeg is installed before attempting conversion
+                if (!isFFmpegInstalled()) {
+                    return ResponseEntity.status(HttpStatus.PRECONDITION_FAILED)
+                            .body(getFFmpegInstallInstructions());
+                }
+                
                 Path tempFile = Paths.get(UPLOAD_DIR, "temp_" + originalFilename);
                 Files.copy(file.getInputStream(), tempFile, StandardCopyOption.REPLACE_EXISTING);
 
@@ -164,6 +216,18 @@ public class UploadController {
         }
 
         if (shouldConvert && (extension.equals("mp4") || extension.equals("mov") || extension.equals("webm"))) {
+            // Check if FFmpeg is installed before attempting conversion
+            if (!isFFmpegInstalled()) {
+                try {
+                    // Keep the original file since we can't convert
+                    Files.move(mergedFile, Paths.get(UPLOAD_DIR, filename), StandardCopyOption.REPLACE_EXISTING);
+                } catch (IOException e) {
+                    // If move fails, at least we tried
+                }
+                return ResponseEntity.status(HttpStatus.PRECONDITION_FAILED)
+                        .body(getFFmpegInstallInstructions());
+            }
+            
             try {
                 Path output = Paths.get(UPLOAD_DIR, baseName + ".mp4");
 

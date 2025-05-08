@@ -122,8 +122,18 @@ public class LocalServerController {
 
     @GetMapping("/ios-devices")
     @ResponseBody
-    public List<Map<String, String>> getIOSDevices() throws IOException {
+    public List<Map<String, String>> getIOSDevices() throws IOException, InterruptedException {
         List<Map<String, String>> devices = new ArrayList<>();
+        
+        // Check if libimobiledevice is installed
+        if (!isIdeviceIdInstalled()) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "idevice_id not installed");
+            error.put("message", "To install libimobiledevice tools on Ubuntu, run:\n\nsudo apt update\nsudo apt install libimobiledevice-utils");
+            devices.add(error);
+            return devices;
+        }
+        
         ProcessBuilder pb = new ProcessBuilder("idevice_id", "-l");
         Process process = pb.start();
         List<String> udids = new ArrayList<>();
@@ -133,6 +143,14 @@ public class LocalServerController {
                 if (!line.isEmpty()) udids.add(line);
             }
         }
+        
+        if (udids.isEmpty()) {
+            Map<String, String> info = new HashMap<>();
+            info.put("message", "No iOS devices detected. Make sure your device is connected and trusted.");
+            devices.add(info);
+            return devices;
+        }
+        
         for (String udid : udids) {
             Map<String, String> info = new LinkedHashMap<>();
             info.put("UniqueDeviceID", udid);
@@ -153,31 +171,36 @@ public class LocalServerController {
         }
         return devices;
     }
-
-    @PostMapping(value = "/install-ipa", produces = MediaType.TEXT_PLAIN_VALUE)
-    @ResponseBody
-    public String installIPA(@RequestBody Map<String, String> body) throws IOException, InterruptedException {
-        String relPath = body.get("path");
-        if (relPath == null || !relPath.endsWith(".ipa")) return "Invalid IPA file.";
-        Path ipaFile = Paths.get(ROOT_DIR, relPath);
-        if (!Files.exists(ipaFile)) return "IPA file not found.";
-        ProcessBuilder pb = new ProcessBuilder("ideviceinstaller", "-i", ipaFile.toString());
-        pb.redirectErrorStream(true);
-        Process process = pb.start();
-        StringBuilder log = new StringBuilder();
-        try (Scanner scanner = new Scanner(process.getInputStream())) {
-            while (scanner.hasNextLine()) {
-                log.append(scanner.nextLine()).append("\n");
-            }
+    
+    /**
+     * Check if idevice_id is installed and accessible
+     */
+    private boolean isIdeviceIdInstalled() {
+        try {
+            ProcessBuilder pb = new ProcessBuilder("idevice_id", "--help");
+            pb.redirectErrorStream(true);
+            Process process = pb.start();
+            int exitCode = process.waitFor();
+            return exitCode == 0 || exitCode == 1; // Help command typically returns 1
+        } catch (IOException | InterruptedException e) {
+            return false;
         }
-        process.waitFor();
-        return log.toString();
     }
 
     @GetMapping("/android-devices")
     @ResponseBody
-    public List<Map<String, String>> getAndroidDevices() throws IOException {
+    public List<Map<String, String>> getAndroidDevices() throws IOException, InterruptedException {
         List<Map<String, String>> devices = new ArrayList<>();
+        
+        // Check if adb is installed
+        if (!isAdbInstalled()) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "adb not installed");
+            error.put("message", "To install ADB on Ubuntu, run:\n\nsudo apt update\nsudo apt install adb");
+            devices.add(error);
+            return devices;
+        }
+        
         ProcessBuilder pb = new ProcessBuilder("adb", "devices");
         Process process = pb.start();
         List<String> deviceIds = new ArrayList<>();
@@ -196,6 +219,14 @@ public class LocalServerController {
                 }
             }
         }
+        
+        if (deviceIds.isEmpty()) {
+            Map<String, String> info = new HashMap<>();
+            info.put("message", "No Android devices detected. Make sure your device is connected with USB debugging enabled.");
+            devices.add(info);
+            return devices;
+        }
+        
         for (String id : deviceIds) {
             Map<String, String> info = new LinkedHashMap<>();
             info.put("DeviceId", id);
@@ -226,6 +257,84 @@ public class LocalServerController {
         }
         return devices;
     }
+    
+    /**
+     * Check if ADB is installed and accessible
+     */
+    private boolean isAdbInstalled() {
+        try {
+            ProcessBuilder pb = new ProcessBuilder("adb", "version");
+            pb.redirectErrorStream(true);
+            Process process = pb.start();
+            
+            StringBuilder output = new StringBuilder();
+            try (Scanner scanner = new Scanner(process.getInputStream())) {
+                while (scanner.hasNextLine()) {
+                    String line = scanner.nextLine();
+                    output.append(line).append("\n");
+                }
+            }
+            
+            int exitCode = process.waitFor();
+            return exitCode == 0 && output.toString().contains("Android Debug Bridge");
+        } catch (IOException | InterruptedException e) {
+            return false;
+        }
+    }
+
+    @PostMapping(value = "/install-ipa", produces = MediaType.TEXT_PLAIN_VALUE)
+    @ResponseBody
+    public String installIPA(@RequestBody Map<String, String> body) throws IOException, InterruptedException {
+        String relPath = body.get("path");
+        if (relPath == null || !relPath.endsWith(".ipa")) return "Invalid IPA file.";
+        
+        // Check if ideviceinstaller is installed first
+        if (!isIdeviceinstallerInstalled()) {
+            return "ideviceinstaller is not installed or not accessible.\n\n" +
+                   "To install ideviceinstaller on Ubuntu, run these commands in terminal:\n\n" +
+                   "sudo apt update\n" +
+                   "sudo apt install ideviceinstaller libimobiledevice-utils\n\n" +
+                   "After installation, please try again.";
+        }
+        
+        Path ipaFile = Paths.get(ROOT_DIR, relPath);
+        if (!Files.exists(ipaFile)) return "IPA file not found.";
+        ProcessBuilder pb = new ProcessBuilder("ideviceinstaller", "-i", ipaFile.toString());
+        pb.redirectErrorStream(true);
+        Process process = pb.start();
+        StringBuilder log = new StringBuilder();
+        try (Scanner scanner = new Scanner(process.getInputStream())) {
+            while (scanner.hasNextLine()) {
+                log.append(scanner.nextLine()).append("\n");
+            }
+        }
+        process.waitFor();
+        return log.toString();
+    }
+    
+    /**
+     * Check if ideviceinstaller is installed and accessible
+     */
+    private boolean isIdeviceinstallerInstalled() {
+        try {
+            ProcessBuilder pb = new ProcessBuilder("ideviceinstaller", "--version");
+            pb.redirectErrorStream(true);
+            Process process = pb.start();
+            
+            StringBuilder output = new StringBuilder();
+            try (Scanner scanner = new Scanner(process.getInputStream())) {
+                while (scanner.hasNextLine()) {
+                    String line = scanner.nextLine();
+                    output.append(line).append("\n");
+                }
+            }
+            
+            int exitCode = process.waitFor();
+            return exitCode == 0;
+        } catch (IOException | InterruptedException e) {
+            return false;
+        }
+    }
 
     @PostMapping(value = "/install-apk", produces = MediaType.TEXT_PLAIN_VALUE)
     @ResponseBody
@@ -234,6 +343,16 @@ public class LocalServerController {
         String deviceId = body.get("deviceId");
         if (relPath == null || !relPath.endsWith(".apk")) return "Invalid APK file.";
         if (deviceId == null || deviceId.isEmpty()) return "No device selected.";
+        
+        // Check if ADB is installed first
+        if (!isAdbInstalled()) {
+            return "ADB (Android Debug Bridge) is not installed or not accessible.\n\n" +
+                   "To install ADB on Ubuntu, run these commands in terminal:\n\n" +
+                   "sudo apt update\n" +
+                   "sudo apt install adb\n\n" +
+                   "After installation, please try again.";
+        }
+        
         Path apkFile = Paths.get(ROOT_DIR, relPath);
         if (!Files.exists(apkFile)) return "APK file not found.";
         ProcessBuilder pb = new ProcessBuilder("adb", "-s", deviceId, "install", "-r", apkFile.toString());

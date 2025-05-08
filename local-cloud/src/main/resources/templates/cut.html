@@ -42,6 +42,12 @@
                     <label class="form-label">🏁 End Time (e.g., 00:00:15):</label>
                     <input type="text" name="end" class="form-control" th:value="${endValue}" required>
                 </div>
+                
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="accurateCut" name="accurateCut" 
+                           th:checked="${accurateCut != null && accurateCut}">
+                    <label class="form-check-label" for="accurateCut">🔍 Precise cut (slower but more accurate)</label>
+                </div>
 
                 <button type="submit" class="btn btn-success">✂️ Cut Video</button>
             </form>
@@ -63,12 +69,27 @@
                 </video>
 
                 <div class="alert alert-success" th:text="${success}"></div>
-                <a class="btn btn-primary" th:href="${download}" download>📥 Download Cut Video</a>
+                <button class="btn btn-primary" onclick="openCutsFolder()">
+                    <i class="bi bi-folder2-open"></i> Open Cuts Folder
+                </button>
             </div>
 
             <div th:if="${error}" class="mt-3">
                 <div class="alert alert-danger" th:text="${error}"></div>
+                <div th:if="${ffmpegOutput}" class="mt-2">
+                    <button class="btn btn-sm btn-outline-secondary" type="button" 
+                            data-bs-toggle="collapse" data-bs-target="#ffmpegLog">
+                        Show FFmpeg Log
+                    </button>
+                    <div class="collapse mt-2" id="ffmpegLog">
+                        <div class="card card-body">
+                            <pre class="text-muted" style="font-size: 0.8rem;" th:text="${ffmpegOutput}"></pre>
+                        </div>
+                    </div>
+                </div>
             </div>
+            
+            <div th:if="${ffmpegWarning}" class="mt-3 alert alert-warning" th:text="${ffmpegWarning}"></div>
         </div>
     </div>
     </div>
@@ -83,6 +104,22 @@
             const video = document.getElementById('videoPreview');
             video.src = '/uploads/' + select.value;
             video.load();
+        }
+        
+        function openCutsFolder() {
+            fetch('/cut/open-folder', {
+                method: 'POST'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to open folder');
+                }
+                console.log('Opened cuts folder');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to open folder: ' + error.message);
+            });
         }
 
         // Auto-trigger preview on load if a video is selected

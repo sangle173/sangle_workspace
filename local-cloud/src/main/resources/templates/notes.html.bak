@@ -332,6 +332,9 @@
                 min-height: 40vh !important;
             }
             
+            .mobile-bottom-buttons {
+                display: none;
+            }
             
             /* Small mobile devices */
             @media (max-width: 576px) {
@@ -339,7 +342,24 @@
                     display: none !important;
                 }
                 
+                .mobile-bottom-buttons {
+                    position: fixed;
+                    bottom: 0;
+                    left: 0;
+                    right: 0;
+                    display: flex;
+                    background: white;
+                    padding: 10px;
+                    box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+                    z-index: 100;
+                    justify-content: center;
+                    gap: 15px;
+                }
                 
+                .mobile-bottom-buttons .btn {
+                    height: 45px;
+                    width: 45px;
+                }
                 
                 /* Add padding to prevent content from being hidden behind fixed buttons */
                 .card-body {
@@ -444,6 +464,19 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- Mobile bottom buttons for small screens -->
+    <div class="mobile-bottom-buttons">
+        <button class="btn btn-success" onclick="saveNote()" title="Save note">
+            <i class="bi bi-save"></i>
+        </button>
+        <button class="btn btn-danger" onclick="deleteNote()" title="Delete note">
+            <i class="bi bi-trash"></i>
+        </button>
+        <button class="btn btn-info" id="viewButtonMobile" onclick="viewNote()" style="display: none;" title="View note">
+            <i class="bi bi-eye"></i>
+        </button>
     </div>
 
     <!-- Shared footer -->
@@ -625,33 +658,10 @@
                 sidebarCol.classList.add('d-none');
                 editorCol.classList.remove('col-md-9');
                 editorCol.classList.add('col-md-12');
-                
-                // Show floating toggle button
-                let floatingBtn = document.getElementById('floatingToggleBtn');
-                if (!floatingBtn) {
-                    floatingBtn = document.createElement('button');
-                    floatingBtn.id = 'floatingToggleBtn';
-                    floatingBtn.className = 'btn btn-primary position-fixed';
-                    floatingBtn.style.left = '20px';
-                    floatingBtn.style.bottom = '20px';
-                    floatingBtn.style.zIndex = '1000';
-                    floatingBtn.innerHTML = '<i class="bi bi-layout-sidebar"></i>';
-                    floatingBtn.title = 'Show Sidebar';
-                    floatingBtn.onclick = toggleSidebar;
-                    document.body.appendChild(floatingBtn);
-                } else {
-                    floatingBtn.style.display = 'block';
-                }
             } else {
                 sidebarCol.classList.remove('d-none');
                 editorCol.classList.remove('col-md-12');
                 editorCol.classList.add('col-md-9');
-                
-                // Hide floating toggle button
-                const floatingBtn = document.getElementById('floatingToggleBtn');
-                if (floatingBtn) {
-                    floatingBtn.style.display = 'none';
-                }
             }
         }
 
@@ -959,6 +969,12 @@
             // Hide share button when no specific note is selected
             document.getElementById('viewButton').style.display = 'none';
             
+            // Also hide mobile view button
+            const mobileViewButton = document.getElementById('viewButtonMobile');
+            if (mobileViewButton) {
+                mobileViewButton.style.display = 'none';
+            }
+
             // Load notes for the folder
             loadNotes(folderName, document.getElementById(`folder-${folderName}`));
         }
@@ -982,8 +998,11 @@
             // Hide share button for new unsaved note
             document.getElementById('viewButton').style.display = 'none';
             
-            // Load notes for the folder
-            loadNotes(folderName, document.getElementById(`folder-${folderName}`));
+            // Also hide mobile view button
+            const mobileViewBtn = document.getElementById('viewButtonMobile');
+            if (mobileViewBtn) {
+                mobileViewBtn.style.display = 'none';
+            }
         }
 
         // Load notes for a folder
@@ -1057,6 +1076,12 @@
                 // Show view button
                 document.getElementById('viewButton').style.display = 'block';
                 
+                // Also show mobile view button
+                const mobileViewButton = document.getElementById('viewButtonMobile');
+                if (mobileViewButton) {
+                    mobileViewButton.style.display = 'block';
+                }
+
                 // Update active states
                 document.querySelectorAll('.note-item').forEach(item => {
                     item.classList.remove('active');

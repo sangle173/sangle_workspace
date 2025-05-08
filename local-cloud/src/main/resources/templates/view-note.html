@@ -53,6 +53,47 @@
             font-size: 0.85rem;
             padding: 6px 12px;
         }
+        
+        /* Mobile responsive styles */
+        @media (max-width: 767px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .card {
+                border-radius: 8px;
+            }
+            
+            .card-header {
+                padding: 12px;
+            }
+            
+            h1.note-title {
+                font-size: 1.5rem;
+            }
+            
+            .card-body {
+                padding: 15px;
+            }
+            
+            .note-content {
+                margin-top: 15px;
+                font-size: 16px;
+                line-height: 1.5;
+            }
+            
+            .note-content img {
+                width: 100%;
+                height: auto;
+            }
+            
+            .note-content table {
+                display: block;
+                width: 100%;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+        }
     </style>
 </head>
 
