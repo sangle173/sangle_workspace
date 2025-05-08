@@ -270,6 +270,20 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+        
+        /* Icon buttons style */
+        .btn i.bi {
+            font-size: 1.1rem;
+        }
+        
+        .card-header .btn {
+            height: 38px;
+            width: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
     </style>
 </head>
 
@@ -310,11 +324,14 @@
                             <div class="ms-2" id="currentFolderDisplay"></div>
                         </div>
                         <div class="d-flex gap-2">
-                            <button class="btn btn-success" onclick="saveNote()">
-                                <i class="bi bi-save"></i> Save
+                            <button class="btn btn-success" onclick="saveNote()" title="Save note">
+                                <i class="bi bi-save"></i>
                             </button>
-                            <button class="btn btn-danger" onclick="deleteNote()">
-                                <i class="bi bi-trash"></i> Delete
+                            <button class="btn btn-danger" onclick="deleteNote()" title="Delete note">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            <button class="btn btn-info" id="viewButton" onclick="viewNote()" style="display: none;" title="View note">
+                                <i class="bi bi-eye"></i>
                             </button>
                         </div>
                     </div>
@@ -626,6 +643,9 @@
             if (saveIndicator) {
                 saveIndicator.style.opacity = '0';
             }
+            
+            // Hide share button when no specific note is selected
+            document.getElementById('viewButton').style.display = 'none';
 
             // Load notes for the folder
             loadNotes(folderName, document.getElementById(`folder-${folderName}`));
@@ -646,6 +666,9 @@
             if (saveIndicator) {
                 saveIndicator.style.opacity = '0';
             }
+            
+            // Hide share button for new unsaved note
+            document.getElementById('viewButton').style.display = 'none';
         }
 
         // Load notes for a folder
@@ -712,6 +735,9 @@
                 if (saveIndicator) {
                     saveIndicator.style.opacity = '0';
                 }
+                
+                // Show view button
+                document.getElementById('viewButton').style.display = 'block';
 
                 // Update active states
                 document.querySelectorAll('.note-item').forEach(item => {
@@ -872,8 +898,8 @@
                         }
                     }, 2000);
                     
+                    // Get updated note data
                     try {
-                        // Get updated note data - with error handling for JSON parsing
                         const data = await response.json();
                         currentNote = data;
                         
@@ -921,33 +947,33 @@
                         }
                     } catch (jsonError) {
                         console.error('Error parsing JSON response:', jsonError);
-                        // Even if JSON parsing fails, note was successfully saved
-                        // Update the note element in the sidebar anyway
+                        
+                        // Even with JSON error, the save likely succeeded
+                        // Remove any spinner to prevent infinite loading
                         if (noteElement) {
-                            // Remove spinner
                             const spinner = noteElement.querySelector('.note-saving-indicator');
                             if (spinner) spinner.remove();
                             
-                            // Add success icon that fades out but with a warning color
+                            // Add warning icon to indicate partial success
                             const titleElement = noteElement.querySelector('.note-title');
                             const warningIcon = document.createElement('span');
-                            warningIcon.className = 'note-save-success';
+                            warningIcon.className = 'note-save-success'; 
                             warningIcon.style.color = '#ffc107'; // Warning color
-                            warningIcon.innerHTML = '<i class="bi bi-check-circle-fill"></i>';
+                            warningIcon.innerHTML = '<i class="bi bi-exclamation-triangle-fill"></i>';
                             titleElement.insertAdjacentElement('afterend', warningIcon);
                             
-                            // If title changed, update it
-                            if (titleChanged) {
-                                titleElement.textContent = title;
-                            }
-                            
-                            // Fade out success icon
+                            // Fade out warning icon
                             setTimeout(() => {
                                 if (warningIcon) {
                                     warningIcon.style.opacity = '0';
                                     setTimeout(() => warningIcon.remove(), 500);
                                 }
-                            }, 2000);
+                            }, 3000);
+                            
+                            // If title changed, still update it since save succeeded
+                            if (titleChanged) {
+                                titleElement.textContent = title;
+                            }
                         }
                     }
                 } else {
@@ -1061,6 +1087,42 @@
                     console.error('Error deleting note:', error);
                 }
             }
+        }
+
+        // View note in a new tab
+        function viewNote() {
+            if (!currentNote || !currentFolder) {
+                alert('Please save the note first before viewing.');
+                return;
+            }
+            
+            // Generate view URL
+            const viewUrl = `${window.location.origin}/view/${currentFolder}/${currentNote.id}`;
+            
+            // Open in a new tab
+            window.open(viewUrl, '_blank');
+        }
+
+        // Share current note - generate shareable URL
+        function shareNote() {
+            if (!currentNote || !currentFolder) {
+                alert('Please save the note first before sharing.');
+                return;
+            }
+            
+            // Generate shareable URL
+            const shareUrl = `${window.location.origin}/view/${currentFolder}/${currentNote.id}`;
+            
+            // Create temporary input to copy URL
+            const tempInput = document.createElement('input');
+            document.body.appendChild(tempInput);
+            tempInput.value = shareUrl;
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+            
+            // Show toast or alert
+            alert('Shareable URL copied to clipboard: ' + shareUrl);
         }
 
         // Initialize

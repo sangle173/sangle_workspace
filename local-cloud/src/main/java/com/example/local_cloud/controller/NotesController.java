@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.ui.Model;
 
 import java.io.IOException;
 import java.util.List;
@@ -23,6 +24,49 @@ public class NotesController {
     @GetMapping("/notes")
     public String notesPage() {
         return "notes";
+    }
+
+    @GetMapping("/view/{folder}/{noteId}")
+    public String viewNote(@PathVariable String folder, @PathVariable String noteId, Model model) {
+        try {
+            Note note = notesService.getNote(folder, noteId);
+            if (note == null) {
+                return "redirect:/notes?error=Note+not+found";
+            }
+            
+            // Process content to remove title from the beginning
+            String content = note.getContent();
+            String title = note.getTitle();
+            
+            // Escape special regex characters in the title
+            String titleEscaped = title.replace("\\", "\\\\")
+                                       .replace(".", "\\.")
+                                       .replace("*", "\\*")
+                                       .replace("+", "\\+")
+                                       .replace("?", "\\?")
+                                       .replace("^", "\\^")
+                                       .replace("$", "\\$")
+                                       .replace("(", "\\(")
+                                       .replace(")", "\\)")
+                                       .replace("[", "\\[")
+                                       .replace("]", "\\]")
+                                       .replace("{", "\\{")
+                                       .replace("}", "\\}")
+                                       .replace("|", "\\|");
+            
+            // Create a regex to match the title if it appears at the beginning
+            // This handles various formats like plain text or HTML headings
+            String titleRegex = "^\\s*(?:<(?:h[1-6]|p|div)[^>]*>" + titleEscaped + "</(?:h[1-6]|p|div)>|" + titleEscaped + "(?:<br>|\\s*))\\s*";
+            
+            // Remove the title from the beginning of content
+            String processedContent = content.replaceFirst(titleRegex, "");
+            
+            model.addAttribute("note", note);
+            model.addAttribute("processedContent", processedContent);
+            return "view-note";
+        } catch (IOException e) {
+            return "redirect:/notes?error=Error+loading+note";
+        }
     }
 
     @GetMapping("/api/notes/folders")
