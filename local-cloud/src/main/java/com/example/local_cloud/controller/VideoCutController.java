@@ -203,6 +203,8 @@ public class VideoCutController {
         if (!model.containsAttribute("error")) {
             model.addAttribute("openFolder", true);
             model.addAttribute("success", "✅ Cut successful!");
+            model.addAttribute("download", "/cut/download/" + outputName);
+            model.addAttribute("outputFile", outputName);
         }
         
         return "cut";
@@ -344,6 +346,29 @@ public class VideoCutController {
             return String.format("%d:%02d:%06.3f", hours, minutes, secs);
         } else {
             return String.format("%02d:%06.3f", minutes, secs);
+        }
+    }
+
+    /**
+     * Serve a cut video file for download or viewing
+     */
+    @GetMapping("/download/{filename:.+}")
+    public ResponseEntity<org.springframework.core.io.Resource> serveVideo(@PathVariable String filename) {
+        try {
+            File file = new File(CUT_DIR + File.separator + filename);
+            if (!file.exists() || !file.isFile()) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            org.springframework.core.io.Resource resource = new org.springframework.core.io.FileSystemResource(file);
+            
+            return ResponseEntity.ok()
+                    .header("Content-Disposition", "inline; filename=\"" + filename + "\"")
+                    .header("Content-Type", "video/mp4")
+                    .body(resource);
+                    
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 }

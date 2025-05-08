@@ -63,7 +63,7 @@
         <div class="col-md-6">
             <div th:if="${success}">
                 <h5>✅ Cut Result:</h5>
-                <video controls class="border rounded shadow mb-3">
+                <video id="cutResultVideo" controls class="border rounded shadow mb-3">
                     <source th:src="${download}" type="video/mp4">
                     Your browser does not support the video tag.
                 </video>
@@ -125,6 +125,13 @@
         // Auto-trigger preview on load if a video is selected
         window.addEventListener("DOMContentLoaded", function () {
             previewVideo();
+            
+            // Load the cut result video if it exists
+            const cutResultVideo = document.getElementById('cutResultVideo');
+            if (cutResultVideo) {
+                // Make sure the video element is properly loaded
+                cutResultVideo.load();
+            }
         });
     </script>
 
