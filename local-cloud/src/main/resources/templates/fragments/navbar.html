@@ -20,6 +20,7 @@
                     <li class="nav-item"><a class="nav-link text-light" th:classappend="${#httpServletRequest.requestURI.startsWith('/server-files')} ? 'active'" href="/server-files"><i class="bi bi-folder2-open me-1"></i>LocalServerFolder</a></li>
                     <li class="nav-item"><a class="nav-link text-light" th:classappend="${#httpServletRequest.requestURI.startsWith('/image-editor')} ? 'active'" href="/image-editor"><i class="bi bi-pencil-square me-1"></i>Image Editor</a></li>
                     <li class="nav-item"><a class="nav-link text-light" th:classappend="${#httpServletRequest.requestURI.startsWith('/cut')} ? 'active'" href="/cut"><i class="bi bi-scissors me-1"></i>Video Cutter</a></li>
+                    <li class="nav-item"><a class="nav-link text-light" th:classappend="${#httpServletRequest.requestURI.startsWith('/notes')} ? 'active'" href="/notes"><i class="bi bi-journal-text me-1"></i>Notes</a></li>
                 </ul>
             </div>
         </div>

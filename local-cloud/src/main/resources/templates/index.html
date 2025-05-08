@@ -277,236 +277,236 @@
         new bootstrap.Tooltip(tooltipTriggerEl);
       });
     });
-    const uploadBox = document.getElementById("uploadBox");
-    const fileInput = document.getElementById("fileInput");
+        const uploadBox = document.getElementById("uploadBox");
+        const fileInput = document.getElementById("fileInput");
 
-    uploadBox.addEventListener("dragover", e => {
-        e.preventDefault();
-        uploadBox.classList.add("bg-light");
-    });
-    uploadBox.addEventListener("dragleave", () => {
-        uploadBox.classList.remove("bg-light");
-    });
-    uploadBox.addEventListener("drop", e => {
-        e.preventDefault();
-        uploadBox.classList.remove("bg-light");
-        fileInput.files = e.dataTransfer.files;
-        updateFileList();
-    });
-    fileInput.addEventListener("change", updateFileList);
-
-    function updateFileList() {
-        const list = document.getElementById("selectedFileList");
-        list.innerHTML = "";
-        Array.from(fileInput.files).forEach(file => {
-            const li = document.createElement("li");
-            li.className = "list-group-item d-flex justify-content-between align-items-center";
-            li.textContent = file.name;
-            const size = document.createElement("span");
-            size.className = "badge bg-secondary rounded-pill";
-            size.textContent = (file.size / 1024 / 1024).toFixed(1) + " MB";
-            li.appendChild(size);
-            list.appendChild(li);
+        uploadBox.addEventListener("dragover", e => {
+            e.preventDefault();
+            uploadBox.classList.add("bg-light");
         });
-        const hasVideo = Array.from(fileInput.files).some(f => f.type.startsWith("video/"));
-        document.getElementById("convertOption").classList.toggle("d-none", !hasVideo);
-    }
-
-    async function uploadFiles() {
-        const files = fileInput.files;
-        if (!files.length) {
-            alert("Please select files.");
-            return;
-        }
-
-        const overlay = document.getElementById("uploadOverlay");
-        const listContainer = document.getElementById("fileProgressList");
-        const convertChecked = document.getElementById("convertToSmall").checked;
-        const selectedQuality = document.querySelector('input[name="quality"]:checked').value;
-
-        listContainer.innerHTML = "";
-        overlay.classList.remove("d-none");
-
-        const CHUNK_SIZE = 1 * 1024 * 1024;
-        const MAX_CONCURRENT = 3;
-
-        const queue = Array.from(files).map(file => {
-            const item = document.createElement("li");
-            item.innerHTML = `
-    <div><strong>${file.name}</strong></div>
-    <div class="progress mb-2">
-      <div class="progress-bar progress-bar-striped" id="progress-${file.name}" style="width: 0%">0%</div>
-    </div>`;
-            listContainer.appendChild(item);
-            return () => uploadFileChunks(file, CHUNK_SIZE, convertChecked, selectedQuality);
+        uploadBox.addEventListener("dragleave", () => {
+            uploadBox.classList.remove("bg-light");
         });
-
-        while (queue.length) {
-            const batch = queue.splice(0, MAX_CONCURRENT);
-            await Promise.all(batch.map(fn => fn()));
-        }
-
-        overlay.classList.add("d-none");
-        alert("✅ All files uploaded!");
-        window.location.reload();
-    }
-
-    async function uploadFileChunks(file, CHUNK_SIZE, convert, quality) {
-        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-        const uploads = [];
-
-        for (let i = 0; i < totalChunks; i++) {
-            const chunk = file.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-            const formData = new FormData();
-            formData.append("chunk", chunk);
-            formData.append("filename", file.name);
-            formData.append("chunkIndex", i);
-            formData.append("totalChunks", totalChunks);
-            formData.append("quality", quality);
-            uploads.push(fetch("/upload-chunk", { method: "POST", body: formData }));
-        }
-
-        let uploaded = 0;
-        const bar = document.getElementById("progress-" + file.name);
-
-        for (const p of uploads) {
-            await p;
-            uploaded++;
-            const percent = Math.floor((uploaded / totalChunks) * 100);
-            bar.style.width = percent + "%";
-            bar.innerText = percent + "%";
-        }
-
-        let timer = 0;
-        let intervalId;
-
-        if (convert && file.type.startsWith("video/")) {
-            bar.classList.add("bg-warning");
-            bar.classList.remove("bg-success");
-            bar.innerText = "Optimizing... 0s";
-
-            intervalId = setInterval(() => {
-                timer++;
-                bar.innerText = `Optimizing... ${timer}s`;
-            }, 1000);
-        }
-
-        await fetch("/merge-chunks", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                filename: file.name,
-                totalChunks,
-                convert,
-                quality
-            })
+        uploadBox.addEventListener("drop", e => {
+            e.preventDefault();
+            uploadBox.classList.remove("bg-light");
+            fileInput.files = e.dataTransfer.files;
+            updateFileList();
         });
+        fileInput.addEventListener("change", updateFileList);
 
-        if (intervalId) clearInterval(intervalId);
-
-        bar.style.width = "100%";
-        bar.classList.remove("bg-warning");
-        bar.classList.add("bg-success");
-        bar.innerText = "Done";
-    }
-    function showPreview(filePath) {
-        const isImage = /\.(jpe?g|png|gif|webp)$/i.test(filePath);
-        const isVideo = /\.(mp4|mov|webm)$/i.test(filePath);
-        const extMatch = filePath.match(/\.([a-z0-9]+)$/i);
-        const extension = extMatch ? extMatch[1].toLowerCase() : "";
-
-        const img = document.getElementById("previewImage");
-        const vid = document.getElementById("previewVideo");
-        const info = document.getElementById("previewInfo");
-        const filePathDisplay = document.getElementById("filePathDisplay");
-        const fileExtDisplay = document.getElementById("fileExtDisplay");
-        const downloadLink = document.getElementById("downloadLink");
-        const videoSource = document.getElementById("videoSource");
-
-        // Reset
-        img.classList.add("d-none");
-        vid.classList.add("d-none");
-        info.classList.add("d-none");
-
-        if (isImage) {
-            img.src = filePath + '?v=' + Date.now();
-            img.classList.remove("d-none");
-        } else if (isVideo) {
-            let mime = "video/mp4";
-            if (extension === "mov") mime = "video/quicktime";
-            if (extension === "webm") mime = "video/webm";
-
-            videoSource.src = filePath + '?v=' + Date.now();
-            videoSource.type = mime;
-
-            vid.load();
-            vid.classList.remove("d-none");
-        } else {
-            // Unsupported preview
-            filePathDisplay.textContent = filePath;
-            fileExtDisplay.textContent = extension || "unknown";
-            downloadLink.href = filePath;
-            info.classList.remove("d-none");
+        function updateFileList() {
+            const list = document.getElementById("selectedFileList");
+            list.innerHTML = "";
+            Array.from(fileInput.files).forEach(file => {
+                const li = document.createElement("li");
+                li.className = "list-group-item d-flex justify-content-between align-items-center";
+                li.textContent = file.name;
+                const size = document.createElement("span");
+                size.className = "badge bg-secondary rounded-pill";
+                size.textContent = (file.size / 1024 / 1024).toFixed(1) + " MB";
+                li.appendChild(size);
+                list.appendChild(li);
+            });
+            const hasVideo = Array.from(fileInput.files).some(f => f.type.startsWith("video/"));
+            document.getElementById("convertOption").classList.toggle("d-none", !hasVideo);
         }
 
-        const modal = new bootstrap.Modal(document.getElementById('previewModal'));
-        
-        // Add event listener to stop video when modal is closed
-        const previewModal = document.getElementById('previewModal');
-        previewModal.addEventListener('hidden.bs.modal', function () {
-            if (vid) {
-                vid.pause();
-                vid.currentTime = 0;
+        async function uploadFiles() {
+            const files = fileInput.files;
+            if (!files.length) {
+                alert("Please select files.");
+                return;
             }
-        });
 
-        modal.show();
-    }
+            const overlay = document.getElementById("uploadOverlay");
+            const listContainer = document.getElementById("fileProgressList");
+            const convertChecked = document.getElementById("convertToSmall").checked;
+            const selectedQuality = document.querySelector('input[name="quality"]:checked').value;
 
+            listContainer.innerHTML = "";
+            overlay.classList.remove("d-none");
 
-    window.addEventListener("DOMContentLoaded", () => {
-        document.querySelectorAll('.file-name-truncate').forEach(el => {
-            const fullName = el.textContent.trim();
-            const maxLen = 50;
-            const dotIndex = fullName.lastIndexOf(".");
-            const ext = dotIndex > -1 ? fullName.substring(dotIndex) : "";
-            const nameOnly = dotIndex > -1 ? fullName.substring(0, dotIndex) : fullName;
+            const CHUNK_SIZE = 1 * 1024 * 1024;
+            const MAX_CONCURRENT = 3;
 
-            if (nameOnly.length + ext.length > maxLen) {
-                const shortName = nameOnly.substring(0, maxLen - ext.length - 3) + '...' + ext;
-                el.textContent = shortName;
-                el.title = fullName;
+            const queue = Array.from(files).map(file => {
+                const item = document.createElement("li");
+                item.innerHTML = `
+        <div><strong>${file.name}</strong></div>
+        <div class="progress mb-2">
+          <div class="progress-bar progress-bar-striped" id="progress-${file.name}" style="width: 0%">0%</div>
+        </div>`;
+                listContainer.appendChild(item);
+                return () => uploadFileChunks(file, CHUNK_SIZE, convertChecked, selectedQuality);
+            });
+
+            while (queue.length) {
+                const batch = queue.splice(0, MAX_CONCURRENT);
+                await Promise.all(batch.map(fn => fn()));
             }
-        });
-    });
 
-    function getFileIcon(fileName) {
-        const ext = fileName.split('.').pop().toLowerCase();
-
-        switch (ext) {
-            case 'apk':
-                return '<i class="bi bi-android2 text-success fs-3"></i>';  // Android icon
-            case 'ipa':
-                return '<i class="bi bi-phone-fill text-primary fs-3"></i>'; // iOS icon
-            case 'pdf':
-                return '<i class="bi bi-file-earmark-pdf-fill text-danger fs-3"></i>';
-            case 'jpg':
-            case 'jpeg':
-            case 'png':
-            case 'gif':
-                return '<i class="bi bi-image-fill text-info fs-3"></i>';
-            case 'mp4':
-            case 'mov':
-                return '<i class="bi bi-camera-reels-fill text-warning fs-3"></i>';
-            default:
-                return '<i class="bi bi-file-earmark-fill text-secondary fs-3"></i>';
+            overlay.classList.add("d-none");
+            alert("✅ All files uploaded!");
+            window.location.reload();
         }
-    }
 
-    document.querySelectorAll('.file-icon').forEach(span => {
-        const fileName = span.dataset.filename;
-        span.innerHTML = getFileIcon(fileName);
-    });
+        async function uploadFileChunks(file, CHUNK_SIZE, convert, quality) {
+            const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+            const uploads = [];
+
+            for (let i = 0; i < totalChunks; i++) {
+                const chunk = file.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+                const formData = new FormData();
+                formData.append("chunk", chunk);
+                formData.append("filename", file.name);
+                formData.append("chunkIndex", i);
+                formData.append("totalChunks", totalChunks);
+                formData.append("quality", quality);
+                uploads.push(fetch("/upload-chunk", { method: "POST", body: formData }));
+            }
+
+            let uploaded = 0;
+            const bar = document.getElementById("progress-" + file.name);
+
+            for (const p of uploads) {
+                await p;
+                uploaded++;
+                const percent = Math.floor((uploaded / totalChunks) * 100);
+                bar.style.width = percent + "%";
+                bar.innerText = percent + "%";
+            }
+
+            let timer = 0;
+            let intervalId;
+
+            if (convert && file.type.startsWith("video/")) {
+                bar.classList.add("bg-warning");
+                bar.classList.remove("bg-success");
+                bar.innerText = "Optimizing... 0s";
+
+                intervalId = setInterval(() => {
+                    timer++;
+                    bar.innerText = `Optimizing... ${timer}s`;
+                }, 1000);
+            }
+
+            await fetch("/merge-chunks", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    filename: file.name,
+                    totalChunks,
+                    convert,
+                    quality
+                })
+            });
+
+            if (intervalId) clearInterval(intervalId);
+
+            bar.style.width = "100%";
+            bar.classList.remove("bg-warning");
+            bar.classList.add("bg-success");
+            bar.innerText = "Done";
+        }
+        function showPreview(filePath) {
+            const isImage = /\.(jpe?g|png|gif|webp)$/i.test(filePath);
+            const isVideo = /\.(mp4|mov|webm)$/i.test(filePath);
+            const extMatch = filePath.match(/\.([a-z0-9]+)$/i);
+            const extension = extMatch ? extMatch[1].toLowerCase() : "";
+
+            const img = document.getElementById("previewImage");
+            const vid = document.getElementById("previewVideo");
+            const info = document.getElementById("previewInfo");
+            const filePathDisplay = document.getElementById("filePathDisplay");
+            const fileExtDisplay = document.getElementById("fileExtDisplay");
+            const downloadLink = document.getElementById("downloadLink");
+            const videoSource = document.getElementById("videoSource");
+
+            // Reset
+            img.classList.add("d-none");
+            vid.classList.add("d-none");
+            info.classList.add("d-none");
+
+            if (isImage) {
+                img.src = filePath + '?v=' + Date.now();
+                img.classList.remove("d-none");
+            } else if (isVideo) {
+                let mime = "video/mp4";
+                if (extension === "mov") mime = "video/quicktime";
+                if (extension === "webm") mime = "video/webm";
+
+                videoSource.src = filePath + '?v=' + Date.now();
+                videoSource.type = mime;
+
+                vid.load();
+                vid.classList.remove("d-none");
+            } else {
+                // Unsupported preview
+                filePathDisplay.textContent = filePath;
+                fileExtDisplay.textContent = extension || "unknown";
+                downloadLink.href = filePath;
+                info.classList.remove("d-none");
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById('previewModal'));
+            
+            // Add event listener to stop video when modal is closed
+            const previewModal = document.getElementById('previewModal');
+            previewModal.addEventListener('hidden.bs.modal', function () {
+                if (vid) {
+                    vid.pause();
+                    vid.currentTime = 0;
+                }
+            });
+
+            modal.show();
+        }
+
+
+        window.addEventListener("DOMContentLoaded", () => {
+            document.querySelectorAll('.file-name-truncate').forEach(el => {
+                const fullName = el.textContent.trim();
+                const maxLen = 50;
+                const dotIndex = fullName.lastIndexOf(".");
+                const ext = dotIndex > -1 ? fullName.substring(dotIndex) : "";
+                const nameOnly = dotIndex > -1 ? fullName.substring(0, dotIndex) : fullName;
+
+                if (nameOnly.length + ext.length > maxLen) {
+                    const shortName = nameOnly.substring(0, maxLen - ext.length - 3) + '...' + ext;
+                    el.textContent = shortName;
+                    el.title = fullName;
+                }
+            });
+        });
+
+        function getFileIcon(fileName) {
+            const ext = fileName.split('.').pop().toLowerCase();
+
+            switch (ext) {
+                case 'apk':
+                    return '<i class="bi bi-android2 text-success fs-3"></i>';  // Android icon
+                case 'ipa':
+                    return '<i class="bi bi-phone-fill text-primary fs-3"></i>'; // iOS icon
+                case 'pdf':
+                    return '<i class="bi bi-file-earmark-pdf-fill text-danger fs-3"></i>';
+                case 'jpg':
+                case 'jpeg':
+                case 'png':
+                case 'gif':
+                    return '<i class="bi bi-image-fill text-info fs-3"></i>';
+                case 'mp4':
+                case 'mov':
+                    return '<i class="bi bi-camera-reels-fill text-warning fs-3"></i>';
+                default:
+                    return '<i class="bi bi-file-earmark-fill text-secondary fs-3"></i>';
+            }
+        }
+
+        document.querySelectorAll('.file-icon').forEach(span => {
+            const fileName = span.dataset.filename;
+            span.innerHTML = getFileIcon(fileName);
+        });
 
     function openUploadsFolder() {
         fetch('/open-uploadsfolder', { method: 'POST' })
