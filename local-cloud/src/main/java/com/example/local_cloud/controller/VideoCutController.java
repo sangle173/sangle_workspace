@@ -84,10 +84,13 @@ public class VideoCutController {
                 .map(File::getName)
                 .collect(Collectors.toList());
 
+        // Set default selected video if there are videos available
+        String defaultVideo = videoFiles.isEmpty() ? "" : videoFiles.get(0);
+        
         model.addAttribute("videos", videoFiles);
-        model.addAttribute("selectedVideo", "");
-        model.addAttribute("startValue", "");
-        model.addAttribute("endValue", "");
+        model.addAttribute("selectedVideo", defaultVideo);
+        model.addAttribute("startValue", "00:00:00");
+        model.addAttribute("endValue", "00:00:10");
         return "cut";
     }
 
@@ -202,7 +205,8 @@ public class VideoCutController {
         // Only add download link if no error occurred
         if (!model.containsAttribute("error")) {
             model.addAttribute("openFolder", true);
-            model.addAttribute("success", "✅ Cut successful!");
+            model.addAttribute("success", true);
+            model.addAttribute("successMessage", "✅ Cut successful!");
             model.addAttribute("download", "/cut/download/" + outputName);
             model.addAttribute("outputFile", outputName);
         }

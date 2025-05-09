@@ -15,6 +15,9 @@ import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 
 @SpringBootApplication
 @EnableScheduling
@@ -33,6 +36,9 @@ class StartupInfoLogger {
     
     @EventListener(ApplicationReadyEvent.class)
     public void logApplicationStartup() {
+        // Check required packages
+        checkRequiredPackages();
+        
         System.out.println("\n----------------------------------------------------------");
         System.out.println("   Local Cloud Application is running! Access URLs:");
         System.out.println("   Local:      http://localhost:" + serverPort);
@@ -45,6 +51,47 @@ class StartupInfoLogger {
             }
         }
         System.out.println("----------------------------------------------------------\n");
+    }
+    
+    private void checkRequiredPackages() {
+        System.out.println("\n----------------------------------------------------------");
+        System.out.println("   Checking required packages...");
+        
+        // Check for FFmpeg
+        if (!isPackageInstalled("ffmpeg")) {
+            System.out.println("   ⚠️ FFmpeg is not installed. Please install it using:");
+            System.out.println("   sudo apt-get update && sudo apt-get install ffmpeg");
+        } else {
+            System.out.println("   ✓ FFmpeg is installed.");
+        }
+        
+        // Check for ADB
+        if (!isPackageInstalled("adb")) {
+            System.out.println("   ⚠️ ADB is not installed. Please install it using:");
+            System.out.println("   sudo apt-get update && sudo apt-get install adb");
+        } else {
+            System.out.println("   ✓ ADB is installed.");
+        }
+        
+        System.out.println("----------------------------------------------------------\n");
+    }
+    
+    private boolean isPackageInstalled(String packageName) {
+        ProcessBuilder processBuilder = new ProcessBuilder();
+        if (packageName.equals("ffmpeg")) {
+            processBuilder.command("bash", "-c", "which ffmpeg");
+        } else if (packageName.equals("adb")) {
+            processBuilder.command("bash", "-c", "which adb");
+        }
+        
+        try {
+            Process process = processBuilder.start();
+            int exitCode = process.waitFor();
+            return exitCode == 0;
+        } catch (IOException | InterruptedException e) {
+            // If an error occurs, assume the package is not installed
+            return false;
+        }
     }
     
     private List<String> getNetworkAddresses() {

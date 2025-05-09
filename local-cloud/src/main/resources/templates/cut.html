@@ -10,100 +10,282 @@
             width: 100%;
             height: auto;
             max-height: 360px;
+            border-radius: 8px;
+        }
+        .time-input {
+            border-radius: 6px;
+            padding: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .custom-card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+            background-color: #f8f9fa;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #6c757d;
+            box-shadow: 0 0 0 0.25rem rgba(108, 117, 125, 0.25);
+        }
+        .btn-success {
+            background-color: #28a745;
+            border-color: #28a745;
+            transition: all 0.2s ease;
+        }
+        .btn-success:hover {
+            background-color: #218838;
+            border-color: #1e7e34;
+            transform: translateY(-1px);
+        }
+        .video-container {
+            position: relative;
+            overflow: hidden;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
     </style>
 </head>
 
 <body>
     <!-- Shared navbar -->
-    <div th:replace="fragments/navbar :: navbar"></div>
+    <div th:replace="~{fragments/navbar :: navbar}"></div>
 
     <div class="container py-4">
-    <h2 class="mb-4">✂️ Cut Uploaded Video</h2>
-
-    <div class="row">
-        <!-- Left: Form and original video -->
-        <div class="col-md-6">
-            <form method="post" th:action="@{/cut}" class="mb-4">
-                <div class="mb-3">
-                    <label class="form-label">🎞️ Select Video:</label>
-                    <select name="video" id="videoSelect" class="form-select" required onchange="previewVideo()">
-                        <option th:each="v : ${videos}" th:value="${v}" th:selected="${v == selectedVideo}"
-                            th:text="${v}">Video name</option>
-                    </select>
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label">⏱ Start Time (e.g., 00:00:05):</label>
-                    <input type="text" name="start" class="form-control" th:value="${startValue}" required>
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label">🏁 End Time (e.g., 00:00:15):</label>
-                    <input type="text" name="end" class="form-control" th:value="${endValue}" required>
-                </div>
-                
-                <div class="mb-3 form-check">
-                    <input type="checkbox" class="form-check-input" id="accurateCut" name="accurateCut" 
-                           th:checked="${accurateCut != null && accurateCut}">
-                    <label class="form-check-label" for="accurateCut">🔍 Precise cut (slower but more accurate)</label>
-                </div>
-
-                <button type="submit" class="btn btn-success">✂️ Cut Video</button>
-            </form>
-
-            <h5>🎬 Original Video:</h5>
-            <video id="videoPreview" controls class="border rounded shadow">
-                <source th:src="'/uploads/' + ${selectedVideo}" type="video/mp4">
-                Your browser does not support the video tag.
-            </video>
+        <div class="d-flex align-items-center mb-4">
+            <h5 class="mb-0">✂️ Cut Uploaded Video</h5>
+            <button type="button" class="ms-2 btn btn-sm btn-link text-decoration-none p-0" 
+                    data-bs-toggle="modal" data-bs-target="#helpModal">
+                <i class="bi bi-info-circle-fill text-primary" style="font-size: 1.2rem;"></i>
+            </button>
         </div>
 
-        <!-- Right: Cut video -->
-        <div class="col-md-6">
-            <div th:if="${success}">
-                <h5>✅ Cut Result:</h5>
-                <video id="cutResultVideo" controls class="border rounded shadow mb-3">
-                    <source th:src="${download}" type="video/mp4">
-                    Your browser does not support the video tag.
-                </video>
-
-                <div class="alert alert-success" th:text="${success}"></div>
-                <button class="btn btn-primary" onclick="openCutsFolder()">
-                    <i class="bi bi-folder2-open"></i> Open Cuts Folder
-                </button>
-            </div>
-
-            <div th:if="${error}" class="mt-3">
-                <div class="alert alert-danger" th:text="${error}"></div>
-                <div th:if="${ffmpegOutput}" class="mt-2">
-                    <button class="btn btn-sm btn-outline-secondary" type="button" 
-                            data-bs-toggle="collapse" data-bs-target="#ffmpegLog">
-                        Show FFmpeg Log
-                    </button>
-                    <div class="collapse mt-2" id="ffmpegLog">
-                        <div class="card card-body">
-                            <pre class="text-muted" style="font-size: 0.8rem;" th:text="${ffmpegOutput}"></pre>
-                        </div>
+        <!-- Help Modal -->
+        <div class="modal fade" id="helpModal" tabindex="-1" aria-labelledby="helpModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="helpModalLabel">How to Use the Video Cutter</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <ol class="mb-0">
+                            <li>Select a video from the dropdown menu</li>
+                            <li>Preview the video using the player below the form</li>
+                            <li>Set the start and end times for your cut (format: HH:MM:SS)
+                                <ul>
+                                    <li>Use the "Set Current Time" button to automatically set the start time to the current playback position</li>
+                                </ul>
+                            </li>
+                            <li>Choose whether to use precise cutting (slower but more accurate)</li>
+                            <li>Click "Cut Video" to process your request</li>
+                            <li>Once complete, you can preview and download the cut video</li>
+                        </ol>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                     </div>
                 </div>
             </div>
-            
-            <div th:if="${ffmpegWarning}" class="mt-3 alert alert-warning" th:text="${ffmpegWarning}"></div>
         </div>
-    </div>
+
+        <div class="row">
+            <!-- Left: Form and original video -->
+            <div class="col-md-6">
+                <div class="custom-card">
+                    <form method="post" th:action="@{/cut}" class="mb-4">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold" data-bs-toggle="tooltip" data-bs-placement="top" 
+                                  title="Select a video file from your uploads folder">🎞️ Select Video:</label>
+                            <select name="video" id="videoSelect" class="form-select" required onchange="previewVideo(); updateVideoDuration();">
+                                <option th:each="v : ${videos}" th:value="${v}" th:selected="${v == selectedVideo}"
+                                    th:text="${v}">Video name</option>
+                            </select>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold" data-bs-toggle="tooltip" data-bs-placement="top" 
+                                      title="Set when to start the cut (format: HH:MM:SS)">⏱ Start Time:</label>
+                                <div class="input-group time-input">
+                                    <span class="input-group-text"><i class="bi bi-hourglass-top"></i></span>
+                                    <input type="text" name="start" id="startTime" class="form-control" 
+                                           th:value="${startValue != null ? startValue : '00:00:00'}" required
+                                           placeholder="00:00:00" data-bs-toggle="tooltip" data-bs-placement="bottom" 
+                                           title="Format: HH:MM:SS (hours:minutes:seconds)">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold" data-bs-toggle="tooltip" data-bs-placement="top" 
+                                      title="Set when to end the cut (format: HH:MM:SS)">🏁 End Time:</label>
+                                <div class="input-group time-input">
+                                    <span class="input-group-text"><i class="bi bi-hourglass-bottom"></i></span>
+                                    <input type="text" name="end" id="endTime" class="form-control" 
+                                           th:value="${endValue != null ? endValue : '00:00:10'}" required
+                                           placeholder="00:00:10" data-bs-toggle="tooltip" data-bs-placement="bottom" 
+                                           title="Format: HH:MM:SS (hours:minutes:seconds)">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="accurateCut" name="accurateCut" 
+                                   th:checked="${accurateCut != null ? accurateCut : true}">
+                            <label class="form-check-label" for="accurateCut" data-bs-toggle="tooltip" 
+                                  data-bs-placement="top" title="More accurate but takes longer to process. Uncheck for faster processing with slightly less accuracy.">
+                                🔍 Precise cut (slower but more accurate)
+                            </label>
+                        </div>
+
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-success btn-lg px-4" data-bs-toggle="tooltip" 
+                                   data-bs-placement="top" title="Process the video cut with the specified parameters">
+                                <i class="bi bi-scissors"></i> Cut Video
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <h5 class="mt-4 mb-2 fw-bold" data-bs-toggle="tooltip" data-bs-placement="top" 
+                    title="Preview the selected video before cutting">🎬 Original Video:</h5>
+                <div class="video-container">
+                    <video id="videoPreview" controls preload="metadata" class="shadow">
+                        Your browser does not support the video tag.
+                    </video>
+                </div>
+                <div class="mt-2 text-center">
+                    <button class="btn btn-sm btn-outline-secondary" id="getCurrentTimeBtn" onclick="setCurrentTime()" 
+                           data-bs-toggle="tooltip" data-bs-placement="top" title="Use the current playback position as the start time">
+                        <i class="bi bi-clock"></i> Set Current Time
+                    </button>
+                    <span id="videoDuration" class="ms-3 badge bg-secondary"></span>
+                </div>
+            </div>
+
+            <!-- Right: Cut video -->
+            <div class="col-md-6">
+                <div th:if="${success}" class="custom-card">
+                    <h5 class="fw-bold">✅ Cut Result:</h5>
+                    <div class="video-container mb-3">
+                        <video id="cutResultVideo" controls class="shadow">
+                            <source th:src="${download}" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+
+                    <div class="alert alert-success" th:text="${successMessage}"></div>
+                    <div class="text-center">
+                        <a th:href="${download}" download class="btn btn-primary me-2">
+                            <i class="bi bi-download"></i> Download Video
+                        </a>
+                        <button class="btn btn-outline-secondary" onclick="openCutsFolder()">
+                            <i class="bi bi-folder2-open"></i> Open Cuts Folder
+                        </button>
+                    </div>
+                </div>
+
+                <div th:if="${error}" class="custom-card mt-3">
+                    <div class="alert alert-danger" th:text="${error}"></div>
+                    <div th:if="${ffmpegOutput}" class="mt-2">
+                        <button class="btn btn-sm btn-outline-secondary" type="button" 
+                                data-bs-toggle="collapse" data-bs-target="#ffmpegLog">
+                            <i class="bi bi-terminal"></i> Show FFmpeg Log
+                        </button>
+                        <div class="collapse mt-2" id="ffmpegLog">
+                            <div class="card card-body">
+                                <pre class="text-muted" style="font-size: 0.8rem; max-height: 300px; overflow-y: auto;" th:text="${ffmpegOutput}"></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div th:if="${ffmpegWarning}" class="custom-card mt-3">
+                    <div class="alert alert-warning" th:text="${ffmpegWarning}"></div>
+                </div>
+                
+                <div th:if="${success == null && error == null && ffmpegWarning == null}" class="custom-card mt-3">
+                    <div class="text-center py-5">
+                        <i class="bi bi-scissors" style="font-size: 3rem; color: #6c757d;"></i>
+                        <h5 class="mt-3">Cut a video to get started</h5>
+                        <p class="text-muted">Your result will appear here</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Shared footer -->
-    <div th:replace="fragments/footer :: footer"></div>
+    <div th:replace="~{fragments/footer :: footer}"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        function previewVideo() {
+        // Initialize video on page load
+        function initVideoPreview() {
             const select = document.getElementById('videoSelect');
             const video = document.getElementById('videoPreview');
-            video.src = '/uploads/' + select.value;
-            video.load();
+            
+            if (select && select.value) {
+                console.log("Loading video: " + select.value);
+                
+                // Remove any existing source elements
+                while (video.firstChild) {
+                    video.removeChild(video.firstChild);
+                }
+                
+                // Create and append a new source element
+                const source = document.createElement('source');
+                source.src = '/uploads/' + select.value;
+                source.type = 'video/mp4';
+                video.appendChild(source);
+                
+                // Load the video
+                video.load();
+                
+                // Debug
+                console.log("Video source set to: " + source.src);
+                
+                // Handle video loading errors
+                video.onerror = function() {
+                    console.error("Error loading video: " + source.src);
+                };
+            } else {
+                console.log("No video selected or select element not found");
+            }
+        }
+        
+        function previewVideo() {
+            initVideoPreview();
+        }
+        
+        function formatTime(seconds) {
+            const hrs = Math.floor(seconds / 3600);
+            const mins = Math.floor((seconds % 3600) / 60);
+            const secs = Math.floor(seconds % 60);
+            
+            return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+        
+        function updateVideoDuration() {
+            const video = document.getElementById('videoPreview');
+            const durationSpan = document.getElementById('videoDuration');
+            
+            // We need to wait for metadata to load to get duration
+            video.onloadedmetadata = function() {
+                const duration = video.duration;
+                durationSpan.textContent = `Duration: ${formatTime(duration)}`;
+                
+                // Only set end time if it's still the default value
+                const endTimeInput = document.getElementById('endTime');
+                if (endTimeInput.value === '00:00:10') {
+                    endTimeInput.value = formatTime(duration);
+                }
+            };
+        }
+        
+        function setCurrentTime() {
+            const video = document.getElementById('videoPreview');
+            const startTimeInput = document.getElementById('startTime');
+            startTimeInput.value = formatTime(video.currentTime);
         }
         
         function openCutsFolder() {
@@ -122,14 +304,37 @@
             });
         }
 
-        // Auto-trigger preview on load if a video is selected
-        window.addEventListener("DOMContentLoaded", function () {
-            previewVideo();
+        // Auto-trigger preview and duration update on load if a video is selected
+        document.addEventListener("DOMContentLoaded", function() {
+            // Initialize tooltips
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function(tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+            
+            console.log("DOM fully loaded");
+            const videoSelect = document.getElementById('videoSelect');
+            
+            if (videoSelect) {
+                console.log("Video select found, value: " + videoSelect.value);
+                // Set a slight delay to ensure DOM is fully processed
+                setTimeout(function() {
+                    initVideoPreview();
+                    updateVideoDuration();
+                }, 300);
+                
+                // Ensure the change event properly triggers the preview
+                videoSelect.addEventListener('change', function() {
+                    previewVideo();
+                    updateVideoDuration();
+                });
+            } else {
+                console.log("Video select element not found");
+            }
             
             // Load the cut result video if it exists
             const cutResultVideo = document.getElementById('cutResultVideo');
             if (cutResultVideo) {
-                // Make sure the video element is properly loaded
                 cutResultVideo.load();
             }
         });
