@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${filterName} + ' - JIRA Filter'">JIRA Filter</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            padding-top: 110px; /* Adjusted for just the fixed navbar */
+            padding-bottom: 20px;
+            padding-left: 20px;
+            padding-right: 20px;
+        }
+        .custom-card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+            background-color: #f8f9fa;
+        }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #0d6efd; color: white; }
+        tr:nth-child(even) { background-color: #f2f2f2; }
+        
+        /* Fixed header styles */
+        .fixed-top-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1030;
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        /* Status filter styling (non-fixed) */
+        .status-filter-container {
+            margin-bottom: 20px;
+        }
+        
+        /* Inline JQL and filter styling */
+        .jql-preview {
+            font-size: 0.8rem;
+            display: inline-block;
+            background-color: #f0f0f0;
+            padding: 3px 6px;
+            border-radius: 4px;
+            max-width: 400px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+        
+        .jql-copy-btn {
+            font-size: 0.7rem;
+            padding: 2px 5px;
+            margin-left: 5px;
+        }
+        
+        .inline-filter-container {
+            display: inline-flex;
+            align-items: center;
+            margin-left: 20px;
+        }
+        
+        .filter-label {
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+        
+        .filter-pills {
+            display: inline-flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        
+        .status-pill-sm {
+            font-size: 0.7rem;
+            padding: 2px 6px;
+        }
+        
+        /* Content padding to account for fixed elements */
+        .content-padding {
+            padding-top: 20px;
+        }
+        
+        /* Status colors */
+        .status-open { background-color: #454545; color: white; }
+        .status-in-progress { background-color: #0052CC; color: white; }
+        .status-closed { background-color: #00875A; color: white; }
+        .status-resolved { background-color: #00875A; color: white; }
+        .status-in-verification { background-color: #0052CC; color: white; }
+        .status-ready-to-verify { background-color: #0052CC; color: white; }
+        .status-blocked { background-color: #DFE1E5; color: black; }
+        .status-reopened { background-color: #FF0000; color: white; }
+        .status-in-review { background-color: #0052CC; color: white; }
+        .status-testing { background-color: #0052CC; color: white; }
+        .status-waiting-for-partner { background-color: #0052CC; color: white; }
+        .status-done { background-color: #00875A; color: white; }
+        .status-reviewed { background-color: #0052CC; color: white; }
+        
+        .status-pill {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        /* Summary column formatting */
+        .summary-cell {
+            width: 50%; 
+            max-width: 400px; 
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis;
+        }
+        
+        /* Table cells should truncate text properly */
+        .table-responsive {
+            overflow-x: auto;
+        }
+        
+        .key-cell {
+            width: 10%;
+        }
+        
+        .status-cell {
+            width: 10%;
+            text-align: center;
+        }
+        
+        .type-cell {
+            width: 15%;
+        }
+        
+        .date-cell {
+            width: 15%;
+        }
+        
+        .action-cell {
+            width: 10%;
+            text-align: center;
+        }
+        
+        /* Confirmation Modal */
+        .modal-confirm {
+            color: #636363;
+        }
+        
+        .modal-confirm .modal-content {
+            padding: 20px;
+            border-radius: 5px;
+            border: none;
+        }
+        
+        .modal-confirm .modal-header {
+            border-bottom: none;
+            position: relative;
+        }
+        
+        .modal-confirm h4 {
+            text-align: center;
+            font-size: 26px;
+            margin: 30px 0 -15px;
+        }
+        
+        .modal-confirm .form-control, .modal-confirm .btn {
+            min-height: 40px;
+            border-radius: 3px;
+        }
+        
+        .modal-confirm .close {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+        }
+        
+        .modal-confirm .modal-footer {
+            border: none;
+            text-align: center;
+            border-radius: 5px;
+            font-size: 13px;
+        }
+        
+        .modal-confirm .icon-box {
+            color: #fff;
+            position: absolute;
+            margin: 0 auto;
+            left: 0;
+            right: 0;
+            top: -70px;
+            width: 95px;
+            height: 95px;
+            border-radius: 50%;
+            z-index: 9;
+            background: #0d6efd;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0px 2px 2px rgba(0, 0, 0, 0.1);
+        }
+        
+        .modal-confirm .icon-box i {
+            font-size: 58px;
+            position: relative;
+            top: 3px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Shared navbar with fixed positioning -->
+    <div class="fixed-top-nav">
+        <div th:replace="~{fragments/navbar :: navbar}"></div>
+        
+        <!-- Filter header with title, JQL query and status filter -->
+        <div class="container-fluid py-2 border-bottom">
+            <div class="d-flex align-items-center">
+                <div class="d-flex align-items-center flex-grow-1 overflow-hidden">
+                    <h5 class="mb-0">
+                        <i class="bi bi-filter me-2"></i>
+                        <span th:text="${filterName}">Filter Name</span>
+                    </h5>
+                    
+                    <!-- Inline JQL query -->
+                    <div class="jql-preview" th:if="${jql}" th:text="${jql}" title="JQL Query">JQL Query</div>
+                    <button class="btn btn-sm jql-copy-btn" th:if="${jql}" onclick="copyJqlToClipboard()" title="Copy JQL">
+                        <i class="bi bi-clipboard-check"></i>
+                    </button>
+                    
+                    <!-- Inline status filter -->
+                    <div class="inline-filter-container" id="inline-status-filter">
+                        <span class="filter-label">Status:</span>
+                        <div class="filter-pills" id="filter-pills-container">
+                            <!-- Status pills will be dynamically added here -->
+                        </div>
+                        <div class="ms-2">
+                            <button class="btn btn-sm btn-link p-0 me-1" onclick="toggleAllStatuses(true)" title="Select All">
+                                <i class="bi bi-check-all"></i>
+                            </button>
+                            <button class="btn btn-sm btn-link p-0" onclick="toggleAllStatuses(false)" title="Clear All">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <a href="/jira-dashboard/tasks" class="ms-3 btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Tasks
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fluid">
+        <!-- Error message if filter not found -->
+        <div class="alert alert-danger" th:if="${error}" th:text="${error}">Error message</div>
+
+        <!-- Environment Status Check -->
+        <div id="env-status"></div>
+        <div id="setup-instructions" class="custom-card" style="display: none;">
+            <h6 class="mb-3"><i class="bi bi-gear-fill me-2"></i>Environment Setup Instructions</h6>
+            <ol>
+                <li>Create a file named <code>.env</code> in the folder <code>~/Desktop/Env/</code></li>
+                <li>Add your Jira API token to the file in this format: <code>JIRA_API_TOKEN=your_token_here</code></li>
+                <li>Make sure the <code>jira_filter.json</code> file exists in the same folder</li>
+                <li>Save the file and restart the application</li>
+            </ol>
+        </div>
+
+        <!-- Issues Table -->
+        <div class="custom-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="mb-0">Issues</h6>
+                <div>
+                    <button onclick="refreshIssues()" class="btn btn-sm btn-outline-primary me-2">
+                        <i class="bi bi-arrow-repeat"></i> Refresh
+                    </button>
+                    <button onclick="copyToClipboard()" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-clipboard"></i> Copy Results
+                    </button>
+                </div>
+            </div>
+            
+            <div class="table-responsive">
+                <table id="issuesTable" class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th class="key-cell">Issue Key</th>
+                            <th class="summary-cell">Summary</th>
+                            <th class="status-cell">Status</th>
+                            <th class="type-cell">Issue Type</th>
+                            <th class="date-cell">Created Date</th>
+                            <th class="action-cell">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="6" class="text-center">
+                                <div class="spinner-border text-primary" role="status"></div>
+                                <span class="ms-2">Loading issues...</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shared footer -->
+    <div th:replace="~{fragments/footer :: footer}"></div>
+
+    <!-- Create Task Confirmation Modal -->
+    <div class="modal fade" id="createTaskModal" tabindex="-1" aria-labelledby="createTaskModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="createTaskModalLabel">Create Task</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createTaskForm">
+                        <div class="mb-3">
+                            <label for="jira_id" class="form-label">JIRA ID</label>
+                            <input type="text" class="form-control" id="jira_id" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label for="jira_summary" class="form-label">Summary</label>
+                            <input type="text" class="form-control" id="jira_summary">
+                        </div>
+                        <div class="mb-3">
+                            <label for="working_status" class="form-label">Working Status</label>
+                            <select class="form-select" id="working_status">
+                                <option value="1">In Progress</option>
+                                <option value="2">Done</option>
+                                <option value="3">Pending</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="ticket_status" class="form-label">Ticket Status</label>
+                            <select class="form-select" id="ticket_status">
+                                <option value="1">In Progress</option>
+                                <option value="2">Closed</option>
+                                <option value="3">Resolved</option>
+                                <option value="4">In Verification</option>
+                                <option value="5">Ready To Verify</option>
+                                <option value="6">Blocked</option>
+                                <option value="7">Reopened</option>
+                                <option value="9">Open</option>
+                                <option value="10">In Review</option>
+                                <option value="11">Testing</option>
+                                <option value="12">WAITING FOR PARTNER</option>
+                                <option value="13">Done</option>
+                                <option value="14">Reviewed</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="createTask()">Create Task</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Result Modal -->
+    <div class="modal fade" id="resultModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Task Creation Result</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="resultMessage">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/setup-env.js"></script>
+    <script th:inline="javascript">
+        // Get JQL from Thymeleaf
+        const jql = /*[[${jql}]]*/ 'Empty JQL';
+        
+        // Domain variables
+        let apiDomain = "http://172.18.100.184/mini_project/public";
+        
+        // Create Task related variables
+        let createTaskModal;
+        let resultModal;
+        
+        // Store all issues and statuses
+        let allIssues = [];
+        let uniqueStatuses = new Set();
+        
+        // Fetch issues on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize modals
+            createTaskModal = new bootstrap.Modal(document.getElementById('createTaskModal'));
+            resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+            
+            // Initialize scroll behavior for fixed elements
+            initializeScrollBehavior();
+            
+            // No need to fetch domain from env file - using hardcoded value
+            
+            if (jql) {
+                fetchIssues();
+            }
+        });
+        
+        // Handle fixed header scroll behavior
+        function initializeScrollBehavior() {
+            const fixedNav = document.querySelector('.fixed-top-nav');
+            
+            // Update body padding to account for fixed navbar
+            document.body.style.paddingTop = fixedNav.offsetHeight + 'px';
+            
+            // Update positions on window resize
+            window.addEventListener('resize', function() {
+                document.body.style.paddingTop = fixedNav.offsetHeight + 'px';
+            });
+            
+            // Handle scroll event for shadow effect
+            window.addEventListener('scroll', function() {
+                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                
+                // Add shadow to nav on scroll
+                if (scrollTop > 0) {
+                    fixedNav.classList.add('shadow');
+                } else {
+                    fixedNav.classList.remove('shadow');
+                }
+            });
+        }
+        
+        // Status filtering functions
+        function populateStatusFilters() {
+            const filterPillsContainer = document.getElementById('filter-pills-container');
+            filterPillsContainer.innerHTML = '';
+            
+            // Sort statuses for consistent display
+            const sortedStatuses = Array.from(uniqueStatuses).sort();
+            
+            // Add pill for each status
+            sortedStatuses.forEach(status => {
+                const statusLower = status.toLowerCase().replace(/\s+/g, '-');
+                const statusClass = `status-${statusLower}`;
+                
+                const pill = document.createElement('span');
+                pill.className = `status-pill status-pill-sm ${statusClass}`;
+                pill.setAttribute('data-status', status);
+                pill.textContent = status;
+                pill.style.cursor = 'pointer';
+                
+                // Add click event to toggle status
+                pill.addEventListener('click', function() {
+                    pill.classList.toggle('opacity-50');
+                    applyStatusFilters();
+                });
+                
+                filterPillsContainer.appendChild(pill);
+            });
+        }
+        
+        function toggleAllStatuses(checked) {
+            const pills = document.querySelectorAll('.status-pill-sm');
+            pills.forEach(pill => {
+                if (checked) {
+                    pill.classList.remove('opacity-50');
+                } else {
+                    pill.classList.add('opacity-50');
+                }
+            });
+            applyStatusFilters();
+        }
+        
+        function applyStatusFilters() {
+            const activePills = document.querySelectorAll('.status-pill-sm:not(.opacity-50)');
+            const selectedStatuses = Array.from(activePills).map(pill => pill.getAttribute('data-status'));
+            
+            displayFilteredIssues(selectedStatuses);
+        }
+        
+        function displayFilteredIssues(selectedStatuses) {
+            const tableBody = document.querySelector("#issuesTable tbody");
+            tableBody.innerHTML = "";
+            
+            // Filter issues by selected statuses
+            const filteredIssues = allIssues.filter(issue => selectedStatuses.includes(issue.status));
+            
+            if (filteredIssues.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="6" class="text-center">No issues found with selected statuses</td></tr>';
+                return;
+            }
+            
+            filteredIssues.forEach(issue => {
+                // Convert status to lowercase and prepare CSS class
+                const statusLower = issue.status.toLowerCase().replace(/\s+/g, '-');
+                const statusClass = `status-${statusLower}`;
+                
+                tableBody.innerHTML += `
+                    <tr>
+                        <td class="key-cell"><a href="${getJiraBaseUrl()}/browse/${issue.key}" target="_blank">${issue.key}</a></td>
+                        <td class="summary-cell" title="${issue.summary}">${issue.summary}</td>
+                        <td class="status-cell"><span class="status-pill ${statusClass}">${issue.status}</span></td>
+                        <td class="type-cell">${issue.issue_type}</td>
+                        <td class="date-cell">${issue.created}</td>
+                        <td class="action-cell">
+                            <button class="btn btn-sm btn-primary" 
+                                onclick="showCreateTaskModal('${issue.key}', '${issue.summary.replace(/'/g, "\\'")}', '${issue.status.replace(/'/g, "\\'")}')">
+                                <i class="bi bi-plus-circle"></i>
+                            </button>
+                        </td>
+                    </tr>`;
+            });
+        }
+        
+        function showCreateTaskModal(jiraId, jiraSummary, status) {
+            document.getElementById('jira_id').value = jiraId;
+            document.getElementById('jira_summary').value = jiraSummary;
+            
+            // Map JIRA status to ticket status ID
+            const statusLower = status.toLowerCase();
+            let ticketStatusId = "9"; // Default to "Open" (ID 9)
+            
+            if (statusLower.includes("in progress")) {
+                ticketStatusId = "1"; // In Progress
+            } else if (statusLower.includes("closed")) {
+                ticketStatusId = "2"; // Closed
+            } else if (statusLower.includes("resolved")) {
+                ticketStatusId = "3"; // Resolved
+            } else if (statusLower.includes("in verification")) {
+                ticketStatusId = "4"; // In Verification
+            } else if (statusLower.includes("ready") && statusLower.includes("verify")) {
+                ticketStatusId = "5"; // Ready To Verify
+            } else if (statusLower.includes("blocked")) {
+                ticketStatusId = "6"; // Blocked
+            } else if (statusLower.includes("reopened")) {
+                ticketStatusId = "7"; // Reopened
+            } else if (statusLower.includes("open")) {
+                ticketStatusId = "9"; // Open
+            } else if (statusLower.includes("review")) {
+                ticketStatusId = "10"; // In Review
+            } else if (statusLower.includes("testing") || statusLower.includes("test")) {
+                ticketStatusId = "11"; // Testing
+            } else if (statusLower.includes("waiting") || statusLower.includes("partner")) {
+                ticketStatusId = "12"; // WAITING FOR PARTNER
+            } else if (statusLower.includes("done")) {
+                ticketStatusId = "13"; // Done
+            } else if (statusLower.includes("reviewed")) {
+                ticketStatusId = "14"; // Reviewed
+            }
+            
+            // Set the selected ticket status
+            document.getElementById('ticket_status').value = ticketStatusId;
+            
+            createTaskModal.show();
+        }
+        
+        function createTask() {
+            const jiraId = document.getElementById('jira_id').value;
+            const jiraSummary = document.getElementById('jira_summary').value;
+            const workingStatus = document.getElementById('working_status').value;
+            const ticketStatus = document.getElementById('ticket_status').value;
+            
+            // Create payload with hardcoded defaults and dynamic user inputs
+            const payload = {
+                // Hardcoded values
+                "board_id": "1",
+                "team": "34", 
+                "type": "3",
+                "tester_1": "1",
+                "tester_2": "0",
+                "tester_3": "0",
+                "tester_4": "0",
+                "tester_5": "0",
+                "link_to_result": null,
+                "pass": "0",
+                "fail": "0",
+                
+                // Dynamic values from user input
+                "jira_id": jiraId,
+                "jira_summary": jiraSummary,
+                "working_status": workingStatus,
+                "ticket_status": ticketStatus,
+                
+                // Optional values
+                "sprint": `Sprint ${new Date().toISOString().slice(0, 7)}`,
+                "note": "Created via JIRA Filter View"
+            };
+            
+            // Send API request
+            fetch(`${apiDomain}/api/tasks`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(response => response.json())
+            .then(data => {
+                createTaskModal.hide();
+                document.getElementById('resultMessage').innerHTML = `
+                    <div class="alert alert-success">
+                        <i class="bi bi-check-circle-fill me-2"></i>
+                        Task created successfully!<br>
+                        <strong>JIRA ID:</strong> ${jiraId}<br>
+                        <strong>Summary:</strong> ${jiraSummary}
+                    </div>
+                `;
+                resultModal.show();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                createTaskModal.hide();
+                document.getElementById('resultMessage').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Error creating task: ${error.message || 'Unknown error'}
+                    </div>
+                `;
+                resultModal.show();
+            });
+        }
+        
+        async function fetchIssues() {
+            const tableBody = document.querySelector("#issuesTable tbody");
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <span class="ms-2">Loading issues...</span>
+                    </td>
+                </tr>
+            `;
+
+            try {
+                const response = await fetch("/jira-dashboard/fetch-by-jql", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                    body: `jql=${encodeURIComponent(jql)}`
+                });
+
+                const data = await response.json();
+                
+                // Store all issues
+                allIssues = data.issues || [];
+                
+                // Collect unique statuses for filtering
+                uniqueStatuses.clear();
+                allIssues.forEach(issue => {
+                    uniqueStatuses.add(issue.status);
+                });
+                
+                // Populate status filter checkboxes
+                populateStatusFilters();
+                
+                // Display all issues initially
+                displayIssues(allIssues);
+            } catch (error) {
+                console.error("Error fetching issues:", error);
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center text-danger">
+                            Error fetching issues: ${error.message}
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        function displayIssues(issues) {
+            // Get all selected statuses (initially all are selected)
+            const checkboxes = document.querySelectorAll('.status-checkbox:checked');
+            const selectedStatuses = checkboxes.length > 0 
+                ? Array.from(checkboxes).map(cb => cb.value)
+                : Array.from(uniqueStatuses); // If no checkboxes yet, use all statuses
+                
+            displayFilteredIssues(selectedStatuses);
+        }
+        
+        function getJiraBaseUrl() {
+            // This can be updated or made configurable
+            return "https://jira.sonos.com";
+        }
+        
+        function refreshIssues() {
+            fetchIssues();
+        }
+        
+        function copyJqlToClipboard() {
+            // Get JQL text from the preview element
+            const jqlText = document.querySelector('.jql-preview').textContent;
+            
+            // Copy to clipboard
+            navigator.clipboard.writeText(jqlText)
+                .then(() => {
+                    // Show a tooltip or flash the copy button
+                    const copyBtn = document.querySelector('.jql-copy-btn');
+                    copyBtn.classList.add('btn-success');
+                    setTimeout(() => copyBtn.classList.remove('btn-success'), 1000);
+                })
+                .catch(err => {
+                    console.error('Could not copy text: ', err);
+                });
+        }
+        
+        function copyToClipboard() {
+            const table = document.getElementById("issuesTable");
+            let text = "";
+            
+            // Get all rows and format them
+            const rows = table.querySelectorAll("tbody tr");
+            rows.forEach(row => {
+                // Skip empty/error rows
+                if (row.cells.length < 3) return;
+                
+                const key = row.cells[0].textContent.trim();
+                const summary = row.cells[1].textContent.trim();
+                const status = row.cells[2].textContent.trim();
+                text += `${key} - ${summary} - ${status}\n`;
+            });
+            
+            // Create temporary element
+            const textarea = document.createElement("textarea");
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            
+            // Copy and remove
+            document.execCommand("copy");
+            document.body.removeChild(textarea);
+            
+            // Show feedback
+            alert("Results copied to clipboard!");
+        }
+    </script>
+</body>
+</html>

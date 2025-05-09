@@ -11,4 +11,24 @@ public interface JiraService {
      * @return List of issue data as maps
      */
     List<Map<String, Object>> fetchJiraIssues(String[] issueKeys);
+    
+    /**
+     * Fetch Jira issues by JQL query
+     * @param jql JQL query string
+     * @return List of issue data as maps
+     */
+    List<Map<String, Object>> fetchJiraIssuesByJql(String jql);
+    
+    /**
+     * Get all available JIRA filters from the JSON configuration
+     * @return Map of filter names to JQL queries
+     */
+    Map<String, String> getJiraFilters();
+    
+    /**
+     * Get a specific JIRA filter by name
+     * @param filterName The name of the filter to get
+     * @return The JQL query string or null if not found
+     */
+    String getJiraFilterByName(String filterName);
 } 

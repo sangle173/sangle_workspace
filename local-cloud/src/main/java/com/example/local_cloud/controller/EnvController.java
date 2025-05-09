@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -35,6 +36,23 @@ public class EnvController {
             response.put("status", "error");
             response.put("message", "JIRA API token is missing in the .env file");
             response.put("missingVars", new String[]{"JIRA_API_TOKEN"});
+        }
+        
+        return ResponseEntity.ok(response);
+    }
+    
+    @GetMapping("/get-value")
+    public ResponseEntity<Map<String, Object>> getEnvValue(@RequestParam("key") String key) {
+        Map<String, Object> response = new HashMap<>();
+        
+        String value = envConfig.getEnvValue(key, "");
+        
+        if (!value.isEmpty()) {
+            response.put("status", "success");
+            response.put("value", value);
+        } else {
+            response.put("status", "error");
+            response.put("message", "Environment variable not found: " + key);
         }
         
         return ResponseEntity.ok(response);

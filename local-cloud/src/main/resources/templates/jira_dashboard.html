@@ -25,19 +25,145 @@
             margin-bottom: 20px;
             background-color: #f8f9fa;
         }
+        
+        /* Status colors */
+        .status-open { background-color: #454545; color: white; }
+        .status-in-progress { background-color: #0052CC; color: white; }
+        .status-closed { background-color: #00875A; color: white; }
+        .status-resolved { background-color: #00875A; color: white; }
+        .status-in-verification { background-color: #0052CC; color: white; }
+        .status-ready-to-verify { background-color: #0052CC; color: white; }
+        .status-blocked { background-color: #DFE1E5; color: black; }
+        .status-reopened { background-color: #FF0000; color: white; }
+        .status-in-review { background-color: #0052CC; color: white; }
+        .status-testing { background-color: #0052CC; color: white; }
+        .status-waiting-for-partner { background-color: #0052CC; color: white; }
+        .status-done { background-color: #00875A; color: white; }
+        .status-reviewed { background-color: #0052CC; color: white; }
+        
+        .status-pill {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        /* Summary column formatting */
+        .summary-cell {
+            width: 50%; 
+            max-width: 400px; 
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis;
+        }
+        
+        /* Table cells should truncate text properly */
+        .table-responsive {
+            overflow-x: auto;
+        }
+        
+        .key-cell {
+            width: 10%;
+        }
+        
+        .status-cell {
+            width: 10%;
+            text-align: center;
+        }
+        
+        .type-cell {
+            width: 15%;
+        }
+        
+        .date-cell {
+            width: 15%;
+        }
+        
+        .action-cell {
+            width: 10%;
+            text-align: center;
+        }
+        
+        /* Confirmation Modal */
+        .modal-confirm {
+            color: #636363;
+        }
+        
+        .modal-confirm .modal-content {
+            padding: 20px;
+            border-radius: 5px;
+            border: none;
+        }
+        
+        .modal-confirm .modal-header {
+            border-bottom: none;
+            position: relative;
+        }
+        
+        .modal-confirm h4 {
+            text-align: center;
+            font-size: 26px;
+            margin: 30px 0 -15px;
+        }
+        
+        .modal-confirm .form-control, .modal-confirm .btn {
+            min-height: 40px;
+            border-radius: 3px;
+        }
+        
+        .modal-confirm .close {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+        }
+        
+        .modal-confirm .modal-footer {
+            border: none;
+            text-align: center;
+            border-radius: 5px;
+            font-size: 13px;
+        }
+        
+        .modal-confirm .icon-box {
+            color: #fff;
+            position: absolute;
+            margin: 0 auto;
+            left: 0;
+            right: 0;
+            top: -70px;
+            width: 95px;
+            height: 95px;
+            border-radius: 50%;
+            z-index: 9;
+            background: #0d6efd;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0px 2px 2px rgba(0, 0, 0, 0.1);
+        }
+        
+        .modal-confirm .icon-box i {
+            font-size: 58px;
+            position: relative;
+            top: 3px;
+        }
     </style>
 </head>
 <body>
     <!-- Shared navbar -->
     <div th:replace="~{fragments/navbar :: navbar}"></div>
 
-    <div class="container py-4">
+    <div class="container-fluid py-4">
         <div class="d-flex align-items-center">
             <h5 class="mb-0">🔍 JIRA Dashboard</h5>
             <button type="button" class="ms-2 btn btn-sm btn-link text-decoration-none p-0" 
                     data-bs-toggle="modal" data-bs-target="#helpModal">
                 <i class="bi bi-info-circle-fill text-primary" style="font-size: 1.2rem;"></i>
             </button>
+            <a href="/jira-dashboard/tasks" class="ms-auto btn btn-primary btn-sm">
+                <i class="bi bi-kanban"></i> Your Tasks
+            </a>
         </div>
 
         <!-- Environment Status Check -->
@@ -70,7 +196,12 @@
                             <li>Click the "Fetch Issues" button to retrieve the issues</li>
                             <li>View the issues in the table or in Slack format</li>
                             <li>Use the tabs to switch between views</li>
+                            <li>Click on "Your Tasks" to access pre-defined JIRA filters</li>
                         </ol>
+                        <hr>
+                        <div class="small text-muted">
+                            <p class="mb-1"><strong>Note:</strong> JIRA filters are defined in <code>~/Desktop/Env/jira_filter.json</code></p>
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -107,15 +238,12 @@
             <table id="issuesTable" class="table table-striped">
                 <thead>
                     <tr>
-                        <th>Issue Key</th>
-                        <th>Summary</th>
-                        <th>Status</th>
-                        <th>Priority</th>
-                        <th>Issue Type</th>
-                        <th>Reporter</th>
-                        <th>Created Date</th>
-                        <th>Assignee</th>
-                        <th>QA Contact</th>
+                        <th class="key-cell">Issue Key</th>
+                        <th class="summary-cell">Summary</th>
+                        <th class="status-cell">Status</th>
+                        <th class="type-cell">Issue Type</th>
+                        <th class="date-cell">Created Date</th>
+                        <th class="action-cell">Action</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -140,23 +268,219 @@
     <!-- Shared footer -->
     <div th:replace="~{fragments/footer :: footer}"></div>
 
+    <!-- Create Task Confirmation Modal -->
+    <div class="modal fade" id="createTaskModal" tabindex="-1" aria-labelledby="createTaskModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="createTaskModalLabel">Create Task</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createTaskForm">
+                        <div class="mb-3">
+                            <label for="jira_id" class="form-label">JIRA ID</label>
+                            <input type="text" class="form-control" id="jira_id" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label for="jira_summary" class="form-label">Summary</label>
+                            <input type="text" class="form-control" id="jira_summary">
+                        </div>
+                        <div class="mb-3">
+                            <label for="working_status" class="form-label">Working Status</label>
+                            <select class="form-select" id="working_status">
+                                <option value="1">In Progress</option>
+                                <option value="2">Done</option>
+                                <option value="5">Pending</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="ticket_status" class="form-label">Ticket Status</label>
+                            <select class="form-select" id="ticket_status">
+                                <option value="1">In Progress</option>
+                                <option value="2">Closed</option>
+                                <option value="3">Resolved</option>
+                                <option value="4">In Verification</option>
+                                <option value="5">Ready To Verify</option>
+                                <option value="6">Blocked</option>
+                                <option value="7">Reopened</option>
+                                <option value="9">Open</option>
+                                <option value="10">In Review</option>
+                                <option value="11">Testing</option>
+                                <option value="12">WAITING FOR PARTNER</option>
+                                <option value="13">Done</option>
+                                <option value="14">Reviewed</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="createTask()">Create Task</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Result Modal -->
+    <div class="modal fade" id="resultModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Task Creation Result</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="resultMessage">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/js/setup-env.js"></script>
     <script>
-        // Initialize tooltips
+        // Domain variables
+        let apiDomain = "http://172.18.100.184/mini_project/public";
+        
+        // Initialize tooltips and fetch env variables
         document.addEventListener("DOMContentLoaded", function() {
             const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
             tooltipTriggerList.map(function(tooltipTriggerEl) {
                 return new bootstrap.Tooltip(tooltipTriggerEl);
             });
+            
+            // No need to fetch domain from env file - using hardcoded value
         });
+        
+        // Create Task related functions
+        let createTaskModal;
+        let resultModal;
+        
+        document.addEventListener("DOMContentLoaded", function() {
+            createTaskModal = new bootstrap.Modal(document.getElementById('createTaskModal'));
+            resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+        });
+        
+        function showCreateTaskModal(jiraId, jiraSummary, status) {
+            document.getElementById('jira_id').value = jiraId;
+            document.getElementById('jira_summary').value = jiraSummary;
+            
+            // Map JIRA status to ticket status ID
+            const statusLower = status.toLowerCase();
+            let ticketStatusId = "9"; // Default to "Open" (ID 9)
+            
+            if (statusLower.includes("in progress")) {
+                ticketStatusId = "1"; // In Progress
+            } else if (statusLower.includes("closed")) {
+                ticketStatusId = "2"; // Closed
+            } else if (statusLower.includes("resolved")) {
+                ticketStatusId = "3"; // Resolved
+            } else if (statusLower.includes("in verification")) {
+                ticketStatusId = "4"; // In Verification
+            } else if (statusLower.includes("ready") && statusLower.includes("verify")) {
+                ticketStatusId = "5"; // Ready To Verify
+            } else if (statusLower.includes("blocked")) {
+                ticketStatusId = "6"; // Blocked
+            } else if (statusLower.includes("reopened")) {
+                ticketStatusId = "7"; // Reopened
+            } else if (statusLower.includes("open")) {
+                ticketStatusId = "9"; // Open
+            } else if (statusLower.includes("review")) {
+                ticketStatusId = "10"; // In Review
+            } else if (statusLower.includes("testing") || statusLower.includes("test")) {
+                ticketStatusId = "11"; // Testing
+            } else if (statusLower.includes("waiting") || statusLower.includes("partner")) {
+                ticketStatusId = "12"; // WAITING FOR PARTNER
+            } else if (statusLower.includes("done")) {
+                ticketStatusId = "13"; // Done
+            } else if (statusLower.includes("reviewed")) {
+                ticketStatusId = "14"; // Reviewed
+            }
+            
+            // Set the selected ticket status
+            document.getElementById('ticket_status').value = ticketStatusId;
+            
+            createTaskModal.show();
+        }
+        
+        function createTask() {
+            const jiraId = document.getElementById('jira_id').value;
+            const jiraSummary = document.getElementById('jira_summary').value;
+            const workingStatus = document.getElementById('working_status').value;
+            const ticketStatus = document.getElementById('ticket_status').value;
+            
+            // Create payload with hardcoded defaults and dynamic user inputs
+            const payload = {
+                // Hardcoded values
+                "board_id": "1",
+                "team": "34", 
+                "type": "3",
+                "tester_1": "1",
+                "tester_2": "0",
+                "tester_3": "0",
+                "tester_4": "0",
+                "tester_5": "0",
+                "link_to_result": null,
+                "pass": "0",
+                "fail": "0",
+                
+                // Dynamic values from user input
+                "jira_id": jiraId,
+                "jira_summary": jiraSummary,
+                "working_status": workingStatus,
+                "ticket_status": ticketStatus,
+                
+                // Optional values
+                "sprint": `Sprint ${new Date().toISOString().slice(0, 7)}`,
+                "note": "Created via JIRA Dashboard"
+            };
+            
+            // Send API request
+            fetch(`${apiDomain}/api/tasks`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Success:', data);
+                createTaskModal.hide();
+                document.getElementById('resultMessage').innerHTML = `
+                    <div class="alert alert-success">
+                        <i class="bi bi-check-circle-fill me-2"></i>
+                        Task created successfully!
+                    </div>
+                    <div class="mt-2">
+                        <strong>JIRA ID:</strong> ${jiraId}<br>
+                        <strong>Summary:</strong> ${jiraSummary}
+                    </div>
+                `;
+                resultModal.show();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                createTaskModal.hide();
+                document.getElementById('resultMessage').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Error creating task: ${error.message || 'Unknown error'}
+                    </div>
+                `;
+                resultModal.show();
+            });
+        }
         
         async function fetchIssues() {
             const issueKeys = document.getElementById("issueKeys").value;
             
             // Show loading indicator
             document.getElementById("issuesTable").querySelector("tbody").innerHTML = 
-                '<tr><td colspan="9" class="text-center"><div class="spinner-border text-primary" role="status"></div></td></tr>';
+                '<tr><td colspan="6" class="text-center"><div class="spinner-border text-primary" role="status"></div></td></tr>';
             document.getElementById("slackList").innerHTML = 
                 '<div class="text-center"><div class="spinner-border text-primary" role="status"></div></div>';
 
@@ -173,7 +497,7 @@
             } catch (error) {
                 console.error("Error fetching issues:", error);
                 document.getElementById("issuesTable").querySelector("tbody").innerHTML = 
-                    `<tr><td colspan="9" class="text-center text-danger">Error fetching issues: ${error.message}</td></tr>`;
+                    `<tr><td colspan="6" class="text-center text-danger">Error fetching issues: ${error.message}</td></tr>`;
                 document.getElementById("slackList").innerHTML = 
                     `<li class="list-group-item text-danger">Error fetching issues: ${error.message}</li>`;
             }
@@ -184,22 +508,28 @@
             tableBody.innerHTML = "";
             
             if (!issues || issues.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="9" class="text-center">No issues found</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="6" class="text-center">No issues found</td></tr>';
                 return;
             }
 
             issues.forEach(issue => {
+                // Convert status to lowercase and prepare CSS class
+                const statusLower = issue.status.toLowerCase().replace(/\s+/g, '-');
+                const statusClass = `status-${statusLower}`;
+                
                 tableBody.innerHTML += `
                     <tr>
-                        <td style="width: 10%"><a href="${getJiraBaseUrl()}/browse/${issue.key}" target="_blank">${issue.key}</a></td>
-                        <td>${issue.summary}</td>
-                        <td>${issue.status}</td>
-                        <td>${issue.priority}</td>
-                        <td>${issue.issue_type}</td>
-                        <td>${issue.reporter}</td>
-                        <td>${issue.created}</td>
-                        <td>${issue.assignee}</td>
-                        <td>${issue.qa_contact}</td>
+                        <td class="key-cell"><a href="${getJiraBaseUrl()}/browse/${issue.key}" target="_blank">${issue.key}</a></td>
+                        <td class="summary-cell" title="${issue.summary}">${issue.summary}</td>
+                        <td class="status-cell"><span class="status-pill ${statusClass}">${issue.status}</span></td>
+                        <td class="type-cell">${issue.issue_type}</td>
+                        <td class="date-cell">${issue.created}</td>
+                        <td class="action-cell">
+                            <button class="btn btn-sm btn-primary" 
+                                onclick="showCreateTaskModal('${issue.key}', '${issue.summary.replace(/'/g, "\\'")}', '${issue.status.replace(/'/g, "\\'")}')">
+                                <i class="bi bi-plus-circle"></i>
+                            </button>
+                        </td>
                     </tr>`;
             });
         }
@@ -214,10 +544,16 @@
             }
 
             issues.forEach(issue => {
+                // Convert status to lowercase for styling
+                const statusLower = issue.status.toLowerCase().replace(/\s+/g, '-');
+                
                 slackList.innerHTML += `
                     <li class="list-group-item">
                         <a href="${getJiraBaseUrl()}/browse/${issue.key}" target="_blank">${issue.key}</a> - 
-                        ${issue.summary} - <strong>${issue.status.toUpperCase()}</strong>
+                        ${issue.summary} - <strong class="text-${statusLower === 'done' ? 'success' : 
+                                                statusLower === 'in-progress' ? 'primary' : 
+                                                statusLower === 'reopened' ? 'danger' : 
+                                                'secondary'}">${issue.status}</strong>
                     </li>`;
             });
         }

@@ -28,4 +28,37 @@ public class JiraDashboardController {
         List<Map<String, Object>> issues = jiraService.fetchJiraIssues(issueKeys.trim().split("\\s+"));
         return ResponseEntity.ok(Map.of("issues", issues));
     }
+    
+    @GetMapping("/tasks")
+    public String showTasksPage(Model model) {
+        // Add the filters to the model
+        model.addAttribute("jiraFilters", jiraService.getJiraFilters());
+        return "jira_tasks";
+    }
+    
+    @GetMapping("/filter/{filterName}")
+    public String showFilterResults(@PathVariable String filterName, Model model) {
+        String jql = jiraService.getJiraFilterByName(filterName);
+        if (jql == null) {
+            model.addAttribute("error", "Filter not found: " + filterName);
+            return "jira_filter_detail";
+        }
+        
+        model.addAttribute("filterName", filterName);
+        model.addAttribute("jql", jql);
+        return "jira_filter_detail";
+    }
+    
+    @PostMapping("/fetch-by-jql")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> fetchIssuesByJql(@RequestParam("jql") String jql) {
+        List<Map<String, Object>> issues = jiraService.fetchJiraIssuesByJql(jql);
+        return ResponseEntity.ok(Map.of("issues", issues));
+    }
+    
+    @GetMapping("/filters")
+    @ResponseBody
+    public ResponseEntity<Map<String, String>> getFilters() {
+        return ResponseEntity.ok(jiraService.getJiraFilters());
+    }
 } 

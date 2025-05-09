@@ -1,0 +1,8 @@
+{
+  "Bug Backlog": "project = AUDIO AND type = Bug AND status = Open ORDER BY priority DESC",
+  "My Open Tasks": "assignee = currentUser() AND status != Done ORDER BY updated DESC",
+  "High Priority Issues": "priority in (Highest, High) AND status not in (Done, Closed) ORDER BY created DESC",
+  "Recently Updated": "updated >= -7d ORDER BY updated DESC",
+  "QA Ready": "status = 'Ready for QA' ORDER BY priority DESC",
+  "Production Issues": "labels = production AND status != Resolved ORDER BY priority DESC"
+} 
