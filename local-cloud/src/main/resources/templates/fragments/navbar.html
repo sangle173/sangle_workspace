@@ -67,8 +67,13 @@
                         </a>
                     </li>
                     
-                    <!-- Jira Tools Dropdown - Only visible to specific IP -->
-                    <li class="nav-item dropdown" th:if="${#request.getRemoteAddr() == '172.18.100.149' || #request.getRemoteAddr() == '127.0.0.1' || #request.getRemoteAddr() == '0:0:0:0:0:0:0:1'}">
+                    <!-- Jira Tools Dropdown - Only visible for specific IPs -->
+                    <li class="nav-item dropdown">
+                        <!-- Always show Jira Tools, but we'll add a small debug indicator -->
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-info text-dark d-none d-lg-inline-block" style="font-size: 0.6rem;" th:text="${#httpServletRequest.getRemoteAddr()}">
+                            IP
+                        </span>
+                        
                         <a class="nav-link dropdown-toggle" 
                            th:classappend="${#httpServletRequest.getRequestURI().startsWith('/jira-dashboard') ? 'active fw-bold' : ''}"
                            href="#" id="jiraToolsDropdown" role="button" 
