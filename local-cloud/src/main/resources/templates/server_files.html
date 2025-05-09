@@ -29,11 +29,19 @@
                     <i class="bi bi-info-circle ms-2" tabindex="0" data-bs-toggle="tooltip" data-bs-placement="right" title="Browse, upload, and manage files on the server." onclick="showFeatureHelp('localServerFolder')" style="cursor:pointer;"></i>
                     <span th:if="${relPath != ''}" th:text="'/' + ${relPath}" class="ms-2"></span>
                 </h5>
-                <a th:if="${parent != null}" th:href="@{'/server-files'(path=${parent})}" class="btn btn-outline-secondary btn-sm ms-3">⬅️ Up to Parent</a>
+                <a th:if="${parent != null}" th:href="${'/server-files?path=' + parent}" class="btn btn-outline-secondary btn-sm ms-3">⬅️ Up to Parent</a>
             </div>
-            <button class="btn btn-outline-secondary btn-sm" style="min-width:150px;" onclick="openLocalServerFolder()">
-                <i class="bi bi-folder2-open"></i> Open LocalServerFolder
-            </button>
+            <div class="d-flex gap-2">
+                <button th:if="${#strings.equals(relPath, 'Builds') || #strings.equals(relPath, 'Builds/')}" class="btn btn-outline-primary btn-sm" style="min-width:150px;" onclick="showSyncBuildModal('both')">
+                    <i class="bi bi-cloud-download"></i> Sync Latest Builds
+                </button>
+                <button th:if="${relPath == ''}" class="btn btn-outline-primary btn-sm" style="min-width:150px;" onclick="window.location.href='/server-files?path=Builds'">
+                    <i class="bi bi-download"></i> Builds
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" style="min-width:150px;" onclick="openLocalServerFolder()">
+                    <i class="bi bi-folder2-open"></i> Open LocalServerFolder
+                </button>
+            </div>
         </div>
         <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
         <div class="table-responsive">
@@ -59,7 +67,12 @@
                     <i th:if="${!file.isDir and (#strings.endsWith(file.name.toLowerCase(), '.mp4') or #strings.endsWith(file.name.toLowerCase(), '.avi'))}" class="bi bi-file-earmark-play file-icon fs-4"></i>
                     <i th:if="${!file.isDir and (#strings.endsWith(file.name.toLowerCase(), '.mp3') or #strings.endsWith(file.name.toLowerCase(), '.wav'))}" class="bi bi-file-earmark-music file-icon fs-4"></i>
                     <i th:if="${!file.isDir and !(#strings.endsWith(file.name.toLowerCase(), '.apk') or #strings.endsWith(file.name.toLowerCase(), '.ipa') or #strings.endsWith(file.name.toLowerCase(), '.pdf') or #strings.endsWith(file.name.toLowerCase(), '.doc') or #strings.endsWith(file.name.toLowerCase(), '.docx') or #strings.endsWith(file.name.toLowerCase(), '.xls') or #strings.endsWith(file.name.toLowerCase(), '.xlsx') or #strings.endsWith(file.name.toLowerCase(), '.ppt') or #strings.endsWith(file.name.toLowerCase(), '.pptx') or #strings.endsWith(file.name.toLowerCase(), '.txt') or #strings.endsWith(file.name.toLowerCase(), '.zip') or #strings.endsWith(file.name.toLowerCase(), '.rar') or #strings.endsWith(file.name.toLowerCase(), '.jpg') or #strings.endsWith(file.name.toLowerCase(), '.jpeg') or #strings.endsWith(file.name.toLowerCase(), '.png') or #strings.endsWith(file.name.toLowerCase(), '.gif') or #strings.endsWith(file.name.toLowerCase(), '.mp4') or #strings.endsWith(file.name.toLowerCase(), '.avi') or #strings.endsWith(file.name.toLowerCase(), '.mp3') or #strings.endsWith(file.name.toLowerCase(), '.wav'))}" class="bi bi-file-earmark-fill file-icon fs-4"></i>
-                    <a th:if="${file.isDir}" th:href="${file.browse}" th:text="${file.name}" class="file-name text-decoration-none"></a>
+                    <a th:if="${file.isDir}" th:href="${file.browse}" th:text="${file.name}" class="file-name text-decoration-none d-none d-md-inline"></a>
+                    <a th:if="${file.isDir}" href="#" class="file-name d-md-none text-decoration-none"
+                       th:attr="data-filename=${file.name},data-created=${file.created},data-browse=${file.browse},data-path=${relPath + (relPath != '' ? '/' : '') + file.name},data-isdir=${file.isDir}"
+                       onclick="showFileActionModal(this)">
+                       <span th:text="${file.name}"></span>
+                    </a>
                     <span th:if="${!file.isDir}" th:text="${file.name}" class="file-name d-none d-md-inline"></span>
                     <a th:if="${!file.isDir}" href="#" class="file-name d-md-none text-decoration-none"
                        th:attr="data-filename=${file.name},data-size=${file.sizeDisplay},data-created=${file.created},data-link=${file.link},data-path=${relPath + (relPath != '' ? '/' : '') + file.name},data-isdir=${file.isDir}"
@@ -80,6 +93,12 @@
                     <button th:if="${!file.isDir}" class="btn btn-sm btn-outline-secondary copy-btn me-2" th:attr="data-link=${file.link}" onclick="copyLink(this)" title="Copy Link">
                         <i class="bi bi-clipboard"></i>
                     </button>
+                    <button th:if="${file.isDir}" class="btn btn-sm btn-outline-secondary copy-btn me-2" th:attr="data-link=${file.browse}" onclick="copyLink(this)" title="Copy Folder Link">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
+                    <button th:if="${file.isDir}" class="btn btn-sm btn-outline-secondary me-2" th:attr="data-folder-path=${relPath + (relPath != '' ? '/' : '') + file.name}" onclick="openSubFolder(this)" title="Open Folder">
+                        <i class="bi bi-folder2-open"></i>
+                    </button>
                     <button th:if="${!file.isDir and file.name.toLowerCase().endsWith('.ipa')}" class="btn btn-sm btn-outline-success" th:attr="data-path=${relPath + (relPath != '' ? '/' : '') + file.name}" onclick="showInstallModal(this)" title="Install IPA">
                         <i class="bi bi-phone"></i>
                     </button>
@@ -88,7 +107,8 @@
                     </button>
                 </div>
             </li>
-            <li th:if="${files.size() == 0}" class="list-group-item text-center text-muted">No files or folders</li>
+            <li th:if="${files != null and files.size() == 0}" class="list-group-item text-center text-muted">No files or folders</li>
+            <li th:if="${files == null}" class="list-group-item text-center text-muted">Error loading folder contents</li>
         </ul>
         </div>
     </div>
@@ -133,6 +153,43 @@
         </div>
     </div>
 
+    <!-- Sync Build Modal -->
+    <div class="modal fade" id="syncBuildModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="syncBuildModalTitle">Sync Latest Build</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="syncInfo" class="mb-3">
+                        <div id="iosInfo">
+                            <p>This will download the latest iOS build from:</p>
+                            <code class="d-block p-2 bg-light rounded">http://172.18.100.184:5000/logigear/passport-ios-generic-local-main/</code>
+                            <p class="mt-2 mb-0">The IPA file will be saved to:</p>
+                            <code class="d-block p-2 bg-light rounded">~/Desktop/LocalServerFolder/Builds/iOS/</code>
+                        </div>
+                        <div id="androidInfo" style="display:none;">
+                            <p>This will download the latest Android build from:</p>
+                            <code class="d-block p-2 bg-light rounded">http://172.18.100.184:5000/logigear/passport-android-generic-local-main/</code>
+                            <p class="mt-2 mb-0">The APK file will be saved to:</p>
+                            <code class="d-block p-2 bg-light rounded">~/Desktop/LocalServerFolder/Builds/Android/</code>
+                        </div>
+                        <hr>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="testBuildServer()">
+                            <i class="bi bi-wrench"></i> Test Build Server Connection
+                        </button>
+                    </div>
+                    <div id="syncLog" style="white-space:pre-line; font-family:monospace; background:#f8f9fa; padding:0.5em; border-radius:4px; min-height:60px; display:none;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="syncBtn" onclick="syncLatestBuild()">Sync Latest Build</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- File Action Modal (Mobile) -->
     <div class="modal fade" id="fileActionModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -168,11 +225,17 @@
     function copyLink(btn) {
         const link = btn.getAttribute('data-link');
         navigator.clipboard.writeText(window.location.origin + link).then(() => {
+            // Save original content
+            const originalHTML = btn.innerHTML;
+            
+            // Show "Copied!" feedback
             btn.innerText = 'Copied!';
             btn.classList.remove('btn-outline-secondary');
             btn.classList.add('btn-success');
+            
+            // Revert to original content after 1.2 seconds
             setTimeout(() => {
-                btn.innerText = 'Copy Link';
+                btn.innerHTML = originalHTML;
                 btn.classList.remove('btn-success');
                 btn.classList.add('btn-outline-secondary');
             }, 1200);
@@ -186,6 +249,310 @@
                     alert('Failed to open the folder. (Are you running on Ubuntu/Linux with a desktop?)');
                 }
             });
+    }
+
+    let syncMode = 'ios'; // 'ios', 'android', or 'both'
+    
+    function showSyncBuildModal(mode) {
+        syncMode = mode || 'ios';
+        const modal = new bootstrap.Modal(document.getElementById('syncBuildModal'));
+        document.getElementById('syncLog').style.display = 'none';
+        document.getElementById('syncInfo').style.display = 'block';
+        document.getElementById('syncBtn').disabled = false;
+        
+        // Update modal title and content based on sync mode
+        const modalTitle = document.getElementById('syncBuildModalTitle');
+        if (syncMode === 'ios') {
+            modalTitle.innerText = 'Sync Latest iOS Build';
+            document.getElementById('iosInfo').style.display = 'block';
+            document.getElementById('androidInfo').style.display = 'none';
+        } else if (syncMode === 'android') {
+            modalTitle.innerText = 'Sync Latest Android Build';
+            document.getElementById('iosInfo').style.display = 'none';
+            document.getElementById('androidInfo').style.display = 'block';
+        } else { // both
+            modalTitle.innerText = 'Sync Latest iOS & Android Builds';
+            document.getElementById('iosInfo').style.display = 'block';
+            document.getElementById('androidInfo').style.display = 'block';
+        }
+        
+        modal.show();
+    }
+
+    function syncLatestBuild() {
+        document.getElementById('syncBtn').disabled = true;
+        document.getElementById('syncLog').style.display = 'block';
+        document.getElementById('syncLog').innerText = 'Syncing latest build(s), please wait...';
+        
+        let endpoint = '/server-files/sync-latest-ios-build';
+        if (syncMode === 'android') {
+            endpoint = '/server-files/sync-latest-android-build';
+        } else if (syncMode === 'both') {
+            endpoint = '/server-files/sync-latest-builds';
+        }
+
+        fetch(endpoint, {
+            method: 'POST'
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (syncMode === 'both') {
+                // Handle combined result for both iOS and Android
+                let resultHTML = '';
+                
+                if (data.success) {
+                    if (data.allAlreadySynced) {
+                        resultHTML += `<div class="alert alert-info mb-3">
+                            <i class="bi bi-info-circle-fill me-2"></i> You already have the latest builds
+                            </div>`;
+                    } else {
+                        resultHTML += `<div class="alert alert-success mb-3">
+                            <i class="bi bi-check-circle-fill me-2"></i> Synced one or more builds successfully
+                            </div>`;
+                    }
+                } else {
+                    resultHTML += `<div class="alert alert-danger mb-3">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i> Failed to sync builds
+                        </div>`;
+                }
+                
+                if (data.ios) {
+                    resultHTML += `<div class="card mb-3">
+                        <div class="card-header">
+                            <i class="bi bi-apple me-2"></i> iOS Build
+                        </div>
+                        <div class="card-body">`;
+                    
+                    if (data.ios.success) {
+                        const alertClass = data.ios.alreadySynced ? 'alert-info' : 'alert-success';
+                        const icon = data.ios.alreadySynced ? 'bi-info-circle-fill' : 'bi-check-circle-fill';
+                        
+                        resultHTML += `<div class="alert ${alertClass} mb-2">
+                            <i class="bi ${icon} me-2"></i> ${data.ios.message}
+                            </div>
+                            <div class="mb-2">
+                            <b>Build #:</b> ${data.ios.buildNumber}<br>
+                            <b>File:</b> ${data.ios.fileName}
+                            </div>`;
+                    } else {
+                        resultHTML += `<div class="alert alert-danger mb-0">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i> ${data.ios.message}
+                            </div>`;
+                    }
+                    
+                    resultHTML += `</div></div>`;
+                }
+                
+                if (data.android) {
+                    resultHTML += `<div class="card mb-3">
+                        <div class="card-header">
+                            <i class="bi bi-android2 me-2"></i> Android Build
+                        </div>
+                        <div class="card-body">`;
+                    
+                    if (data.android.success) {
+                        const alertClass = data.android.alreadySynced ? 'alert-info' : 'alert-success';
+                        const icon = data.android.alreadySynced ? 'bi-info-circle-fill' : 'bi-check-circle-fill';
+                        
+                        resultHTML += `<div class="alert ${alertClass} mb-2">
+                            <i class="bi ${icon} me-2"></i> ${data.android.message}
+                            </div>
+                            <div class="mb-2">
+                            <b>Build #:</b> ${data.android.buildNumber}<br>
+                            <b>File:</b> ${data.android.fileName}
+                            </div>`;
+                    } else {
+                        resultHTML += `<div class="alert alert-danger mb-0">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i> ${data.android.message}
+                            </div>`;
+                    }
+                    
+                    resultHTML += `</div></div>`;
+                }
+                
+                resultHTML += `<div class="mt-2">
+                    <button class="btn btn-sm btn-outline-primary" onclick="window.location.reload()">Refresh Page</button>
+                    </div>`;
+                
+                document.getElementById('syncLog').innerHTML = resultHTML;
+            } else {
+                // Handle single sync result (iOS or Android)
+                if (data.success) {
+                    const iconClass = syncMode === 'ios' ? 'bi-apple' : 'bi-android2';
+                    
+                    // Use different styling for already synced builds
+                    if (data.alreadySynced) {
+                        document.getElementById('syncLog').innerHTML = `<div class="alert alert-info mb-0">
+                            <i class="bi bi-info-circle-fill me-2"></i> ${data.message}
+                            </div>
+                            <div class="mt-2">
+                            <b>Build #:</b> ${data.buildNumber}<br>
+                            <b>File:</b> ${data.fileName}
+                            </div>
+                            <div class="mt-2">
+                            <button class="btn btn-sm btn-outline-primary" onclick="window.location.reload()">Refresh Page</button>
+                            </div>`;
+                    } else {
+                        document.getElementById('syncLog').innerHTML = `<div class="alert alert-success mb-0">
+                            <i class="bi bi-check-circle-fill me-2"></i> ${data.message}
+                            </div>
+                            <div class="mt-2">
+                            <b>Build #:</b> ${data.buildNumber}<br>
+                            <b>File:</b> ${data.fileName}
+                            </div>
+                            <div class="mt-2">
+                            <button class="btn btn-sm btn-outline-primary" onclick="window.location.reload()">Refresh Page</button>
+                            </div>`;
+                    }
+                } else {
+                    document.getElementById('syncLog').innerHTML = `<div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i> ${data.message}
+                        </div>`;
+                    document.getElementById('syncBtn').disabled = false;
+                }
+            }
+            document.getElementById('syncInfo').style.display = 'none';
+        })
+        .catch(error => {
+            document.getElementById('syncLog').innerHTML = `<div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i> Failed to sync build: ${error.message}
+                </div>`;
+            document.getElementById('syncBtn').disabled = false;
+            document.getElementById('syncInfo').style.display = 'none';
+        });
+    }
+
+    function testBuildServer() {
+        document.getElementById('syncLog').style.display = 'block';
+        document.getElementById('syncLog').innerText = 'Testing connection to build server...';
+        
+        // Determine which server to test based on syncMode
+        const serverType = syncMode === 'both' ? 'ios' : syncMode; // Default to iOS for 'both' mode
+        
+        fetch('/server-files/test-build-server?type=' + serverType)
+            .then(res => res.json())
+            .then(data => {
+                let resultHtml = '<div class="mb-3">';
+                
+                if (data.connected) {
+                    resultHtml += `<div class="alert alert-success">
+                        <i class="bi bi-check-circle-fill me-2"></i> Successfully connected to the ${data.type.toUpperCase()} build server!
+                    </div>`;
+                } else {
+                    resultHtml += `<div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i> Failed to connect to the ${data.type.toUpperCase()} build server
+                        ${data.error ? '<br>' + data.error : ''}
+                    </div>`;
+                }
+                
+                resultHtml += '</div>';
+                
+                // Show response details
+                resultHtml += '<div class="card">';
+                resultHtml += '<div class="card-header fw-bold">Connection Details</div>';
+                resultHtml += '<div class="card-body">';
+                resultHtml += `<p><b>Server Type:</b> ${data.type.toUpperCase()}</p>`;
+                resultHtml += `<p><b>Server URL:</b> ${data.url}</p>`;
+                resultHtml += `<p><b>Response Code:</b> ${data.responseCode || 'N/A'}</p>`;
+                
+                if (data.buildNumbersFound) {
+                    resultHtml += `<p><b>Build Numbers Found:</b> ${data.buildNumbersFound.join(', ')}</p>`;
+                    resultHtml += `<p><b>Pattern Matched:</b> ${data.patternMatched ? 'Yes' : 'No'}</p>`;
+                }
+                
+                resultHtml += '</div></div>';
+                
+                // Show content preview if available
+                if (data.contentPreview) {
+                    resultHtml += '<div class="card mt-3">';
+                    resultHtml += '<div class="card-header fw-bold">HTML Content Preview</div>';
+                    resultHtml += '<div class="card-body">';
+                    resultHtml += `<pre style="max-height:200px;overflow:auto">${escapeHtml(data.contentPreview)}</pre>`;
+                    resultHtml += '</div></div>';
+                }
+                
+                if (syncMode === 'both') {
+                    resultHtml += '<div class="mt-3">';
+                    resultHtml += `<button class="btn btn-sm btn-outline-secondary me-2" onclick="testOtherServer('android')">
+                        <i class="bi bi-android2"></i> Test Android Server Instead
+                    </button>`;
+                    resultHtml += '</div>';
+                }
+                
+                document.getElementById('syncLog').innerHTML = resultHtml;
+            })
+            .catch(error => {
+                document.getElementById('syncLog').innerHTML = `<div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i> Error testing connection: ${error.message}
+                </div>`;
+            });
+    }
+    
+    function testOtherServer(type) {
+        document.getElementById('syncLog').innerText = 'Testing connection to ' + type.toUpperCase() + ' build server...';
+        
+        fetch('/server-files/test-build-server?type=' + type)
+            .then(res => res.json())
+            .then(data => {
+                let resultHtml = '<div class="mb-3">';
+                
+                if (data.connected) {
+                    resultHtml += `<div class="alert alert-success">
+                        <i class="bi bi-check-circle-fill me-2"></i> Successfully connected to the ${data.type.toUpperCase()} build server!
+                    </div>`;
+                } else {
+                    resultHtml += `<div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i> Failed to connect to the ${data.type.toUpperCase()} build server
+                        ${data.error ? '<br>' + data.error : ''}
+                    </div>`;
+                }
+                
+                resultHtml += '</div>';
+                
+                // Show response details
+                resultHtml += '<div class="card">';
+                resultHtml += '<div class="card-header fw-bold">Connection Details</div>';
+                resultHtml += '<div class="card-body">';
+                resultHtml += `<p><b>Server Type:</b> ${data.type.toUpperCase()}</p>`;
+                resultHtml += `<p><b>Server URL:</b> ${data.url}</p>`;
+                resultHtml += `<p><b>Response Code:</b> ${data.responseCode || 'N/A'}</p>`;
+                
+                if (data.buildNumbersFound) {
+                    resultHtml += `<p><b>Build Numbers Found:</b> ${data.buildNumbersFound.join(', ')}</p>`;
+                    resultHtml += `<p><b>Pattern Matched:</b> ${data.patternMatched ? 'Yes' : 'No'}</p>`;
+                }
+                
+                resultHtml += '</div></div>';
+                
+                // Show content preview if available
+                if (data.contentPreview) {
+                    resultHtml += '<div class="card mt-3">';
+                    resultHtml += '<div class="card-header fw-bold">HTML Content Preview</div>';
+                    resultHtml += '<div class="card-body">';
+                    resultHtml += `<pre style="max-height:200px;overflow:auto">${escapeHtml(data.contentPreview)}</pre>`;
+                    resultHtml += '</div></div>';
+                }
+                
+                resultHtml += '<div class="mt-3">';
+                resultHtml += `<button class="btn btn-sm btn-outline-secondary me-2" onclick="testOtherServer('${type === 'ios' ? 'android' : 'ios'}')">
+                    <i class="bi ${type === 'ios' ? 'bi-android2' : 'bi-apple'}"></i> Test ${type === 'ios' ? 'Android' : 'iOS'} Server Instead
+                </button>`;
+                resultHtml += '</div>';
+                
+                document.getElementById('syncLog').innerHTML = resultHtml;
+            })
+            .catch(error => {
+                document.getElementById('syncLog').innerHTML = `<div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i> Error testing connection: ${error.message}
+                </div>`;
+            });
+    }
+
+    // Helper function to safely escape HTML
+    function escapeHtml(html) {
+        const div = document.createElement('div');
+        div.textContent = html;
+        return div.innerHTML;
     }
 
     let currentIPAPath = null;
@@ -302,29 +669,48 @@
 
     function showFileActionModal(el) {
         const isDir = el.getAttribute('data-isdir');
-        if (isDir === 'true' || isDir === true) return; // Only for files
         const name = el.getAttribute('data-filename');
         const size = el.getAttribute('data-size');
         const created = el.getAttribute('data-created');
         const link = el.getAttribute('data-link');
-        const relPath = el.getAttribute('data-path').replace(name, '');
+        const path = el.getAttribute('data-path');
+        const relPath = path ? path.replace(name, '') : '';
+        
         document.getElementById('fileActionModalTitle').innerText = name;
+        
         let html = '';
-        if (size) html += `<div><b>Size:</b> ${size}</div>`;
+        if (isDir === 'true' || isDir === true) {
+            html += `<div><b>Type:</b> Folder</div>`;
+        } else if (size) {
+            html += `<div><b>Size:</b> ${size}</div>`;
+        }
         if (created) html += `<div><b>Created:</b> ${created}</div>`;
         document.getElementById('fileActionModalDetails').innerHTML = html;
+        
         // Action buttons
         let btns = '';
-        if (link) {
-            btns += `<a href="${link}" class="btn btn-outline-primary btn-sm" download><i class="bi bi-download"></i> Download</a>`;
-            btns += `<button class="btn btn-outline-secondary btn-sm" onclick="navigator.clipboard.writeText(window.location.origin + '${link}');this.innerText='Copied!';setTimeout(()=>{this.innerHTML='<i class=\'bi bi-clipboard\'></i> Copy Link';},1200)"><i class="bi bi-clipboard"></i> Copy Link</button>`;
+        
+        if (isDir === 'true' || isDir === true) {
+            // Folder actions
+            const browsePath = el.getAttribute('data-browse') || '';
+            const originalFolderBtnHTML = '<i class="bi bi-clipboard"></i> Copy Link';
+            btns += `<button class="btn btn-outline-secondary btn-sm me-2" onclick="navigator.clipboard.writeText(window.location.origin + '${browsePath}');this.innerText='Copied!';this.classList.remove('btn-outline-secondary');this.classList.add('btn-success');setTimeout(()=>{this.innerHTML='${originalFolderBtnHTML}';this.classList.remove('btn-success');this.classList.add('btn-outline-secondary');},1200)"><i class="bi bi-clipboard"></i> Copy Link</button>`;
+            btns += `<button class="btn btn-outline-secondary btn-sm" onclick="openSubFolder({getAttribute:()=>('${path}')});var m=bootstrap.Modal.getInstance(document.getElementById('fileActionModal'));if(m)m.hide();"><i class="bi bi-folder2-open"></i> Open Folder</button>`;
+        } else {
+            // File actions
+            if (link) {
+                btns += `<a href="${link}" class="btn btn-outline-primary btn-sm me-2" download><i class="bi bi-download"></i> Download</a>`;
+                const originalFileBtnHTML = '<i class="bi bi-clipboard"></i> Copy Link';
+                btns += `<button class="btn btn-outline-secondary btn-sm me-2" onclick="navigator.clipboard.writeText(window.location.origin + '${link}');this.innerText='Copied!';this.classList.remove('btn-outline-secondary');this.classList.add('btn-success');setTimeout(()=>{this.innerHTML='${originalFileBtnHTML}';this.classList.remove('btn-success');this.classList.add('btn-outline-secondary');},1200)"><i class="bi bi-clipboard"></i> Copy Link</button>`;
+            }
+            if (name.toLowerCase().endsWith('.ipa')) {
+                btns += `<button class="btn btn-outline-success btn-sm" onclick="showInstallModal({getAttribute:()=>('${relPath}${name}')});var m=bootstrap.Modal.getInstance(document.getElementById('fileActionModal'));if(m)m.hide();"><i class="bi bi-phone"></i> Install IPA</button>`;
+            }
+            if (name.toLowerCase().endsWith('.apk')) {
+                btns += `<button class="btn btn-outline-success btn-sm" onclick="showAndroidInstallModal({getAttribute:()=>('${relPath}${name}')});var m=bootstrap.Modal.getInstance(document.getElementById('fileActionModal'));if(m)m.hide();"><i class="bi bi-android2"></i> Install APK</button>`;
+            }
         }
-        if (name.toLowerCase().endsWith('.ipa')) {
-            btns += `<button class="btn btn-outline-success btn-sm" onclick="showInstallModal({getAttribute:()=>('${relPath}${name}')});var m=bootstrap.Modal.getInstance(document.getElementById('fileActionModal'));if(m)m.hide();"><i class="bi bi-phone"></i> Install IPA</button>`;
-        }
-        if (name.toLowerCase().endsWith('.apk')) {
-            btns += `<button class="btn btn-outline-success btn-sm" onclick="showAndroidInstallModal({getAttribute:()=>('${relPath}${name}')});var m=bootstrap.Modal.getInstance(document.getElementById('fileActionModal'));if(m)m.hide();"><i class="bi bi-android2"></i> Install APK</button>`;
-        }
+        
         document.getElementById('fileActionModalButtons').innerHTML = btns;
         const modal = new bootstrap.Modal(document.getElementById('fileActionModal'));
         modal.show();
@@ -334,7 +720,7 @@
     const featureInstructions = {
       localServerFolder: {
         title: "Local Server Folder",
-        body: `Browse, upload, and manage files stored on the server.\n\n- Navigate folders and view file details.\n- Upload new files using the upload button.\n- Download, copy link, or install IPA/APK files directly.\n- Use the 'Open LocalServerFolder' button to open the folder on the server (if supported).\n- Use the parent button to go up a directory.\n\nYou can also install iOS (.ipa) or Android (.apk) files to connected devices if supported.`
+        body: `Browse, upload, and manage files stored on the server.\n\n- Navigate folders and view file details.\n- Upload new files using the upload button.\n- Download, copy link, or install IPA/APK files directly.\n- Use the 'Open LocalServerFolder' button to open the folder on the server (if supported).\n- Use the parent button to go up a directory.\n- In the Builds folder, you can sync the latest iOS and Android builds from the build server.\n\nYou can also install iOS (.ipa) or Android (.apk) files to connected devices if supported.`
       }
     };
     function showFeatureHelp(featureKey) {
@@ -352,6 +738,25 @@
         new bootstrap.Tooltip(tooltipTriggerEl);
       });
     });
+
+    function openSubFolder(btn) {
+        const folderPath = btn.getAttribute('data-folder-path');
+        if (!folderPath) return;
+        
+        fetch('/server-files/open-subfolder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: folderPath })
+        })
+        .then(res => {
+            if (!res.ok) {
+                alert('Failed to open the folder. (Are you running on Ubuntu/Linux with a desktop?)');
+            }
+        })
+        .catch(error => {
+            alert('Error opening folder: ' + error.message);
+        });
+    }
     </script>
 </body>
 </html> 

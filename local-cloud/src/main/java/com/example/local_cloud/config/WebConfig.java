@@ -12,6 +12,8 @@ import java.io.File;
 public class WebConfig implements WebMvcConfigurer {
 
     private static final Logger logger = LoggerFactory.getLogger(WebConfig.class);
+    private static final String DESKTOP = System.getProperty("user.home") + File.separator + "Desktop";
+    private static final String ROOT_DIR = DESKTOP + File.separator + "LocalServerFolder";
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
