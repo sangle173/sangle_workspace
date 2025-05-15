@@ -567,6 +567,39 @@
             link.click();
         }
 
+        // Helper to get all query params with the same name
+        function getQueryParams(name) {
+            const url = new URL(window.location.href);
+            return url.searchParams.getAll(name);
+        }
+
+        // On load, if src param(s) exist, add all images
+        window.addEventListener('DOMContentLoaded', () => {
+            const srcs = getQueryParams('src');
+            srcs.forEach(src => {
+                fabric.Image.fromURL(src, function(img) {
+                    // Fit image to canvas
+                    const maxWidth = canvas.width * 0.8;
+                    const maxHeight = canvas.height * 0.8;
+                    let scale = 1;
+                    if (img.width > maxWidth) scale = maxWidth / img.width;
+                    if (img.height * scale > maxHeight) scale = maxHeight / img.height;
+                    img.set({
+                        left: 1,
+                        top: 1,
+                        scaleX: scale,
+                        scaleY: scale,
+                        selectable: true,
+                        hasControls: true,
+                        hasBorders: true
+                    });
+                    canvas.add(img);
+                    img.bringToFront();
+                    canvas.renderAll();
+                }, { crossOrigin: 'anonymous' });
+            });
+        });
+
         resizeCanvas();
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

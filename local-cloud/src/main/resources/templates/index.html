@@ -152,6 +152,11 @@
                                     th:attr="onclick=|showRenameModal('${file.name}')|">
                                     <i class="bi bi-pencil-square text-success" style="font-size: 1.3rem;"></i>
                                 </button>
+                                <button type="button" class="btn btn-link p-0 ms-1" th:if="${T(java.util.Arrays).asList('jpg','jpeg','png','gif','webp').contains(file.extension?.toLowerCase())}"
+                                    title="Open in Image Editor"
+                                    th:attr="onclick=|openInImageEditor('/uploads/' + '${file.name}')|">
+                                    <i class="bi bi-brush text-info fs-5"></i>
+                                </button>
                             </div>
                         </td>
                     </tr>
@@ -196,6 +201,11 @@
                                     <button type="button" class="btn btn-link p-0 ms-1" title="Rename File"
                                         th:attr="onclick=|showRenameModal('${file.name}')|">
                                         <i class="bi bi-pencil-square text-success fs-5"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-link p-0 ms-1" th:if="${T(java.util.Arrays).asList('jpg','jpeg','png','gif','webp').contains(file.extension?.toLowerCase())}"
+                                        title="Open in Image Editor"
+                                        th:attr="onclick=|openInImageEditor('/uploads/' + '${file.name}')|">
+                                        <i class="bi bi-brush text-info fs-5"></i>
                                     </button>
                                 </div>
                             </div>
@@ -653,6 +663,10 @@
                 })
                 .catch(() => alert('❌ Failed to clear upload folder.'));
         }
+    }
+
+    function openInImageEditor(imageUrl) {
+        window.open('/image-editor?src=' + encodeURIComponent(imageUrl), '_blank');
     }
     </script>
     <!-- Convert Video Modal -->
