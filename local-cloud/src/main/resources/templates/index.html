@@ -82,11 +82,17 @@
                 <button class="btn btn-outline-secondary d-none d-sm-inline-flex" onclick="openConvertFolder()">
                     <i class="bi bi-folder-symlink"></i> Open Convert Folder
                 </button>
+                <button class="btn btn-outline-danger d-none d-sm-inline-flex" onclick="confirmClearUploadsFolder()">
+                    <i class="bi bi-trash3"></i> Clear Upload Folder
+                </button>
                 <button class="btn btn-outline-secondary d-inline-flex d-sm-none" onclick="openUploadsFolder()" title="Open Uploads Folder">
                     <i class="bi bi-folder2-open"></i>
                 </button>
                 <button class="btn btn-outline-secondary d-inline-flex d-sm-none" onclick="openConvertFolder()" title="Open Convert Folder">
                     <i class="bi bi-folder-symlink"></i>
+                </button>
+                <button class="btn btn-outline-danger d-inline-flex d-sm-none" onclick="confirmClearUploadsFolder()" title="Clear Upload Folder">
+                    <i class="bi bi-trash3"></i>
                 </button>
             </div>
         </div>
@@ -633,6 +639,21 @@
             convertAbortController = null;
         }
     };
+
+    function confirmClearUploadsFolder() {
+        if (confirm('Are you sure you want to delete all files in the Upload Folder? This action cannot be undone.')) {
+            fetch('/clear-uploadsfolder', { method: 'POST' })
+                .then(res => {
+                    if (res.ok) {
+                        alert('✅ Upload folder cleared!');
+                        window.location.reload();
+                    } else {
+                        alert('❌ Failed to clear upload folder.');
+                    }
+                })
+                .catch(() => alert('❌ Failed to clear upload folder.'));
+        }
+    }
     </script>
     <!-- Convert Video Modal -->
     <div class="modal fade" id="convertModal" tabindex="-1" aria-hidden="true">

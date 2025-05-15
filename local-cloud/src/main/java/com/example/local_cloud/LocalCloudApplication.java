@@ -73,23 +73,40 @@ class StartupInfoLogger {
             System.out.println("   ✓ ADB is installed.");
         }
         
+        // Check for HandBrakeCLI
+        if (!isPackageInstalled("handbrakecli")) {
+            System.out.println("   ⚠️ HandBrakeCLI is not installed. Please install it using:");
+            System.out.println("   sudo apt-get update && sudo apt-get install handbrake-cli");
+        } else {
+            System.out.println("   ✓ HandBrakeCLI is installed.");
+        }
+        
         System.out.println("----------------------------------------------------------\n");
     }
     
     private boolean isPackageInstalled(String packageName) {
-        ProcessBuilder processBuilder = new ProcessBuilder();
-        if (packageName.equals("ffmpeg")) {
-            processBuilder.command("bash", "-c", "which ffmpeg");
-        } else if (packageName.equals("adb")) {
-            processBuilder.command("bash", "-c", "which adb");
+        String binary = null;
+        switch (packageName.toLowerCase()) {
+            case "ffmpeg":
+                binary = "ffmpeg";
+                break;
+            case "adb":
+                binary = "adb";
+                break;
+            case "handbrakecli":
+            case "handbrake-cli":
+                binary = "HandBrakeCLI";
+                break;
+            default:
+                return false; // Unknown package, don't try to check
         }
-        
+
+        ProcessBuilder processBuilder = new ProcessBuilder("bash", "-c", "which " + binary);
         try {
             Process process = processBuilder.start();
             int exitCode = process.waitFor();
             return exitCode == 0;
         } catch (IOException | InterruptedException e) {
-            // If an error occurs, assume the package is not installed
             return false;
         }
     }

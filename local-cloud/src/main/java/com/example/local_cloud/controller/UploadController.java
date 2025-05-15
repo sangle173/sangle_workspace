@@ -118,6 +118,22 @@ public class UploadController {
         }
     }
 
+    @PostMapping("/clear-uploadsfolder")
+    @ResponseBody
+    public ResponseEntity<?> clearUploadsFolder() {
+        File folder = new File(UPLOAD_DIR);
+        File[] files = folder.listFiles();
+        int deleted = 0;
+        if (files != null) {
+            for (File file : files) {
+                if (file.isFile()) {
+                    if (file.delete()) deleted++;
+                }
+            }
+        }
+        return ResponseEntity.ok("Deleted " + deleted + " files.");
+    }
+
     public static class FileInfo {
         private final String name;
         private final String extension;
