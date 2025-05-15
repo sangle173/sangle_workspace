@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -95,7 +96,8 @@ public class VideoCutController {
     }
 
     @PostMapping
-    public String cutVideo(@RequestParam("video") String video,
+    public String cutVideo(
+            @RequestParam("videoFile") MultipartFile videoFile,
             @RequestParam("start") String start,
             @RequestParam("end") String end,
             @RequestParam(value = "accurateCut", defaultValue = "false") boolean accurateCut,
@@ -104,36 +106,44 @@ public class VideoCutController {
         // Check if FFmpeg is installed
         if (!isFFmpegInstalled()) {
             model.addAttribute("error", getFFmpegInstallInstructions());
-            
-            // Re-populate the form data
-            File uploadFolder = new File(UPLOAD_DIR);
-            List<String> videoFiles = Arrays.stream(Objects.requireNonNull(uploadFolder.listFiles()))
-                    .filter(file -> file.isFile() && file.getName().matches(".*\\.(mp4|mov|avi|mkv)$"))
-                    .map(File::getName)
-                    .collect(Collectors.toList());
-                    
-            model.addAttribute("videos", videoFiles);
-            model.addAttribute("selectedVideo", video);
             model.addAttribute("startValue", start);
             model.addAttribute("endValue", end);
             model.addAttribute("ffmpegWarning", getFFmpegInstallInstructions());
             return "cut";
         }
 
+        if (videoFile == null || videoFile.isEmpty()) {
+            model.addAttribute("error", "No video file selected.");
+            model.addAttribute("startValue", start);
+            model.addAttribute("endValue", end);
+            return "cut";
+        }
+
+        File uploadFolder = new File(UPLOAD_DIR);
+        if (!uploadFolder.exists()) uploadFolder.mkdirs();
+        String originalFilename = Objects.requireNonNull(videoFile.getOriginalFilename());
+        File savedFile = new File(UPLOAD_DIR, originalFilename);
+        try {
+            videoFile.transferTo(savedFile);
+        } catch (IOException e) {
+            model.addAttribute("error", "Failed to save uploaded file: " + e.getMessage());
+            model.addAttribute("startValue", start);
+            model.addAttribute("endValue", end);
+            return "cut";
+        }
+        String inputPath = savedFile.getAbsolutePath();
+
         File cutFolder = new File(CUT_DIR);
         if (!cutFolder.exists())
             cutFolder.mkdirs();
 
-        String inputPath = UPLOAD_DIR + File.separator + video;
-        String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
-        String outputName = "cut_" + timestamp + "_" + video;
+        String timestamp = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss").format(new java.util.Date());
+        String outputName = "cut_" + timestamp + "_" + originalFilename;
         String outputPath = CUT_DIR + File.separator + outputName;
 
-        List<String> command;
-        
+        java.util.List<String> command;
         if (accurateCut) {
-            // Method 1: More accurate but slower (re-encodes the video)
-            command = Arrays.asList(
+            command = java.util.Arrays.asList(
                     "ffmpeg", "-i", inputPath,
                     "-ss", start, "-to", end,
                     "-async", "1",
@@ -141,19 +151,13 @@ public class VideoCutController {
                     "-preset", "fast", "-crf", "22",
                     outputPath);
         } else {
-            // Method 2: Faster but less accurate for some videos
-            // First seek (fast) to a position before the start time, then cut precisely
-            // This helps ensure we capture the desired frames
-            
-            // Parse start time to see if we need to add safety margin
             float startTime = parseTimeToSeconds(start);
             String seekStart = startTime <= 5 ? "0" : String.format("%.2f", startTime - 1);
-            
-            command = Arrays.asList(
+            command = java.util.Arrays.asList(
                     "ffmpeg", "-ss", seekStart, "-i", inputPath,
-                    "-ss", startTime <= 5 ? start : "1", 
+                    "-ss", startTime <= 5 ? start : "1",
                     "-to", end,
-                    "-c", "copy", 
+                    "-c", "copy",
                     "-avoid_negative_ts", "make_zero",
                     outputPath);
         }
@@ -163,16 +167,13 @@ public class VideoCutController {
             ProcessBuilder pb = new ProcessBuilder(command);
             pb.redirectErrorStream(true);
             Process process = pb.start();
-            
-            // Capture the output for debugging
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     output.append(line).append("\n");
-                    System.out.println("[FFmpeg] " + line); // Log to console
+                    System.out.println("[FFmpeg] " + line);
                 }
             }
-            
             int exitCode = process.waitFor();
             if (exitCode != 0) {
                 model.addAttribute("error", "❌ Failed to cut video (exit code " + exitCode + ")");
@@ -183,34 +184,23 @@ public class VideoCutController {
             model.addAttribute("ffmpegOutput", output.toString());
         }
 
-        // Check if output file exists and has size > 0
         File outputFile = new File(outputPath);
         if (!outputFile.exists() || outputFile.length() == 0) {
             model.addAttribute("error", "❌ Output file was not created or is empty. Please check the start and end times.");
             model.addAttribute("ffmpegOutput", output.toString());
         }
 
-        // Reload the list of available videos
-        List<String> videoFiles = Arrays.stream(Objects.requireNonNull(new File(UPLOAD_DIR).listFiles()))
-                .filter(file -> file.isFile() && file.getName().matches(".*\\.(mp4|mov|avi|mkv)$"))
-                .map(File::getName)
-                .collect(Collectors.toList());
-
-        model.addAttribute("videos", videoFiles);
-        model.addAttribute("selectedVideo", video);
         model.addAttribute("startValue", start);
         model.addAttribute("endValue", end);
         model.addAttribute("accurateCut", accurateCut);
-        
-        // Only add download link if no error occurred
         if (!model.containsAttribute("error")) {
             model.addAttribute("openFolder", true);
             model.addAttribute("success", true);
             model.addAttribute("successMessage", "✅ Cut successful!");
             model.addAttribute("download", "/cut/download/" + outputName);
             model.addAttribute("outputFile", outputName);
+            model.addAttribute("originalVideo", originalFilename);
         }
-        
         return "cut";
     }
     

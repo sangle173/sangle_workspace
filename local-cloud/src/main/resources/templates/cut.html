@@ -93,14 +93,20 @@
             <!-- Left: Form and original video -->
             <div class="col-md-6">
                 <div class="custom-card">
-                    <form method="post" th:action="@{/cut}" class="mb-4">
+                    <form method="post" th:action="@{/cut}" class="mb-4" enctype="multipart/form-data">
                         <div class="mb-3">
                             <label class="form-label fw-bold" data-bs-toggle="tooltip" data-bs-placement="top" 
                                   title="Select a video file from your uploads folder">🎞️ Select Video:</label>
-                            <select name="video" id="videoSelect" class="form-select" required onchange="previewVideo(); updateVideoDuration();">
-                                <option th:each="v : ${videos}" th:value="${v}" th:selected="${v == selectedVideo}"
-                                    th:text="${v}">Video name</option>
-                            </select>
+                            <input type="file" name="videoFile" id="videoFileInput" class="form-control" accept="video/*" required onchange="previewLocalVideo();" />
+                        </div>
+
+                        <div th:if="${originalVideo != null}">
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="previewUploadedVideo()" title="Preview the last uploaded video">
+                                    <i class="bi bi-eye"></i> Preview Last Uploaded Video
+                                </button>
+                            </div>
+                            <input type="hidden" id="lastUploadedVideo" th:value="${originalVideo}" />
                         </div>
 
                         <div class="row mb-3">
@@ -126,6 +132,9 @@
                                            title="Format: HH:MM:SS (hours:minutes:seconds)">
                                 </div>
                             </div>
+                        </div>
+                        <div class="mb-2 text-end">
+                            <span id="cutDuration" class="badge bg-info text-dark"></span>
                         </div>
                         
                         <div class="mb-3 form-check">
@@ -304,6 +313,60 @@
             });
         }
 
+        function previewLocalVideo() {
+            const input = document.getElementById('videoFileInput');
+            const video = document.getElementById('videoPreview');
+            if (input.files && input.files[0]) {
+                const fileURL = URL.createObjectURL(input.files[0]);
+                while (video.firstChild) {
+                    video.removeChild(video.firstChild);
+                }
+                const source = document.createElement('source');
+                source.src = fileURL;
+                source.type = input.files[0].type;
+                video.appendChild(source);
+                video.load();
+            }
+        }
+
+        function parseTimeToSeconds(timeStr) {
+            const parts = timeStr.split(':').map(Number);
+            if (parts.length === 3) {
+                return parts[0] * 3600 + parts[1] * 60 + parts[2];
+            } else if (parts.length === 2) {
+                return parts[0] * 60 + parts[1];
+            } else if (parts.length === 1) {
+                return parts[0];
+            }
+            return 0;
+        }
+
+        function updateCutDuration() {
+            const start = document.getElementById('startTime').value;
+            const end = document.getElementById('endTime').value;
+            const cutDurationSpan = document.getElementById('cutDuration');
+            const startSec = parseTimeToSeconds(start);
+            const endSec = parseTimeToSeconds(end);
+            let diff = endSec - startSec;
+            if (diff < 0) diff = 0;
+            cutDurationSpan.textContent = `Cut Duration: ${formatTime(diff)}`;
+        }
+
+        function previewUploadedVideo() {
+            const video = document.getElementById('videoPreview');
+            const filename = document.getElementById('lastUploadedVideo').value;
+            if (filename) {
+                while (video.firstChild) {
+                    video.removeChild(video.firstChild);
+                }
+                const source = document.createElement('source');
+                source.src = '/uploads/' + filename;
+                source.type = 'video/mp4';
+                video.appendChild(source);
+                video.load();
+            }
+        }
+
         // Auto-trigger preview and duration update on load if a video is selected
         document.addEventListener("DOMContentLoaded", function() {
             // Initialize tooltips
@@ -336,6 +399,21 @@
             const cutResultVideo = document.getElementById('cutResultVideo');
             if (cutResultVideo) {
                 cutResultVideo.load();
+            }
+
+            const videoFileInput = document.getElementById('videoFileInput');
+            if (videoFileInput) {
+                videoFileInput.addEventListener('change', function() {
+                    previewLocalVideo();
+                });
+            }
+
+            const startTimeInput = document.getElementById('startTime');
+            const endTimeInput = document.getElementById('endTime');
+            if (startTimeInput && endTimeInput) {
+                startTimeInput.addEventListener('input', updateCutDuration);
+                endTimeInput.addEventListener('input', updateCutDuration);
+                updateCutDuration();
             }
         });
     </script>
