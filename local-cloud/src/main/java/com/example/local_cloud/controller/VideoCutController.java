@@ -6,6 +6,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -101,7 +102,8 @@ public class VideoCutController {
             @RequestParam("start") String start,
             @RequestParam("end") String end,
             @RequestParam(value = "accurateCut", defaultValue = "false") boolean accurateCut,
-            Model model) {
+            Model model,
+            RedirectAttributes redirectAttributes) {
 
         // Check if FFmpeg is installed
         if (!isFFmpegInstalled()) {
@@ -190,16 +192,17 @@ public class VideoCutController {
             model.addAttribute("ffmpegOutput", output.toString());
         }
 
-        model.addAttribute("startValue", start);
-        model.addAttribute("endValue", end);
-        model.addAttribute("accurateCut", accurateCut);
         if (!model.containsAttribute("error")) {
-            model.addAttribute("openFolder", true);
-            model.addAttribute("success", true);
-            model.addAttribute("successMessage", "✅ Cut successful!");
-            model.addAttribute("download", "/cut/download/" + outputName);
-            model.addAttribute("outputFile", outputName);
-            model.addAttribute("originalVideo", originalFilename);
+            redirectAttributes.addFlashAttribute("openFolder", true);
+            redirectAttributes.addFlashAttribute("success", true);
+            redirectAttributes.addFlashAttribute("successMessage", "✅ Cut successful!");
+            redirectAttributes.addFlashAttribute("download", "/cut/download/" + outputName);
+            redirectAttributes.addFlashAttribute("outputFile", outputName);
+            redirectAttributes.addFlashAttribute("originalVideo", originalFilename);
+            redirectAttributes.addFlashAttribute("startValue", start);
+            redirectAttributes.addFlashAttribute("endValue", end);
+            redirectAttributes.addFlashAttribute("accurateCut", accurateCut);
+            return "redirect:/cut";
         }
         return "cut";
     }

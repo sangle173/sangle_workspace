@@ -89,89 +89,54 @@
             </div>
         </div>
 
-        <div class="row">
-            <!-- Left: Form and original video -->
-            <div class="col-md-6">
-                <div class="custom-card">
-                    <form method="post" th:action="@{/cut}" class="mb-4" enctype="multipart/form-data">
-                        <div class="mb-3">
-                            <label class="form-label fw-bold" data-bs-toggle="tooltip" data-bs-placement="top" 
-                                  title="Select a video file from your uploads folder">🎞️ Select Video:</label>
-                            <input type="file" name="videoFile" id="videoFileInput" class="form-control" accept="video/*" required onchange="previewLocalVideo();" />
-                        </div>
-
-                        <div th:if="${originalVideo != null}">
-                            <div class="mt-2">
-                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="previewUploadedVideo()" title="Preview the last uploaded video">
-                                    <i class="bi bi-eye"></i> Preview Last Uploaded Video
-                                </button>
-                            </div>
-                            <input type="hidden" id="lastUploadedVideo" th:value="${originalVideo}" />
-                        </div>
-
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold" data-bs-toggle="tooltip" data-bs-placement="top" 
-                                      title="Set when to start the cut (format: HH:MM:SS)">⏱ Start Time:</label>
-                                <div class="input-group time-input">
-                                    <span class="input-group-text"><i class="bi bi-hourglass-top"></i></span>
-                                    <input type="text" name="start" id="startTime" class="form-control" 
-                                           th:value="${startValue != null ? startValue : '00:00:00'}" required
-                                           placeholder="00:00:00" data-bs-toggle="tooltip" data-bs-placement="bottom" 
-                                           title="Format: HH:MM:SS (hours:minutes:seconds)">
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold" data-bs-toggle="tooltip" data-bs-placement="top" 
-                                      title="Set when to end the cut (format: HH:MM:SS)">🏁 End Time:</label>
-                                <div class="input-group time-input">
-                                    <span class="input-group-text"><i class="bi bi-hourglass-bottom"></i></span>
-                                    <input type="text" name="end" id="endTime" class="form-control" 
-                                           th:value="${endValue != null ? endValue : '00:00:10'}" required
-                                           placeholder="00:00:10" data-bs-toggle="tooltip" data-bs-placement="bottom" 
-                                           title="Format: HH:MM:SS (hours:minutes:seconds)">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="mb-2 text-end">
-                            <span id="cutDuration" class="badge bg-info text-dark"></span>
-                        </div>
-                        
-                        <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="accurateCut" name="accurateCut" 
-                                   th:checked="${accurateCut != null ? accurateCut : true}">
-                            <label class="form-check-label" for="accurateCut" data-bs-toggle="tooltip" 
-                                  data-bs-placement="top" title="More accurate but takes longer to process. Uncheck for faster processing with slightly less accuracy.">
-                                🔍 Precise cut (slower but more accurate)
-                            </label>
-                        </div>
-
-                        <div class="text-center">
-                            <button type="submit" class="btn btn-success btn-lg px-4" data-bs-toggle="tooltip" 
-                                   data-bs-placement="top" title="Process the video cut with the specified parameters">
-                                <i class="bi bi-scissors"></i> Cut Video
-                            </button>
-                        </div>
-                    </form>
+        <!-- Cutting options/form at the top -->
+        <div class="custom-card mb-4">
+            <form method="post" th:action="@{/cut}" class="mb-4" enctype="multipart/form-data" onsubmit="this.querySelector('button[type=submit]').disabled=true;">
+                <div class="row mb-3 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold" title="Select a video file from your uploads folder">🎞️ Select Video:</label>
+                        <input type="file" name="videoFile" id="videoFileInput" class="form-control" accept="video/*" required onchange="previewLocalVideo();" />
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold" title="Set when to start the cut (format: HH:MM:SS)">⏱ Start Time:</label>
+                        <input type="text" name="start" id="startTime" class="form-control"
+                               th:value="${startValue != null ? startValue : '00:00:00'}" required
+                               placeholder="00:00:00" title="Format: HH:MM:SS (hours:minutes:seconds)">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold" title="Set when to end the cut (format: HH:MM:SS)">🏁 End Time:</label>
+                        <input type="text" name="end" id="endTime" class="form-control"
+                               th:value="${endValue != null ? endValue : '00:00:10'}" required
+                               placeholder="00:00:10" title="Format: HH:MM:SS (hours:minutes:seconds)">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-success w-100 form-control" title="Process the video cut with the specified parameters">
+                            <i class="bi bi-scissors"></i> Cut Video
+                        </button>
+                    </div>
                 </div>
+                <input type="hidden" name="accurateCut" id="accurateCut" value="true" />
+            </form>
+            <input type="hidden" id="lastUploadedVideo" th:value="${originalVideo}" />
+        </div>
 
-                <h5 class="mt-4 mb-2 fw-bold" data-bs-toggle="tooltip" data-bs-placement="top" 
-                    title="Preview the selected video before cutting">🎬 Original Video:</h5>
+        <!-- Videos side by side -->
+        <div class="row">
+            <!-- Original Video -->
+            <div class="col-md-6">
+                <h5 class="mb-2 fw-bold">🎬 Original Video:</h5>
                 <div class="video-container">
                     <video id="videoPreview" controls preload="metadata" class="shadow">
                         Your browser does not support the video tag.
                     </video>
                 </div>
-                <div class="mt-2 text-center">
-                    <button class="btn btn-sm btn-outline-secondary" id="getCurrentTimeBtn" onclick="setCurrentTime()" 
-                           data-bs-toggle="tooltip" data-bs-placement="top" title="Use the current playback position as the start time">
-                        <i class="bi bi-clock"></i> Set Current Time
+                <div class="mt-2 text-center" th:if="${originalVideo}">
+                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="previewOriginalAfterCut()" title="Preview the original uploaded video">
+                        <i class="bi bi-eye"></i> Preview Original Video
                     </button>
-                    <span id="videoDuration" class="ms-3 badge bg-secondary"></span>
                 </div>
             </div>
-
-            <!-- Right: Cut video -->
+            <!-- Cut Result Video -->
             <div class="col-md-6">
                 <div th:if="${success}" class="custom-card">
                     <h5 class="fw-bold">✅ Cut Result:</h5>
@@ -181,7 +146,6 @@
                             Your browser does not support the video tag.
                         </video>
                     </div>
-
                     <div class="alert alert-success" th:text="${successMessage}"></div>
                     <div class="text-center">
                         <a th:href="${download}" download class="btn btn-primary me-2">
@@ -192,7 +156,6 @@
                         </button>
                     </div>
                 </div>
-
                 <div th:if="${error}" class="custom-card mt-3">
                     <div class="alert alert-danger" th:text="${error}"></div>
                     <div th:if="${ffmpegOutput}" class="mt-2">
@@ -207,11 +170,9 @@
                         </div>
                     </div>
                 </div>
-                
                 <div th:if="${ffmpegWarning}" class="custom-card mt-3">
                     <div class="alert alert-warning" th:text="${ffmpegWarning}"></div>
                 </div>
-                
                 <div th:if="${success == null && error == null && ffmpegWarning == null}" class="custom-card mt-3">
                     <div class="text-center py-5">
                         <i class="bi bi-scissors" style="font-size: 3rem; color: #6c757d;"></i>
@@ -352,21 +313,6 @@
             cutDurationSpan.textContent = `Cut Duration: ${formatTime(diff)}`;
         }
 
-        function previewUploadedVideo() {
-            const video = document.getElementById('videoPreview');
-            const filename = document.getElementById('lastUploadedVideo').value;
-            if (filename) {
-                while (video.firstChild) {
-                    video.removeChild(video.firstChild);
-                }
-                const source = document.createElement('source');
-                source.src = '/uploads/' + filename;
-                source.type = 'video/mp4';
-                video.appendChild(source);
-                video.load();
-            }
-        }
-
         // Auto-trigger preview and duration update on load if a video is selected
         document.addEventListener("DOMContentLoaded", function() {
             // Initialize tooltips
@@ -415,7 +361,34 @@
                 endTimeInput.addEventListener('input', updateCutDuration);
                 updateCutDuration();
             }
+
+            // Always preview the original video after cut if available
+            if (document.getElementById('lastUploadedVideo')) {
+                previewOriginalAfterCut();
+            }
+
+            // Reset file input after redirect (if not a POST)
+            const fileInput = document.getElementById('videoFileInput');
+            if (fileInput) {
+                fileInput.value = '';
+            }
         });
+
+        // Always preview the original video after cut if available
+        function previewOriginalAfterCut() {
+            const originalVideo = document.getElementById('lastUploadedVideo');
+            if (originalVideo && originalVideo.value) {
+                const video = document.getElementById('videoPreview');
+                while (video.firstChild) {
+                    video.removeChild(video.firstChild);
+                }
+                const source = document.createElement('source');
+                source.src = '/uploads/' + originalVideo.value;
+                source.type = 'video/mp4';
+                video.appendChild(source);
+                video.load();
+            }
+        }
     </script>
 
 </body>
