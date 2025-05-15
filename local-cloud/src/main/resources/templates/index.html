@@ -99,34 +99,6 @@
             <div class="text-center">
                 <button class="btn btn-upload mt-3" onclick="uploadFiles()">⬆️ Upload Selected Files</button>
             </div>
-            <div id="convertOption" class="d-none text-center">
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" value="" id="convertToSmall" checked>
-                    <label class="form-check-label" for="convertToSmall">
-                        Convert video before uploading
-                    </label>
-                </div>
-                <div id="qualityOptions" class="mt-2">
-                    <div class="btn-group" role="group">
-                        <input type="radio" class="btn-check" name="quality" id="quality360" value="360" autocomplete="off">
-                        <label class="btn btn-outline-secondary btn-sm" for="quality360">360p (Low)</label>
-
-                        <input type="radio" class="btn-check" name="quality" id="quality480" value="480" autocomplete="off">
-                        <label class="btn btn-outline-secondary btn-sm" for="quality480">480p (Medium)</label>
-
-                        <input type="radio" class="btn-check" name="quality" id="quality720" value="720" autocomplete="off" checked>
-                        <label class="btn btn-outline-secondary btn-sm" for="quality720">720p (High)</label>
-
-                        <input type="radio" class="btn-check" name="quality" id="quality1080" value="1080" autocomplete="off">
-                        <label class="btn btn-outline-secondary btn-sm" for="quality1080">1080p (Ultra)</label>
-                    </div>
-                </div>
-            </div>
-            <div id="uploadProgressContainer" class="progress mt-3" style="height: 20px; display: none;">
-                <div id="uploadProgressBar" class="progress-bar progress-bar-striped progress-bar-animated"
-                    role="progressbar" style="width: 0%">0%</div>
-            </div>
-
         </div>
 
         <!-- File Table Desktop -->
@@ -288,7 +260,7 @@
     const featureInstructions = {
       upload: {
         title: "Upload Files",
-        body: `You can upload files to the server by dragging and dropping them into the upload box or by clicking to select files.\n\nSupported formats: images, videos, documents, and more.\n\nIf you upload a video, you can choose to convert it to a smaller size before uploading. Select the desired quality (360p, 480p, 720p, 1080p).\n\nAfter selecting files, click 'Upload Selected Files' to start the upload. Progress will be shown for each file.`
+        body: `You can upload files to the server by dragging and dropping them into the upload box or by clicking to select files.\n\nSupported formats: images, videos, documents, and more.\n\nAfter selecting files, click 'Upload Selected Files' to start the upload. Progress will be shown for each file.`
       }
     };
     function showFeatureHelp(featureKey) {
@@ -337,8 +309,6 @@
                 li.appendChild(size);
                 list.appendChild(li);
             });
-            const hasVideo = Array.from(fileInput.files).some(f => f.type.startsWith("video/"));
-            document.getElementById("convertOption").classList.toggle("d-none", !hasVideo);
         }
 
         async function uploadFiles() {
@@ -347,97 +317,46 @@
                 alert("Please select files.");
                 return;
             }
+            const progressBar = document.getElementById("uploadProgressBarModal");
+            const modal = new bootstrap.Modal(document.getElementById('uploadProgressModal'));
+            progressBar.style.width = '0%';
+            progressBar.innerText = '0%';
+            modal.show();
 
-            const overlay = document.getElementById("uploadOverlay");
-            const listContainer = document.getElementById("fileProgressList");
-            const convertChecked = document.getElementById("convertToSmall").checked;
-            const selectedQuality = document.querySelector('input[name="quality"]:checked').value;
+            for (let i = 0; i < files.length; i++) {
+                await new Promise((resolve, reject) => {
+                    const formData = new FormData();
+                    formData.append("file", files[i]);
+                    const xhr = new XMLHttpRequest();
+                    xhr.open("POST", "/upload", true);
 
-            listContainer.innerHTML = "";
-            overlay.classList.remove("d-none");
+                    xhr.upload.onprogress = function (event) {
+                        if (event.lengthComputable) {
+                            // Calculate percent for this file
+                            const filePercent = (event.loaded / event.total) * 100;
+                            // Calculate overall percent
+                            const overallPercent = ((i + filePercent / 100) / files.length) * 100;
+                            progressBar.style.width = overallPercent + "%";
+                            progressBar.innerText = Math.round(overallPercent) + "%";
+                        }
+                    };
 
-            const CHUNK_SIZE = 1 * 1024 * 1024;
-            const MAX_CONCURRENT = 3;
-
-            const queue = Array.from(files).map(file => {
-                const item = document.createElement("li");
-                item.innerHTML = `
-        <div><strong>${file.name}</strong></div>
-        <div class="progress mb-2">
-          <div class="progress-bar progress-bar-striped" id="progress-${file.name}" style="width: 0%">0%</div>
-        </div>`;
-                listContainer.appendChild(item);
-                return () => uploadFileChunks(file, CHUNK_SIZE, convertChecked, selectedQuality);
-            });
-
-            while (queue.length) {
-                const batch = queue.splice(0, MAX_CONCURRENT);
-                await Promise.all(batch.map(fn => fn()));
+                    xhr.onload = function () {
+                        if (xhr.status === 200) {
+                            resolve();
+                        } else {
+                            reject();
+                        }
+                    };
+                    xhr.onerror = reject;
+                    xhr.send(formData);
+                });
             }
-
-            overlay.classList.add("d-none");
+            setTimeout(() => { modal.hide(); }, 500);
             alert("✅ All files uploaded!");
             window.location.reload();
         }
 
-        async function uploadFileChunks(file, CHUNK_SIZE, convert, quality) {
-            const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-            const uploads = [];
-
-            for (let i = 0; i < totalChunks; i++) {
-                const chunk = file.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-                const formData = new FormData();
-                formData.append("chunk", chunk);
-                formData.append("filename", file.name);
-                formData.append("chunkIndex", i);
-                formData.append("totalChunks", totalChunks);
-                formData.append("quality", quality);
-                uploads.push(fetch("/upload-chunk", { method: "POST", body: formData }));
-            }
-
-            let uploaded = 0;
-            const bar = document.getElementById("progress-" + file.name);
-
-            for (const p of uploads) {
-                await p;
-                uploaded++;
-                const percent = Math.floor((uploaded / totalChunks) * 100);
-                bar.style.width = percent + "%";
-                bar.innerText = percent + "%";
-            }
-
-            let timer = 0;
-            let intervalId;
-
-            if (convert && file.type.startsWith("video/")) {
-                bar.classList.add("bg-warning");
-                bar.classList.remove("bg-success");
-                bar.innerText = "Optimizing... 0s";
-
-                intervalId = setInterval(() => {
-                    timer++;
-                    bar.innerText = `Optimizing... ${timer}s`;
-                }, 1000);
-            }
-
-            await fetch("/merge-chunks", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    filename: file.name,
-                    totalChunks,
-                    convert,
-                    quality
-                })
-            });
-
-            if (intervalId) clearInterval(intervalId);
-
-            bar.style.width = "100%";
-            bar.classList.remove("bg-warning");
-            bar.classList.add("bg-success");
-            bar.innerText = "Done";
-        }
         function showPreview(filePath) {
             const isImage = /\.(jpe?g|png|gif|webp)$/i.test(filePath);
             const isVideo = /\.(mp4|mov|webm)$/i.test(filePath);
@@ -761,6 +680,21 @@
                 </div>
             </div>
         </div>
+    </div>
+    <!-- Upload Progress Modal -->
+    <div class="modal fade" id="uploadProgressModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Uploading Files...</h5>
+          </div>
+          <div class="modal-body">
+            <div class="progress" style="height: 24px;">
+              <div id="uploadProgressBarModal" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%">0%</div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 </body>
 
