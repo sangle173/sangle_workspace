@@ -1,0 +1,45 @@
+nohup: ignoring input
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::               (v2.7.18)
+
+2025-05-20 14:14:45.891  INFO 138053 --- [           main] c.e.local_cloud.LocalCloudApplication    : Starting LocalCloudApplication v0.0.1-SNAPSHOT using Java 11.0.27 on AGDCom-21-2373-Ubuntu with PID 138053 (/opt/lampp/htdocs/sangle_workspace/local-cloud/target/local-cloud-0.0.1-SNAPSHOT.jar started by sangle in /opt/lampp/htdocs/sangle_workspace/local-cloud)
+2025-05-20 14:14:45.893  INFO 138053 --- [           main] c.e.local_cloud.LocalCloudApplication    : No active profile set, falling back to 1 default profile: "default"
+2025-05-20 14:14:46.739  INFO 138053 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port(s): 8080 (http)
+2025-05-20 14:14:46.750  INFO 138053 --- [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2025-05-20 14:14:46.750  INFO 138053 --- [           main] org.apache.catalina.core.StandardEngine  : Starting Servlet engine: [Apache Tomcat/9.0.83]
+2025-05-20 14:14:46.816  INFO 138053 --- [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2025-05-20 14:14:46.816  INFO 138053 --- [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 881 ms
+2025-05-20 14:14:46.879  INFO 138053 --- [           main] c.example.local_cloud.config.EnvConfig   : Successfully loaded 1 environment variables from: /home/sangle/Desktop/Env/.env
+2025-05-20 14:14:47.111  INFO 138053 --- [           main] o.s.b.a.w.s.WelcomePageHandlerMapping    : Adding welcome page template: index
+2025-05-20 14:14:47.197  INFO 138053 --- [           main] c.example.local_cloud.config.WebConfig   : Serving cut videos from: /home/sangle/Desktop/LocalCloudCuts/
+2025-05-20 14:14:47.307  INFO 138053 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port(s): 8080 (http) with context path ''
+2025-05-20 14:14:47.320  INFO 138053 --- [           main] c.e.local_cloud.LocalCloudApplication    : Started LocalCloudApplication in 1.885 seconds (JVM running for 2.279)
+
+----------------------------------------------------------
+   Checking required packages...
+   ✓ FFmpeg is installed.
+   ✓ ADB is installed.
+   ✓ HandBrakeCLI is installed.
+----------------------------------------------------------
+
+
+----------------------------------------------------------
+   Local Cloud Application is running! Access URLs:
+   Local:      http://localhost:8080
+   Network Addresses:
+      → http://172.18.100.149:8080
+      → http://192.168.137.113:8080
+----------------------------------------------------------
+
+2025-05-20 14:14:48.806  INFO 138053 --- [nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2025-05-20 14:14:48.806  INFO 138053 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2025-05-20 14:14:48.807  INFO 138053 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 0 ms
+[Sonos] Using preferred interface: wlp3s0 (/192.168.137.113)
+[Sonos] Using preferred interface: wlp3s0 (/192.168.137.113)
+[Sonos] Using preferred interface: wlp3s0 (/192.168.137.113)

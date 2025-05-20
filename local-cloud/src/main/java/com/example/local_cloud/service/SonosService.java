@@ -119,7 +119,6 @@ public class SonosService {
         }
     }
 
-
     public String submitDiagnostics(String ip, boolean includeControllers, String type) {
         try {
             String soapBody =
@@ -162,6 +161,77 @@ public class SonosService {
                 return "❌ Failed (" + responseCode + "): " + errorBody;
             }
     
+        } catch (Exception e) {
+            return "❌ Exception: " + e.getMessage();
+        }
+    }
+
+    public String playSource(String ip, String uri, Integer volume, String deviceName) {
+        try {
+            // Set volume first
+            ProcessBuilder volPb = new ProcessBuilder("SonosPlay", ip, "vol", String.valueOf(volume));
+            Process volProc = volPb.start();
+            int volExit = volProc.waitFor();
+            if (volExit != 0) {
+                return "❌ Failed to set volume for " + deviceName + " (" + ip + ")";
+            }
+            // Play source
+            ProcessBuilder playPb = new ProcessBuilder("SonosPlay", ip, "play", uri);
+            Process playProc = playPb.start();
+            int playExit = playProc.waitFor();
+            if (playExit == 0) {
+                return "✅ Play command sent to " + deviceName + " (" + ip + ")";
+            } else {
+                return "❌ Failed to play source on " + deviceName + " (" + ip + ")";
+            }
+        } catch (Exception e) {
+            return "❌ Exception for " + deviceName + " (" + ip + "): " + e.getMessage();
+        }
+    }
+
+    // Set volume using SonosPlay CLI
+    public String setVolume(String ip, Integer volume) {
+        try {
+            ProcessBuilder pb = new ProcessBuilder("SonosPlay", ip, "vol", String.valueOf(volume));
+            Process proc = pb.start();
+            int exit = proc.waitFor();
+            if (exit == 0) {
+                return "✅ Volume set to " + volume;
+            } else {
+                return "❌ Failed to set volume (exit " + exit + ")";
+            }
+        } catch (Exception e) {
+            return "❌ Exception: " + e.getMessage();
+        }
+    }
+
+    // Pause playback using SonosPlay CLI
+    public String pause(String ip) {
+        try {
+            ProcessBuilder pb = new ProcessBuilder("SonosPlay", ip, "pause");
+            Process proc = pb.start();
+            int exit = proc.waitFor();
+            if (exit == 0) {
+                return "⏸️ Paused";
+            } else {
+                return "❌ Failed to pause (exit " + exit + ")";
+            }
+        } catch (Exception e) {
+            return "❌ Exception: " + e.getMessage();
+        }
+    }
+
+    // Resume playback using SonosPlay CLI
+    public String resume(String ip) {
+        try {
+            ProcessBuilder pb = new ProcessBuilder("SonosPlay", ip, "play");
+            Process proc = pb.start();
+            int exit = proc.waitFor();
+            if (exit == 0) {
+                return "▶️ Resumed";
+            } else {
+                return "❌ Failed to resume (exit " + exit + ")";
+            }
         } catch (Exception e) {
             return "❌ Exception: " + e.getMessage();
         }

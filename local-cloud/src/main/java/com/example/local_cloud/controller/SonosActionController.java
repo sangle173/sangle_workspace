@@ -153,7 +153,8 @@ public class SonosActionController {
     @PostMapping("/bulk")
     public String performBulkAction(@RequestBody BulkActionRequest request) {
         List<String> results = new ArrayList<>();
-
+        List<String> deviceNames = request.getDeviceNames();
+        int idx = 0;
         for (String ip : request.getDevices()) {
             String msg;
             switch (request.getAction()) {
@@ -208,13 +209,33 @@ public class SonosActionController {
                     msg = sonosService.sendSoftwareUpdate(ip, baseUrl);
                     break;
                 }
+                case "play-source": {
+                    String uri = request.getUri();
+                    Integer volume = request.getVolume();
+                    String deviceName = (deviceNames != null && idx < deviceNames.size()) ? deviceNames.get(idx) : ip;
+                    msg = sonosService.playSource(ip, uri, volume, deviceName);
+                    break;
+                }
+                case "set-volume": {
+                    Integer volume = request.getVolume();
+                    msg = sonosService.setVolume(ip, volume);
+                    break;
+                }
+                case "pause": {
+                    msg = sonosService.pause(ip);
+                    break;
+                }
+                case "resume": {
+                    msg = sonosService.resume(ip);
+                    break;
+                }
                 default:
                     msg = "❓ Unknown action: " + request.getAction();
                     break;
             }
             results.add("<b>" + ip + "</b>: " + msg);
+            idx++;
         }
-
         return "<div class='text-success'>✅ Action <b>" + request.getAction() + "</b> sent to "
                 + results.size() + " device(s).</div><ul><li>"
                 + String.join("</li><li>", results) + "</li></ul>";
