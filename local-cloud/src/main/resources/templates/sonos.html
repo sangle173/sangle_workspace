@@ -460,7 +460,7 @@
                     let upd = "";
                     if (d["Hardware Version"]) {
                         const match = d["Hardware Version"].match(/^1\.(\d+)\./);
-                        if (match) upd = match[1] + "s";
+                        if (match) upd = match[1];
                     }
 
                     tableRows += `
@@ -496,7 +496,7 @@
   <div class="px-3 py-2 d-flex align-items-center justify-content-between bg-primary-subtle border-bottom">
     <div class="d-flex align-items-center gap-2">
       <input type="checkbox" class="form-check-input form-check-sm" onclick="toggleAllInGroup(this, '${hhid}')">
-      <span class="text-light-emphasis small">HHID:</span>
+      
       <span class="fw-semibold text-dark-emphasis">${label}</span>
       ${firstDeviceIp && hhid !== "NO_HHID" ? `<a href='#' class='ms-2' title='Get System String' onclick='getSystemStringModal("${firstDeviceIp}", "${hhid}"); return false;'><i class="bi bi-info-circle text-info"></i></a> <a href='#' class='ms-1' title='Set System String' onclick='showSetStringModal("${firstDeviceIp}", "${hhid}"); return false;'><i class="bi bi-pencil-square text-primary"></i></a>` : ''}
     </div>
