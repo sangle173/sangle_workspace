@@ -1,7 +1,19 @@
 <div th:fragment="footer">
-    <footer class="footer bg-light border-top fixed-bottom py-2">
+    <footer class="footer bg-light border-top fixed-bottom py-2" style="font-family: inherit !important;">
         <div class="container text-center">
             <p class="mb-0"><i class="bi bi-cup-hot-fill me-2"></i>Buy SangLe a coffee</p>
         </div>
     </footer>
-</div> 
+</div>
+<script>
+(function() {
+    fetch('/settings/api').then(r => r.json()).then(settings => {
+        if (settings.headerBgColor) document.documentElement.style.setProperty('--header-bg', settings.headerBgColor);
+        if (settings.headerTextColor) document.documentElement.style.setProperty('--header-text', settings.headerTextColor);
+        if (settings.backgroundColor) document.documentElement.style.setProperty('--background-color', settings.backgroundColor);
+        if (settings.fontSize) document.documentElement.style.setProperty('--font-size', settings.fontSize + 'px');
+        if (settings.fontFamily) document.documentElement.style.setProperty('--font-family', settings.fontFamily);
+        if (settings.borderRadius) document.documentElement.style.setProperty('--border-radius', settings.borderRadius + 'px');
+    });
+})();
+</script>

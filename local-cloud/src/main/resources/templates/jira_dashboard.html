@@ -150,7 +150,7 @@
         }
     </style>
 </head>
-<body>
+<body style="font-family: var(--font-family), system-ui, sans-serif !important;">
     <!-- Shared navbar -->
     <div th:replace="~{fragments/navbar :: navbar}"></div>
 
@@ -601,5 +601,17 @@
             alert("Copied to clipboard!");
         }
     </script>
+    <script>
+        (function() {
+            fetch('/settings/api').then(r => r.json()).then(settings => {
+                if (settings.headerBgColor) document.documentElement.style.setProperty('--header-bg', settings.headerBgColor);
+                if (settings.headerTextColor) document.documentElement.style.setProperty('--header-text', settings.headerTextColor);
+                if (settings.backgroundColor) document.documentElement.style.setProperty('--background-color', settings.backgroundColor);
+                if (settings.fontSize) document.documentElement.style.setProperty('--font-size', settings.fontSize + 'px');
+                if (settings.fontFamily) document.documentElement.style.setProperty('--font-family', settings.fontFamily);
+                if (settings.borderRadius) document.documentElement.style.setProperty('--border-radius', settings.borderRadius + 'px');
+            });
+        })();
+    </script>
 </body>
-</html> 
+</html>

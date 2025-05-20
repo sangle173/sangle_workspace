@@ -2,9 +2,9 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
 <div th:fragment="navbar">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+    <nav class="navbar navbar-expand-lg shadow-sm" style="background-color: var(--header-bg) !important; color: var(--header-text) !important; font-family: inherit !important;">
         <div class="container">
-            <a class="navbar-brand fw-bold text-light" href="/">🌐 My Tools</a>
+            <a class="navbar-brand fw-bold" style="color: var(--header-text) !important; font-family: inherit !important;" href="/">🌐 My Tools</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
                     data-bs-target="#navbarNav" aria-controls="navbarNav"
                     aria-expanded="false" aria-label="Toggle navigation">
@@ -14,13 +14,8 @@
             <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
                 <ul class="navbar-nav">
                     <li class="nav-item">
-                        <a class="nav-link" th:classappend="${#httpServletRequest.getRequestURI() == '/' ? 'active fw-bold' : ''}" href="/">
-                            <i class="bi bi-house-door-fill me-1"></i>Home
-                        </a>
-                    </li>
-                    <li class="nav-item">
                         <a class="nav-link" th:classappend="${#httpServletRequest.getRequestURI().startsWith('/sonos') ? 'active fw-bold' : ''}" href="/sonos">
-                            <i class="bi bi-speaker-fill me-1"></i>Device Discovery
+                            <i class="bi bi-speaker-fill me-1"></i>Discovery
                         </a>
                     </li>
                     
@@ -32,7 +27,7 @@
                            data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="bi bi-cloud-download me-1"></i>Download Tools
                         </a>
-                        <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="downloadToolsDropdown">
+                        <ul class="dropdown-menu" aria-labelledby="downloadToolsDropdown">
                             <li>
                                 <a class="dropdown-item" th:classappend="${#httpServletRequest.getRequestURI().startsWith('/url-converter') ? 'active' : ''}" href="/url-converter">
                                     <i class="bi bi-arrow-repeat me-1"></i>URL Converter
@@ -80,7 +75,7 @@
                            data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="bi bi-kanban me-1"></i>Jira Tools
                         </a>
-                        <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="jiraToolsDropdown">
+                        <ul class="dropdown-menu" aria-labelledby="jiraToolsDropdown">
                             <li>
                                 <a class="dropdown-item" th:classappend="${#httpServletRequest.getRequestURI() == '/jira-dashboard' ? 'active' : ''}" href="/jira-dashboard">
                                     <i class="bi bi-kanban-fill me-1"></i>Dashboard
@@ -91,23 +86,30 @@
                                     <i class="bi bi-filter-square-fill me-1"></i>JIRA Filters
                                 </a>
                             </li>
+                            <li>
+                                <a class="dropdown-item" th:classappend="${#httpServletRequest.getRequestURI().startsWith('/settings') ? 'active' : ''}" href="/settings">
+                                    <i class="bi bi-filter-square-fill me-1"></i>Settings
+                                </a>
+                            </li>
                         </ul>
                     </li>
+        
                 </ul>
             </div>
         </div>
     </nav>
     <style>
         .navbar .nav-link {
-            color: rgba(255, 255, 255, 0.8) !important;
+            color: var(--header-text, rgba(255, 255, 255, 0.8)) !important;
             margin: 0 2px;
             padding: 0.5rem 0.75rem;
             border-radius: 4px;
             transition: all 0.2s ease;
+            font-family: inherit !important;
         }
         .navbar .nav-link:hover {
-            color: white !important;
-            background-color: rgba(255, 255, 255, 0.1);
+            color: #fff !important;
+            background-color: var(--nav-hover-color, #6c63ff) !important;
         }
         .navbar .nav-link.active {
             color: white !important;
@@ -119,14 +121,21 @@
             margin-top: 0.5rem;
             border: none;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            background-color: var(--header-bg, #0d6efd) !important;
+            color: var(--header-text, #fff) !important;
+            font-family: inherit !important;
         }
         .dropdown-item {
             border-radius: 4px;
             padding: 0.5rem 1rem;
             margin-bottom: 2px;
+            font-family: inherit !important;
+            background: transparent !important;
+            color: var(--header-text, #fff) !important;
         }
         .dropdown-item:hover {
-            background-color: rgba(255, 255, 255, 0.1);
+            background-color: var(--nav-hover-color, #6c63ff) !important;
+            color: #fff !important;
         }
         .dropdown-item.active {
             background-color: rgba(255, 255, 255, 0.15);
