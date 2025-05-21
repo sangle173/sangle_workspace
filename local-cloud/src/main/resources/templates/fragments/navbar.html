@@ -2,6 +2,13 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
 <div th:fragment="navbar">
+    <style>
+        :root {
+            --header-bg: #0d6efd;
+            --header-text: #fff;
+            --nav-hover-color: #6c63ff;
+        }
+    </style>
     <nav class="navbar navbar-expand-lg shadow-sm" style="background-color: var(--header-bg) !important; color: var(--header-text) !important; font-family: inherit !important;">
         <div class="container">
             <a class="navbar-brand fw-bold" style="color: var(--header-text) !important; font-family: inherit !important;" href="/">🌐 My Tools</a>

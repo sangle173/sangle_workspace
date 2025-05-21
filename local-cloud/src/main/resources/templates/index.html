@@ -42,6 +42,7 @@
             height: 500px;
             max-height: 95vh;
         }
+
         .preview-modal-body {
             width: 100%;
             height: 100%;
@@ -50,6 +51,7 @@
             justify-content: center;
             overflow: hidden;
         }
+
         #previewImage, #previewVideo {
             max-width: 100%;
             max-height: 100%;
@@ -58,6 +60,52 @@
             object-fit: contain;
             display: block;
             margin: auto;
+        }
+
+        /* Desktop: align checkbox, icon, and filename nicely */
+        .table td .form-check-input.image-table-checkbox {
+            margin-right: 0.7rem;
+            margin-left: 0;
+            vertical-align: middle;
+        }
+
+        .table td .file-icon {
+            margin-right: 0.7rem;
+        }
+
+        /* Mobile: align checkbox, icon, and filename in a row, with spacing */
+        @media (max-width: 576px) {
+            .table .form-check-input.image-table-checkbox {
+                margin-right: 0.5rem;
+                margin-left: 0;
+                margin-top: 0.2rem;
+            }
+
+            .table .file-icon {
+                margin-right: 0.5rem;
+            }
+        }
+
+        /* Ensure checkbox, icon, and filename are aligned horizontally and look good on all screens */
+        .table td > .d-flex.align-items-center, .table td > .d-flex.align-items-start {
+            gap: 0.5rem;
+        }
+
+        .image-table-checkbox {
+            margin-right: 0.5rem;
+            margin-left: 0;
+            vertical-align: middle;
+        }
+
+        @media (max-width: 576px) {
+            .image-table-checkbox {
+                margin-top: 0.2rem;
+                margin-bottom: 0.2rem;
+            }
+
+            .file-icon {
+                margin-right: 0.5rem !important;
+            }
         }
     </style>
 </head>
@@ -104,7 +152,7 @@
             <ul id="selectedFileList" class="list-group mt-3"></ul>
             <div class="text-center">
                 <button class="btn btn-upload mt-3" onclick="uploadFiles()">⬆️ Upload Selected Files</button>
-                <button class="btn btn-primary mt-3 ms-2" id="editSelectedImagesBtn" disabled>Edit Selected Images</button>
+                <button class="btn btn-primary mt-3 ms-2 d-none" id="editSelectedImagesBtn">Edit Selected Images</button>
             </div>
         </div>
 
@@ -113,6 +161,7 @@
             <table class="table table-striped table-hover table-sm mb-0 align-middle">
                 <thead class="table-light">
                     <tr>
+                        <th style="width:40px;"></th> <!-- Checkbox column -->
                         <th>Name</th>
                         <th>Size</th>
                         <th>Last Modified</th>
@@ -122,12 +171,21 @@
                 <tbody>
                     <tr th:each="file : ${files}">
                         <td>
+                            <!-- Checkbox for images as first column -->
+                            <input type="checkbox" class="form-check-input image-table-checkbox" th:if="${T(java.util.Arrays).asList('jpg','jpeg','png','gif','webp').contains(file.extension?.toLowerCase())}" th:attr="data-filename=${file.name}">
+                        </td>
+                        <td>
                             <div class="d-flex align-items-center">
                                 <span class="file-icon me-3" th:attr="data-filename=${file.name}"></span>
-                                <!-- Add checkbox for images -->
-                                <input type="checkbox" class="form-check-input me-2 image-table-checkbox" th:if="${T(java.util.Arrays).asList('jpg','jpeg','png','gif','webp').contains(file.extension?.toLowerCase())}" th:attr="data-filename=${file.name}">
-                                <span class="fw-semibold cursor-pointer" th:text="${file.name}"
-                                    th:attr="onclick=|showPreview('/uploads/' + '${file.name}')|">
+                                <span th:if="${T(java.util.Arrays).asList('jpg','jpeg','png','gif','webp').contains(file.extension?.toLowerCase())}"
+                                      class="fw-semibold cursor-pointer"
+                                      th:text="${file.name}"
+                                      th:attr="onclick=|showPreview('/uploads/' + '${file.name}')|">
+                                </span>
+                                <span th:unless="${T(java.util.Arrays).asList('jpg','jpeg','png','gif','webp').contains(file.extension?.toLowerCase())}"
+                                      class="fw-semibold cursor-pointer file-name-truncate"
+                                      th:text="${file.name}"
+                                      th:attr="onclick=|showPreview('/uploads/' + '${file.name}')|">
                                 </span>
                             </div>
                         </td>
@@ -176,8 +234,6 @@
                             <div class="d-flex align-items-start pt-2">
                                 <span class="file-icon me-3" th:attr="data-filename=${file.name}"></span>
                                 <div class="flex-grow-1">
-                                    <!-- Add checkbox for images (mobile) -->
-                                    <input type="checkbox" class="form-check-input me-2 image-table-checkbox" th:if="${T(java.util.Arrays).asList('jpg','jpeg','png','gif','webp').contains(file.extension?.toLowerCase())}" th:attr="data-filename=${file.name}">
                                     <div class="fw-semibold file-name-truncate cursor-pointer" th:text="${file.name}"
                                         th:attr="onclick=|showPreview('/uploads/' + '${file.name}')|">
                                     </div>
@@ -202,15 +258,6 @@
                                         title="Convert/Optimize Video"
                                         th:attr="onclick=|showConvertModal('${file.name}')|">
                                         <i class="bi bi-arrow-repeat text-primary fs-5"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-link p-0 ms-1" title="Rename File"
-                                        th:attr="onclick=|showRenameModal('${file.name}')|">
-                                        <i class="bi bi-pencil-square text-success fs-5"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-link p-0 ms-1" th:if="${T(java.util.Arrays).asList('jpg','jpeg','png','gif','webp').contains(file.extension?.toLowerCase())}"
-                                        title="Open in Image Editor"
-                                        th:attr="onclick=|openInImageEditor('/uploads/' + '${file.name}')|">
-                                        <i class="bi bi-brush text-info fs-5"></i>
                                     </button>
                                 </div>
                             </div>
@@ -558,20 +605,34 @@
                 });
             };
 
-            // Add logic for table checkboxes (desktop & mobile)
+            // Add logic for table checkboxes (desktop only)
+            let imageSelectionOrder = [];
             function updateEditImagesBtnStateTable() {
                 const checked = document.querySelectorAll('.image-table-checkbox:checked');
-                document.getElementById('editSelectedImagesBtn').disabled = checked.length === 0;
+                const btn = document.getElementById('editSelectedImagesBtn');
+                if (checked.length === 0) {
+                    btn.classList.add('d-none');
+                } else {
+                    btn.classList.remove('d-none');
+                }
             }
             document.querySelectorAll('.image-table-checkbox').forEach(cb => {
-                cb.addEventListener('change', updateEditImagesBtnStateTable);
+                cb.addEventListener('change', function(e) {
+                    if (cb.checked) {
+                        if (!imageSelectionOrder.includes(cb)) imageSelectionOrder.push(cb);
+                    } else {
+                        imageSelectionOrder = imageSelectionOrder.filter(x => x !== cb);
+                    }
+                    updateEditImagesBtnStateTable();
+                });
             });
             document.getElementById('editSelectedImagesBtn').onclick = function() {
-                const checked = document.querySelectorAll('.image-table-checkbox:checked');
-                if (checked.length === 0) return;
-                const params = Array.from(checked)
+                // Use the order of selection
+                const params = imageSelectionOrder
+                    .filter(cb => cb.checked)
                     .map(cb => 'src=' + encodeURIComponent('/uploads/' + cb.dataset.filename))
                     .join('&');
+                if (!params) return;
                 window.open('/image-editor?' + params, '_blank');
             };
         });

@@ -573,29 +573,53 @@
             return url.searchParams.getAll(name);
         }
 
-        // On load, if src param(s) exist, add all images
+        // On load, if src param(s) exist, add all images side by side
         window.addEventListener('DOMContentLoaded', () => {
             const srcs = getQueryParams('src');
-            srcs.forEach(src => {
+            let currentLeft = 10; // Start with a margin
+            let maxHeight = 0;
+            const margin = 20; // Space between images
+            const imagesToAdd = [];
+            let loadedCount = 0;
+            if (srcs.length === 0) return;
+            // Preload all images to get their sizes
+            srcs.forEach((src, idx) => {
                 fabric.Image.fromURL(src, function(img) {
                     // Fit image to canvas
                     const maxWidth = canvas.width * 0.8;
-                    const maxHeight = canvas.height * 0.8;
+                    const maxHeightLocal = canvas.height * 0.8;
                     let scale = 1;
                     if (img.width > maxWidth) scale = maxWidth / img.width;
-                    if (img.height * scale > maxHeight) scale = maxHeight / img.height;
+                    if (img.height * scale > maxHeightLocal) scale = maxHeightLocal / img.height;
                     img.set({
-                        left: 1,
-                        top: 1,
                         scaleX: scale,
                         scaleY: scale,
                         selectable: true,
                         hasControls: true,
                         hasBorders: true
                     });
-                    canvas.add(img);
-                    img.bringToFront();
-                    canvas.renderAll();
+                    imagesToAdd[idx] = img;
+                    loadedCount++;
+                    if (img.height * scale > maxHeight) maxHeight = img.height * scale;
+                    // When all images are loaded, add them side by side
+                    if (loadedCount === srcs.length) {
+                        imagesToAdd.forEach((img, i) => {
+                            img.set({
+                                left: currentLeft,
+                                top: 10
+                            });
+                            canvas.add(img);
+                            img.bringToFront();
+                            currentLeft += img.width * img.scaleX + margin;
+                        });
+                        // Optionally resize canvas width to fit all images
+                        const minWidth = 800;
+                        const totalWidth = currentLeft + 10;
+                        canvas.setWidth(Math.max(minWidth, totalWidth));
+                        canvas.setHeight(Math.max(600, maxHeight + 40));
+                        updateSizeDisplay();
+                        canvas.renderAll();
+                    }
                 }, { crossOrigin: 'anonymous' });
             });
         });
