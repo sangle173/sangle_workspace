@@ -104,6 +104,7 @@
             <ul id="selectedFileList" class="list-group mt-3"></ul>
             <div class="text-center">
                 <button class="btn btn-upload mt-3" onclick="uploadFiles()">⬆️ Upload Selected Files</button>
+                <button class="btn btn-primary mt-3 ms-2" id="editSelectedImagesBtn" disabled>Edit Selected Images</button>
             </div>
         </div>
 
@@ -123,6 +124,8 @@
                         <td>
                             <div class="d-flex align-items-center">
                                 <span class="file-icon me-3" th:attr="data-filename=${file.name}"></span>
+                                <!-- Add checkbox for images -->
+                                <input type="checkbox" class="form-check-input me-2 image-table-checkbox" th:if="${T(java.util.Arrays).asList('jpg','jpeg','png','gif','webp').contains(file.extension?.toLowerCase())}" th:attr="data-filename=${file.name}">
                                 <span class="fw-semibold cursor-pointer" th:text="${file.name}"
                                     th:attr="onclick=|showPreview('/uploads/' + '${file.name}')|">
                                 </span>
@@ -173,6 +176,8 @@
                             <div class="d-flex align-items-start pt-2">
                                 <span class="file-icon me-3" th:attr="data-filename=${file.name}"></span>
                                 <div class="flex-grow-1">
+                                    <!-- Add checkbox for images (mobile) -->
+                                    <input type="checkbox" class="form-check-input me-2 image-table-checkbox" th:if="${T(java.util.Arrays).asList('jpg','jpeg','png','gif','webp').contains(file.extension?.toLowerCase())}" th:attr="data-filename=${file.name}">
                                     <div class="fw-semibold file-name-truncate cursor-pointer" th:text="${file.name}"
                                         th:attr="onclick=|showPreview('/uploads/' + '${file.name}')|">
                                     </div>
@@ -318,14 +323,40 @@
             Array.from(fileInput.files).forEach(file => {
                 const li = document.createElement("li");
                 li.className = "list-group-item d-flex justify-content-between align-items-center";
-                li.textContent = file.name;
+                // Add checkbox for images
+                const ext = file.name.split('.').pop().toLowerCase();
+                const isImage = ["jpg","jpeg","png","gif","webp"].includes(ext);
+                if (isImage) {
+                    const cb = document.createElement("input");
+                    cb.type = "checkbox";
+                    cb.className = "form-check-input me-2 image-select-checkbox";
+                    cb.dataset.filename = file.name;
+                    cb.addEventListener('change', updateEditImagesBtnState);
+                    li.appendChild(cb);
+                }
+                li.appendChild(document.createTextNode(file.name));
                 const size = document.createElement("span");
                 size.className = "badge bg-secondary rounded-pill";
                 size.textContent = (file.size / 1024 / 1024).toFixed(1) + " MB";
                 li.appendChild(size);
                 list.appendChild(li);
             });
+            updateEditImagesBtnState();
         }
+
+        function updateEditImagesBtnState() {
+            const checked = document.querySelectorAll('.image-select-checkbox:checked');
+            document.getElementById('editSelectedImagesBtn').disabled = checked.length === 0;
+        }
+
+        document.getElementById('editSelectedImagesBtn').onclick = function() {
+            const checked = document.querySelectorAll('.image-select-checkbox:checked');
+            if (checked.length === 0) return;
+            const params = Array.from(checked)
+                .map(cb => 'src=' + encodeURIComponent('/uploads/' + cb.dataset.filename))
+                .join('&');
+            window.open('/image-editor?' + params, '_blank');
+        };
 
         async function uploadFiles() {
             const files = fileInput.files;
@@ -526,6 +557,23 @@
                     this.disabled = false;
                 });
             };
+
+            // Add logic for table checkboxes (desktop & mobile)
+            function updateEditImagesBtnStateTable() {
+                const checked = document.querySelectorAll('.image-table-checkbox:checked');
+                document.getElementById('editSelectedImagesBtn').disabled = checked.length === 0;
+            }
+            document.querySelectorAll('.image-table-checkbox').forEach(cb => {
+                cb.addEventListener('change', updateEditImagesBtnStateTable);
+            });
+            document.getElementById('editSelectedImagesBtn').onclick = function() {
+                const checked = document.querySelectorAll('.image-table-checkbox:checked');
+                if (checked.length === 0) return;
+                const params = Array.from(checked)
+                    .map(cb => 'src=' + encodeURIComponent('/uploads/' + cb.dataset.filename))
+                    .join('&');
+                window.open('/image-editor?' + params, '_blank');
+            };
         });
 
         function pollConvertProgress(taskId, progressBar, logArea) {
@@ -723,7 +771,7 @@
           <div class="modal-header">
             <h5 class="modal-title">Uploading Files...</h5>
           </div>
-          <div class="modal-body">
+          <div class="modal-body"></div>
             <div class="progress" style="height: 24px;">
               <div id="uploadProgressBarModal" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%">0%</div>
             </div>
