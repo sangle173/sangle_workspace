@@ -8,18 +8,18 @@ nohup: ignoring input
  =========|_|==============|___/=/_/_/_/
  :: Spring Boot ::               (v2.7.18)
 
-2025-05-20 14:14:45.891  INFO 138053 --- [           main] c.e.local_cloud.LocalCloudApplication    : Starting LocalCloudApplication v0.0.1-SNAPSHOT using Java 11.0.27 on AGDCom-21-2373-Ubuntu with PID 138053 (/opt/lampp/htdocs/sangle_workspace/local-cloud/target/local-cloud-0.0.1-SNAPSHOT.jar started by sangle in /opt/lampp/htdocs/sangle_workspace/local-cloud)
-2025-05-20 14:14:45.893  INFO 138053 --- [           main] c.e.local_cloud.LocalCloudApplication    : No active profile set, falling back to 1 default profile: "default"
-2025-05-20 14:14:46.739  INFO 138053 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port(s): 8080 (http)
-2025-05-20 14:14:46.750  INFO 138053 --- [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
-2025-05-20 14:14:46.750  INFO 138053 --- [           main] org.apache.catalina.core.StandardEngine  : Starting Servlet engine: [Apache Tomcat/9.0.83]
-2025-05-20 14:14:46.816  INFO 138053 --- [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
-2025-05-20 14:14:46.816  INFO 138053 --- [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 881 ms
-2025-05-20 14:14:46.879  INFO 138053 --- [           main] c.example.local_cloud.config.EnvConfig   : Successfully loaded 1 environment variables from: /home/sangle/Desktop/Env/.env
-2025-05-20 14:14:47.111  INFO 138053 --- [           main] o.s.b.a.w.s.WelcomePageHandlerMapping    : Adding welcome page template: index
-2025-05-20 14:14:47.197  INFO 138053 --- [           main] c.example.local_cloud.config.WebConfig   : Serving cut videos from: /home/sangle/Desktop/LocalCloudCuts/
-2025-05-20 14:14:47.307  INFO 138053 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port(s): 8080 (http) with context path ''
-2025-05-20 14:14:47.320  INFO 138053 --- [           main] c.e.local_cloud.LocalCloudApplication    : Started LocalCloudApplication in 1.885 seconds (JVM running for 2.279)
+2025-05-21 14:46:54.009  INFO 157801 --- [           main] c.e.local_cloud.LocalCloudApplication    : Starting LocalCloudApplication v0.0.1-SNAPSHOT using Java 11.0.27 on AGDCom-21-2373-Ubuntu with PID 157801 (/opt/lampp/htdocs/sangle_workspace/local-cloud/target/local-cloud-0.0.1-SNAPSHOT.jar started by sangle in /opt/lampp/htdocs/sangle_workspace/local-cloud)
+2025-05-21 14:46:54.011  INFO 157801 --- [           main] c.e.local_cloud.LocalCloudApplication    : No active profile set, falling back to 1 default profile: "default"
+2025-05-21 14:46:54.879  INFO 157801 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port(s): 8080 (http)
+2025-05-21 14:46:54.889  INFO 157801 --- [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2025-05-21 14:46:54.889  INFO 157801 --- [           main] org.apache.catalina.core.StandardEngine  : Starting Servlet engine: [Apache Tomcat/9.0.83]
+2025-05-21 14:46:54.951  INFO 157801 --- [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2025-05-21 14:46:54.951  INFO 157801 --- [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 890 ms
+2025-05-21 14:46:55.011  INFO 157801 --- [           main] c.example.local_cloud.config.EnvConfig   : Successfully loaded 1 environment variables from: /home/sangle/Desktop/Env/.env
+2025-05-21 14:46:55.202  INFO 157801 --- [           main] o.s.b.a.w.s.WelcomePageHandlerMapping    : Adding welcome page template: index
+2025-05-21 14:46:55.283  INFO 157801 --- [           main] c.example.local_cloud.config.WebConfig   : Serving cut videos from: /home/sangle/Desktop/LocalCloudCuts/
+2025-05-21 14:46:55.386  INFO 157801 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port(s): 8080 (http) with context path ''
+2025-05-21 14:46:55.397  INFO 157801 --- [           main] c.e.local_cloud.LocalCloudApplication    : Started LocalCloudApplication in 1.803 seconds (JVM running for 2.214)
 
 ----------------------------------------------------------
    Checking required packages...
@@ -37,9 +37,376 @@ nohup: ignoring input
       → http://192.168.137.113:8080
 ----------------------------------------------------------
 
-2025-05-20 14:14:48.806  INFO 138053 --- [nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
-2025-05-20 14:14:48.806  INFO 138053 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
-2025-05-20 14:14:48.807  INFO 138053 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 0 ms
+2025-05-21 14:47:00.285  INFO 157801 --- [nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2025-05-21 14:47:00.285  INFO 157801 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2025-05-21 14:47:00.286  INFO 157801 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
 [Sonos] Using preferred interface: wlp3s0 (/192.168.137.113)
 [Sonos] Using preferred interface: wlp3s0 (/192.168.137.113)
 [Sonos] Using preferred interface: wlp3s0 (/192.168.137.113)
+[Sonos] Using preferred interface: wlp3s0 (/192.168.137.113)
+[HandBrakeCLI] [14:57:58] Compile-time hardening features are enabled
+[HandBrakeCLI] Cannot load libnvidia-encode.so.1
+[HandBrakeCLI] Cannot load libnvidia-encode.so.1
+[HandBrakeCLI] Cannot load libnvidia-encode.so.1
+[HandBrakeCLI] Cannot load libnvidia-encode.so.1
+[HandBrakeCLI] [14:57:58] hb_init: starting libhb thread
+[HandBrakeCLI] [14:57:58] thread 74ac618e9640 started ("libhb")
+[HandBrakeCLI] HandBrake 1.5.1 (2022030700) - Linux x86_64 - https://handbrake.fr
+[HandBrakeCLI] 12 CPUs detected
+[HandBrakeCLI] Opening /home/sangle/Desktop/LocalCloudUploads/Screen_Recording_20250521_101726_Sonos.mp4...
+[HandBrakeCLI] [14:57:58] CPU: Intel(R) Core(TM) i5-10400 CPU @ 2.90GHz
+[HandBrakeCLI] [14:57:58]  - Intel microarchitecture Comet Lake
+[HandBrakeCLI] [14:57:58]  - logical processor count: 12
+[HandBrakeCLI] [14:57:58] hb_scan: path=/home/sangle/Desktop/LocalCloudUploads/Screen_Recording_20250521_101726_Sonos.mp4, title_index=1
+[HandBrakeCLI] udfread ERROR: ECMA 167 Volume Recognition failed
+[HandBrakeCLI] disc.c:333: failed opening UDF image /home/sangle/Desktop/LocalCloudUploads/Screen_Recording_20250521_101726_Sonos.mp4
+[HandBrakeCLI] disc.c:437: error opening file BDMV/index.bdmv
+[HandBrakeCLI] disc.c:437: error opening file BDMV/BACKUP/index.bdmv
+[HandBrakeCLI] bluray.c:2652: nav_get_title_list(/home/sangle/Desktop/LocalCloudUploads/Screen_Recording_20250521_101726_Sonos.mp4/) failed
+[HandBrakeCLI] [14:57:58] bd: not a bd - trying as a stream/file instead
+[HandBrakeCLI] libdvdread: DVDOpenFileUDF:UDFFindFile /VIDEO_TS/VIDEO_TS.IFO failed
+[HandBrakeCLI] libdvdnav: vm: vm: failed to read VIDEO_TS.IFO
+[HandBrakeCLI] [14:57:58] dvd: not a dvd - trying as a stream/file instead
+[HandBrakeCLI] Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '/home/sangle/Desktop/LocalCloudUploads/Screen_Recording_20250521_101726_Sonos.mp4':
+[HandBrakeCLI]   Metadata:
+[HandBrakeCLI]     major_brand     : mp42
+[HandBrakeCLI]     minor_version   : 0
+[HandBrakeCLI]     compatible_brands: isommp42
+[HandBrakeCLI]     creation_time   : 2025-05-21T03:17:26.000000Z
+[HandBrakeCLI]     com.android.version: 14
+[HandBrakeCLI]   Duration: 00:01:30.79, start: 0.000000, bitrate: 1791 kb/s
+[HandBrakeCLI]   Stream #0:0(eng): Video: h264 (Main) (avc1 / 0x31637661), yuv420p(tv, smpte170m/bt470bg/smpte170m), 1080x2400, 1786 kb/s, 50.88 fps, 90k tbr, 90k tbn, 180k tbc (default)
+[HandBrakeCLI]     Metadata:
+[HandBrakeCLI]       creation_time   : 2025-05-21T03:17:26.000000Z
+[HandBrakeCLI]       handler_name    : VideoHandle
+[HandBrakeCLI]       vendor_id       : [0][0][0][0]
+[HandBrakeCLI] [14:57:59] scan: decoding previews for title 1
+[HandBrakeCLI] [14:57:59] scan: 10 previews, 1080x2400, 50.884 fps, autocrop = 0/40/0/0, aspect 1:2.22, PAR 1:1, color profile: 5-6-6, chroma location: left
+[HandBrakeCLI] [14:57:59] libhb: scan thread found 1 valid title(s)
+[HandBrakeCLI] + Using preset: CLI Default
+[HandBrakeCLI] + title 1:
+[HandBrakeCLI]   + stream: /home/sangle/Desktop/LocalCloudUploads/Screen_Recording_20250521_101726_Sonos.mp4
+[HandBrakeCLI]   + duration: 00:01:30
+[HandBrakeCLI]   + size: 1080x2400, pixel aspect: 1/1, display aspect: 0.45, 50.884 fps
+[HandBrakeCLI]   + autocrop: 0/40/0/0
+[HandBrakeCLI]   + chapters:
+[HandBrakeCLI]     + 1: duration 00:01:30
+[HandBrakeCLI]   + audio tracks:
+[HandBrakeCLI]   + subtitle tracks:
+[HandBrakeCLI] [14:57:59] Starting work at: Wed May 21 14:57:59 2025
+[HandBrakeCLI] 
+[HandBrakeCLI] [14:57:59] 1 job(s) to process
+[HandBrakeCLI] [14:57:59] json job:
+[HandBrakeCLI] {
+[HandBrakeCLI]     "Audio": {
+[HandBrakeCLI]         "AudioList": [],
+[HandBrakeCLI]         "CopyMask": [],
+[HandBrakeCLI]         "FallbackEncoder": 0
+[HandBrakeCLI]     },
+[HandBrakeCLI]     "Destination": {
+[HandBrakeCLI]         "AlignAVStart": false,
+[HandBrakeCLI]         "ChapterList": [
+[HandBrakeCLI]             {
+[HandBrakeCLI]                 "Duration": {
+[HandBrakeCLI]                     "Hours": 0,
+[HandBrakeCLI]                     "Minutes": 1,
+[HandBrakeCLI]                     "Seconds": 30,
+[HandBrakeCLI]                     "Ticks": 8171505
+[HandBrakeCLI]                 },
+[HandBrakeCLI]                 "Name": ""
+[HandBrakeCLI]             }
+[HandBrakeCLI]         ],
+[HandBrakeCLI]         "ChapterMarkers": false,
+[HandBrakeCLI]         "File": "/home/sangle/Desktop/ConvertFolder/Screen_Recording_20250521_101726_Sonos.mp4",
+[HandBrakeCLI]         "InlineParameterSets": false,
+[HandBrakeCLI]         "Mp4Options": {
+[HandBrakeCLI]             "IpodAtom": false,
+[HandBrakeCLI]             "Mp4Optimize": true
+[HandBrakeCLI]         },
+[HandBrakeCLI]         "Mux": "m4v"
+[HandBrakeCLI]     },
+[HandBrakeCLI]     "Filters": {
+[HandBrakeCLI]         "FilterList": [
+[HandBrakeCLI]             {
+[HandBrakeCLI]                 "ID": 6,
+[HandBrakeCLI]                 "Settings": {
+[HandBrakeCLI]                     "mode": 0
+[HandBrakeCLI]                 }
+[HandBrakeCLI]             },
+[HandBrakeCLI]             {
+[HandBrakeCLI]                 "ID": 13,
+[HandBrakeCLI]                 "Settings": {
+[HandBrakeCLI]                     "crop-bottom": 40,
+[HandBrakeCLI]                     "crop-left": 0,
+[HandBrakeCLI]                     "crop-right": 0,
+[HandBrakeCLI]                     "crop-top": 0,
+[HandBrakeCLI]                     "height": 2400,
+[HandBrakeCLI]                     "width": 640
+[HandBrakeCLI]                 }
+[HandBrakeCLI]             }
+[HandBrakeCLI]         ]
+[HandBrakeCLI]     },
+[HandBrakeCLI]     "Metadata": {},
+[HandBrakeCLI]     "PAR": {
+[HandBrakeCLI]         "Den": 236,
+[HandBrakeCLI]         "Num": 405
+[HandBrakeCLI]     },
+[HandBrakeCLI]     "SequenceID": 0,
+[HandBrakeCLI]     "Source": {
+[HandBrakeCLI]         "Angle": 0,
+[HandBrakeCLI]         "Path": "/home/sangle/Desktop/LocalCloudUploads/Screen_Recording_20250521_101726_Sonos.mp4",
+[HandBrakeCLI]         "Range": {
+[HandBrakeCLI]             "End": 1,
+[HandBrakeCLI]             "Start": 1,
+[HandBrakeCLI]             "Type": "chapter"
+[HandBrakeCLI]         },
+[HandBrakeCLI]         "Title": 1
+[HandBrakeCLI]     },
+[HandBrakeCLI]     "Subtitle": {
+[HandBrakeCLI]         "Search": {
+[HandBrakeCLI]             "Burn": true,
+[HandBrakeCLI]             "Default": false,
+[HandBrakeCLI]             "Enable": false,
+[HandBrakeCLI]             "Forced": false
+[HandBrakeCLI]         },
+[HandBrakeCLI]         "SubtitleList": []
+[HandBrakeCLI]     },
+[HandBrakeCLI]     "Video": {
+[HandBrakeCLI]         "ChromaLocation": 1,
+[HandBrakeCLI]         "ColorInputFormat": 0,
+[HandBrakeCLI]         "ColorMatrix": 6,
+[HandBrakeCLI]         "ColorOutputFormat": 0,
+[HandBrakeCLI]         "ColorPrimaries": 5,
+[HandBrakeCLI]         "ColorRange": 1,
+[HandBrakeCLI]         "ColorTransfer": 6,
+[HandBrakeCLI]         "Encoder": "x264",
+[HandBrakeCLI]         "Level": "auto",
+[HandBrakeCLI]         "Options": "",
+[HandBrakeCLI]         "Preset": "medium",
+[HandBrakeCLI]         "Profile": "auto",
+[HandBrakeCLI]         "QSV": {
+[HandBrakeCLI]             "AdapterIndex": 0,
+[HandBrakeCLI]             "AsyncDepth": 0,
+[HandBrakeCLI]             "Decode": false
+[HandBrakeCLI]         },
+[HandBrakeCLI]         "Quality": 28.0,
+[HandBrakeCLI]         "Tune": "",
+[HandBrakeCLI]         "Turbo": false,
+[HandBrakeCLI]         "TwoPass": false
+[HandBrakeCLI]     }
+[HandBrakeCLI] }
+[HandBrakeCLI] [14:57:59] Starting Task: Encoding Pass
+[HandBrakeCLI] [14:57:59] Skipping vfr filter
+[HandBrakeCLI] [14:57:59] job configuration:
+[HandBrakeCLI] [14:57:59]  * source
+[HandBrakeCLI] [14:57:59]    + /home/sangle/Desktop/LocalCloudUploads/Screen_Recording_20250521_101726_Sonos.mp4
+[HandBrakeCLI] [14:57:59]    + title 1, chapter(s) 1 to 1
+[HandBrakeCLI] [14:57:59]    + container: mov,mp4,m4a,3gp,3g2,mj2
+[HandBrakeCLI] [14:57:59]    + data rate: 1791 kbps
+[HandBrakeCLI] [14:57:59]  * destination
+[HandBrakeCLI] [14:57:59]    + /home/sangle/Desktop/ConvertFolder/Screen_Recording_20250521_101726_Sonos.mp4
+[HandBrakeCLI] [14:57:59]    + container: MPEG-4 (libavformat)
+[HandBrakeCLI] [14:57:59]      + optimized for HTTP streaming (fast start)
+[HandBrakeCLI] [14:57:59]  * video track
+[HandBrakeCLI] [14:57:59]    + decoder: h264 8-bit (yuv420p)
+[HandBrakeCLI] [14:57:59]      + bitrate 1786 kbps
+[HandBrakeCLI] [14:57:59]    + filters
+[HandBrakeCLI] [14:57:59]      + Crop and Scale (width=640:height=2400:crop-top=0:crop-bottom=40:crop-left=0:crop-right=0)
+[HandBrakeCLI] [14:57:59]        + source: 1080 * 2400, crop (0/40/0/0): 1080 * 2360, scale: 640 * 2400
+[HandBrakeCLI] [14:57:59]    + Output geometry
+[HandBrakeCLI] [14:57:59]      + storage dimensions: 640 x 2400
+[HandBrakeCLI] [14:57:59]      + pixel aspect ratio: 405 : 236
+[HandBrakeCLI] [14:57:59]      + display dimensions: 1098 x 2400
+[HandBrakeCLI] [14:57:59]    + encoder: H.264 (libx264)
+[HandBrakeCLI] [14:57:59]      + preset:  medium
+[HandBrakeCLI] [14:57:59]      + profile: auto
+[HandBrakeCLI] [14:57:59]      + level:   auto
+[HandBrakeCLI] [14:57:59]      + quality: 28.00 (RF)
+[HandBrakeCLI] [14:57:59]      + color profile: 5-6-6
+[HandBrakeCLI] [14:57:59]      + chroma location: left
+[HandBrakeCLI] [14:57:59] sync: expecting 4620 video frames
+[HandBrakeCLI] [14:57:59] encx264: min-keyint: 51, keyint: 510
+[HandBrakeCLI] [14:57:59] encx264: encoding at constant RF 28.000000
+[HandBrakeCLI] x264 [info]: using SAR=405/236
+[HandBrakeCLI] x264 [info]: using cpu capabilities: MMX2 SSE2Fast SSSE3 SSE4.2 AVX FMA3 BMI2 AVX2
+[HandBrakeCLI] x264 [info]: profile High, level 4.2, 4:2:0, 8-bit
+[HandBrakeCLI] [14:57:59] sync: first pts video is 0
+[HandBrakeCLI] [14:57:59] sync: Chapter 1 at frame 1 time 0
+[HandBrakeCLI] libdvdread: Encrypted DVD support unavailable.************************************************
+[HandBrakeCLI] **                                            **
+[HandBrakeCLI] **  No css library available. See             **
+[HandBrakeCLI] **  /usr/share/doc/libdvdread4/README.css     **
+[HandBrakeCLI] **  for more information.                     **
+[HandBrakeCLI] **                                            **
+[HandBrakeCLI] ************************************************
+[HandBrakeCLI] 
+[HandBrakeCLI] libdvdread: Can't open file VIDEO_TS.IFO.
+[HandBrakeCLI] 
+[HandBrakeCLI] Encoding: task 1 of 1, 0.74 %
+[HandBrakeCLI] Encoding: task 1 of 1, 1.39 %
+[HandBrakeCLI] Encoding: task 1 of 1, 1.97 %
+[HandBrakeCLI] Encoding: task 1 of 1, 2.62 %
+[HandBrakeCLI] Encoding: task 1 of 1, 3.27 %
+[HandBrakeCLI] Encoding: task 1 of 1, 4.24 %
+[HandBrakeCLI] Encoding: task 1 of 1, 4.89 %
+[HandBrakeCLI] Encoding: task 1 of 1, 5.54 %
+[HandBrakeCLI] Encoding: task 1 of 1, 6.52 %
+[HandBrakeCLI] Encoding: task 1 of 1, 7.16 %
+[HandBrakeCLI] Encoding: task 1 of 1, 8.14 %
+[HandBrakeCLI] Encoding: task 1 of 1, 8.79 %
+[HandBrakeCLI] Encoding: task 1 of 1, 9.76 %
+[HandBrakeCLI] Encoding: task 1 of 1, 10.41 % (113.02 fps, avg 113.02 fps, ETA 00h00m37s)
+[HandBrakeCLI] Encoding: task 1 of 1, 11.39 % (120.58 fps, avg 117.05 fps, ETA 00h00m35s)
+[HandBrakeCLI] Encoding: task 1 of 1, 12.03 % (120.58 fps, avg 117.05 fps, ETA 00h00m35s)
+[HandBrakeCLI] Encoding: task 1 of 1, 13.01 % (120.58 fps, avg 117.05 fps, ETA 00h00m35s)
+[HandBrakeCLI] Encoding: task 1 of 1, 13.66 % (120.58 fps, avg 117.05 fps, ETA 00h00m35s)
+[HandBrakeCLI] Encoding: task 1 of 1, 14.63 % (123.65 fps, avg 118.22 fps, ETA 00h00m33s)
+[HandBrakeCLI] Encoding: task 1 of 1, 15.28 % (123.65 fps, avg 118.22 fps, ETA 00h00m33s)
+[HandBrakeCLI] Encoding: task 1 of 1, 16.26 % (123.65 fps, avg 118.22 fps, ETA 00h00m33s)
+[HandBrakeCLI] Encoding: task 1 of 1, 16.90 % (125.74 fps, avg 119.40 fps, ETA 00h00m32s)
+[HandBrakeCLI] Encoding: task 1 of 1, 17.88 % (125.74 fps, avg 119.40 fps, ETA 00h00m32s)
+[HandBrakeCLI] Encoding: task 1 of 1, 18.53 % (125.74 fps, avg 119.40 fps, ETA 00h00m32s)
+[HandBrakeCLI] Encoding: task 1 of 1, 19.50 % (125.74 fps, avg 119.40 fps, ETA 00h00m32s)
+[HandBrakeCLI] Encoding: task 1 of 1, 20.15 % (123.44 fps, avg 119.84 fps, ETA 00h00m31s)
+[HandBrakeCLI] Encoding: task 1 of 1, 20.80 % (123.44 fps, avg 119.84 fps, ETA 00h00m31s)
+[HandBrakeCLI] Encoding: task 1 of 1, 21.45 % (123.44 fps, avg 119.84 fps, ETA 00h00m31s)
+[HandBrakeCLI] Encoding: task 1 of 1, 22.42 % (120.78 fps, avg 119.18 fps, ETA 00h00m30s)
+[HandBrakeCLI] Encoding: task 1 of 1, 23.07 % (120.78 fps, avg 119.18 fps, ETA 00h00m30s)
+[HandBrakeCLI] Encoding: task 1 of 1, 24.05 % (120.78 fps, avg 119.18 fps, ETA 00h00m30s)
+[HandBrakeCLI] Encoding: task 1 of 1, 24.70 % (120.78 fps, avg 119.18 fps, ETA 00h00m30s)
+[HandBrakeCLI] Encoding: task 1 of 1, 25.67 % (119.82 fps, avg 119.54 fps, ETA 00h00m28s)
+[HandBrakeCLI] Encoding: task 1 of 1, 26.32 % (119.82 fps, avg 119.54 fps, ETA 00h00m28s)
+[HandBrakeCLI] Encoding: task 1 of 1, 27.29 % (119.82 fps, avg 119.54 fps, ETA 00h00m28s)
+[HandBrakeCLI] Encoding: task 1 of 1, 27.94 % (119.82 fps, avg 119.54 fps, ETA 00h00m28s)
+[HandBrakeCLI] Encoding: task 1 of 1, 28.92 % (120.59 fps, avg 120.06 fps, ETA 00h00m27s)
+[HandBrakeCLI] Encoding: task 1 of 1, 29.57 % (120.59 fps, avg 120.06 fps, ETA 00h00m27s)
+[HandBrakeCLI] Encoding: task 1 of 1, 30.54 % (120.59 fps, avg 120.06 fps, ETA 00h00m27s)
+[HandBrakeCLI] Encoding: task 1 of 1, 31.19 % (124.50 fps, avg 120.65 fps, ETA 00h00m26s)
+[HandBrakeCLI] Encoding: task 1 of 1, 32.16 % (124.50 fps, avg 120.65 fps, ETA 00h00m26s)
+[HandBrakeCLI] Encoding: task 1 of 1, 32.81 % (124.50 fps, avg 120.65 fps, ETA 00h00m26s)
+[HandBrakeCLI] Encoding: task 1 of 1, 33.46 % (124.50 fps, avg 120.65 fps, ETA 00h00m26s)
+[HandBrakeCLI] Encoding: task 1 of 1, 34.44 % (123.26 fps, avg 120.45 fps, ETA 00h00m25s)
+[HandBrakeCLI] Encoding: task 1 of 1, 35.09 % (123.26 fps, avg 120.45 fps, ETA 00h00m25s)
+[HandBrakeCLI] Encoding: task 1 of 1, 36.06 % (123.26 fps, avg 120.45 fps, ETA 00h00m25s)
+[HandBrakeCLI] Encoding: task 1 of 1, 36.71 % (123.89 fps, avg 120.93 fps, ETA 00h00m24s)
+[HandBrakeCLI] Encoding: task 1 of 1, 37.68 % (123.89 fps, avg 120.93 fps, ETA 00h00m24s)
+[HandBrakeCLI] Encoding: task 1 of 1, 38.33 % (123.89 fps, avg 120.93 fps, ETA 00h00m24s)
+[HandBrakeCLI] Encoding: task 1 of 1, 39.31 % (123.89 fps, avg 120.93 fps, ETA 00h00m24s)
+[HandBrakeCLI] Encoding: task 1 of 1, 39.96 % (123.73 fps, avg 121.30 fps, ETA 00h00m23s)
+[HandBrakeCLI] Encoding: task 1 of 1, 40.93 % (123.73 fps, avg 121.30 fps, ETA 00h00m23s)
+[HandBrakeCLI] Encoding: task 1 of 1, 41.58 % (123.73 fps, avg 121.30 fps, ETA 00h00m23s)
+[HandBrakeCLI] Encoding: task 1 of 1, 42.55 % (124.24 fps, avg 121.20 fps, ETA 00h00m22s)
+[HandBrakeCLI] Encoding: task 1 of 1, 43.20 % (124.24 fps, avg 121.20 fps, ETA 00h00m22s)
+[HandBrakeCLI] Encoding: task 1 of 1, 44.18 % (124.24 fps, avg 121.20 fps, ETA 00h00m22s)
+[HandBrakeCLI] Encoding: task 1 of 1, 44.83 % (124.24 fps, avg 121.20 fps, ETA 00h00m22s)
+[HandBrakeCLI] Encoding: task 1 of 1, 45.80 % (123.42 fps, avg 121.39 fps, ETA 00h00m20s)
+[HandBrakeCLI] Encoding: task 1 of 1, 46.45 % (123.42 fps, avg 121.39 fps, ETA 00h00m20s)
+[HandBrakeCLI] Encoding: task 1 of 1, 47.42 % (123.42 fps, avg 121.39 fps, ETA 00h00m20s)
+[HandBrakeCLI] Encoding: task 1 of 1, 48.07 % (124.44 fps, avg 121.84 fps, ETA 00h00m19s)
+[HandBrakeCLI] Encoding: task 1 of 1, 49.05 % (124.44 fps, avg 121.84 fps, ETA 00h00m19s)
+[HandBrakeCLI] Encoding: task 1 of 1, 50.02 % (124.44 fps, avg 121.84 fps, ETA 00h00m19s)
+[HandBrakeCLI] Encoding: task 1 of 1, 50.67 % (124.44 fps, avg 121.84 fps, ETA 00h00m19s)
+[HandBrakeCLI] Encoding: task 1 of 1, 51.65 % (127.40 fps, avg 122.23 fps, ETA 00h00m18s)
+[HandBrakeCLI] Encoding: task 1 of 1, 52.29 % (127.40 fps, avg 122.23 fps, ETA 00h00m18s)
+[HandBrakeCLI] Encoding: task 1 of 1, 52.94 % (127.40 fps, avg 122.23 fps, ETA 00h00m18s)
+[HandBrakeCLI] Encoding: task 1 of 1, 53.59 % (124.52 fps, avg 121.88 fps, ETA 00h00m17s)
+[HandBrakeCLI] Encoding: task 1 of 1, 54.57 % (124.52 fps, avg 121.88 fps, ETA 00h00m17s)
+[HandBrakeCLI] Encoding: task 1 of 1, 55.54 % (124.52 fps, avg 121.88 fps, ETA 00h00m17s)
+[HandBrakeCLI] Encoding: task 1 of 1, 56.19 % (124.52 fps, avg 121.88 fps, ETA 00h00m17s)
+[HandBrakeCLI] Encoding: task 1 of 1, 56.84 % (122.80 fps, avg 121.98 fps, ETA 00h00m16s)
+[HandBrakeCLI] Encoding: task 1 of 1, 57.81 % (122.80 fps, avg 121.98 fps, ETA 00h00m16s)
+[HandBrakeCLI] Encoding: task 1 of 1, 58.79 % (122.80 fps, avg 121.98 fps, ETA 00h00m16s)
+[HandBrakeCLI] Encoding: task 1 of 1, 59.44 % (121.76 fps, avg 122.16 fps, ETA 00h00m15s)
+[HandBrakeCLI] Encoding: task 1 of 1, 60.09 % (121.76 fps, avg 122.16 fps, ETA 00h00m15s)
+[HandBrakeCLI] Encoding: task 1 of 1, 61.06 % (121.76 fps, avg 122.16 fps, ETA 00h00m15s)
+[HandBrakeCLI] Encoding: task 1 of 1, 61.71 % (121.76 fps, avg 122.16 fps, ETA 00h00m15s)
+[HandBrakeCLI] Encoding: task 1 of 1, 62.68 % (124.69 fps, avg 122.27 fps, ETA 00h00m14s)
+[HandBrakeCLI] Encoding: task 1 of 1, 63.66 % (124.69 fps, avg 122.27 fps, ETA 00h00m14s)
+[HandBrakeCLI] Encoding: task 1 of 1, 64.31 % (124.69 fps, avg 122.27 fps, ETA 00h00m14s)
+[HandBrakeCLI] Encoding: task 1 of 1, 65.28 % (125.23 fps, avg 122.41 fps, ETA 00h00m13s)
+[HandBrakeCLI] Encoding: task 1 of 1, 65.93 % (125.23 fps, avg 122.41 fps, ETA 00h00m13s)
+[HandBrakeCLI] Encoding: task 1 of 1, 66.90 % (125.23 fps, avg 122.41 fps, ETA 00h00m13s)
+[HandBrakeCLI] Encoding: task 1 of 1, 67.55 % (125.23 fps, avg 122.41 fps, ETA 00h00m13s)
+[HandBrakeCLI] Encoding: task 1 of 1, 68.20 % (124.20 fps, avg 122.42 fps, ETA 00h00m12s)
+[HandBrakeCLI] Encoding: task 1 of 1, 69.18 % (124.20 fps, avg 122.42 fps, ETA 00h00m12s)
+[HandBrakeCLI] Encoding: task 1 of 1, 69.83 % (124.20 fps, avg 122.42 fps, ETA 00h00m12s)
+[HandBrakeCLI] Encoding: task 1 of 1, 70.80 % (124.20 fps, avg 122.42 fps, ETA 00h00m12s)
+[HandBrakeCLI] Encoding: task 1 of 1, 71.45 % (124.35 fps, avg 122.52 fps, ETA 00h00m11s)
+[HandBrakeCLI] Encoding: task 1 of 1, 72.42 % (124.35 fps, avg 122.52 fps, ETA 00h00m11s)
+[HandBrakeCLI] Encoding: task 1 of 1, 73.07 % (124.35 fps, avg 122.52 fps, ETA 00h00m11s)
+[HandBrakeCLI] Encoding: task 1 of 1, 74.05 % (123.70 fps, avg 122.56 fps, ETA 00h00m09s)
+[HandBrakeCLI] Encoding: task 1 of 1, 74.70 % (123.70 fps, avg 122.56 fps, ETA 00h00m09s)
+[HandBrakeCLI] Encoding: task 1 of 1, 75.67 % (123.70 fps, avg 122.56 fps, ETA 00h00m09s)
+[HandBrakeCLI] Encoding: task 1 of 1, 76.32 % (123.70 fps, avg 122.56 fps, ETA 00h00m09s)
+[HandBrakeCLI] Encoding: task 1 of 1, 77.29 % (125.35 fps, avg 122.75 fps, ETA 00h00m08s)
+[HandBrakeCLI] Encoding: task 1 of 1, 77.94 % (125.35 fps, avg 122.75 fps, ETA 00h00m08s)
+[HandBrakeCLI] Encoding: task 1 of 1, 78.92 % (125.35 fps, avg 122.75 fps, ETA 00h00m08s)
+[HandBrakeCLI] Encoding: task 1 of 1, 79.89 % (126.29 fps, avg 122.92 fps, ETA 00h00m07s)
+[HandBrakeCLI] Encoding: task 1 of 1, 80.54 % (126.29 fps, avg 122.92 fps, ETA 00h00m07s)
+[HandBrakeCLI] Encoding: task 1 of 1, 81.52 % (126.29 fps, avg 122.92 fps, ETA 00h00m07s)
+[HandBrakeCLI] Encoding: task 1 of 1, 82.16 % (126.29 fps, avg 122.92 fps, ETA 00h00m07s)
+[HandBrakeCLI] Encoding: task 1 of 1, 83.14 % (127.00 fps, avg 123.02 fps, ETA 00h00m06s)
+[HandBrakeCLI] Encoding: task 1 of 1, 83.79 % (127.00 fps, avg 123.02 fps, ETA 00h00m06s)
+[HandBrakeCLI] Encoding: task 1 of 1, 84.76 % (127.00 fps, avg 123.02 fps, ETA 00h00m06s)
+[HandBrakeCLI] Encoding: task 1 of 1, 85.41 % (127.00 fps, avg 123.02 fps, ETA 00h00m06s)
+[HandBrakeCLI] Encoding: task 1 of 1, 86.39 % (127.20 fps, avg 123.19 fps, ETA 00h00m05s)
+[HandBrakeCLI] Encoding: task 1 of 1, 87.03 % (127.20 fps, avg 123.19 fps, ETA 00h00m05s)
+[HandBrakeCLI] Encoding: task 1 of 1, 88.01 % (127.20 fps, avg 123.19 fps, ETA 00h00m05s)
+[HandBrakeCLI] Encoding: task 1 of 1, 88.66 % (125.00 fps, avg 123.13 fps, ETA 00h00m04s)
+[HandBrakeCLI] Encoding: task 1 of 1, 89.31 % (125.00 fps, avg 123.13 fps, ETA 00h00m04s)
+[HandBrakeCLI] Encoding: task 1 of 1, 89.96 % (125.00 fps, avg 123.13 fps, ETA 00h00m04s)
+[HandBrakeCLI] Encoding: task 1 of 1, 90.93 % (125.00 fps, avg 123.13 fps, ETA 00h00m04s)
+[HandBrakeCLI] Encoding: task 1 of 1, 91.58 % (119.67 fps, avg 122.70 fps, ETA 00h00m03s)
+[HandBrakeCLI] Encoding: task 1 of 1, 92.23 % (119.67 fps, avg 122.70 fps, ETA 00h00m03s)
+[HandBrakeCLI] Encoding: task 1 of 1, 93.20 % (119.67 fps, avg 122.70 fps, ETA 00h00m03s)
+[HandBrakeCLI] Encoding: task 1 of 1, 93.85 % (115.31 fps, avg 122.46 fps, ETA 00h00m02s)
+[HandBrakeCLI] Encoding: task 1 of 1, 94.50 % (115.31 fps, avg 122.46 fps, ETA 00h00m02s)
+[HandBrakeCLI] Encoding: task 1 of 1, 95.15 % (115.31 fps, avg 122.46 fps, ETA 00h00m02s)
+[HandBrakeCLI] Encoding: task 1 of 1, 96.13 % (115.31 fps, avg 122.46 fps, ETA 00h00m02s)
+[HandBrakeCLI] Encoding: task 1 of 1, 96.77 % (113.49 fps, avg 122.28 fps, ETA 00h00m01s)
+[HandBrakeCLI] Encoding: task 1 of 1, 97.42 % (113.49 fps, avg 122.28 fps, ETA 00h00m01s)
+[HandBrakeCLI] Encoding: task 1 of 1, 98.07 % (113.49 fps, avg 122.28 fps, ETA 00h00m01s)
+[HandBrakeCLI] Encoding: task 1 of 1, 99.05 % (113.53 fps, avg 121.92 fps, ETA 00h00m00s)[14:58:36] reader: done. 1 scr changes
+[HandBrakeCLI] 
+[HandBrakeCLI] Encoding: task 1 of 1, 99.98 % (113.53 fps, avg 121.92 fps, ETA 00h00m00s)
+[HandBrakeCLI] Encoding: task 1 of 1, 99.98 % (113.53 fps, avg 121.92 fps, ETA 00h00m00s)[14:58:37] work: average encoding speed for job is 121.923187 fps
+[HandBrakeCLI] [14:58:37] h264-decoder done: 4620 frames, 0 decoder errors
+[HandBrakeCLI] [14:58:37] sync: got 4620 frames, 4620 expected
+[HandBrakeCLI] [14:58:37] sync: framerate min 1.208 fps, max 109.890 fps, avg 50.951 fps
+[HandBrakeCLI] x264 [info]: frame I:17    Avg QP:22.41  size: 19357
+[HandBrakeCLI] x264 [info]: frame P:1423  Avg QP:23.22  size:  1284
+[HandBrakeCLI] x264 [info]: frame B:3180  Avg QP:22.76  size:   193
+[HandBrakeCLI] x264 [info]: consecutive B-frames:  6.5%  4.0%  3.5% 86.0%
+[HandBrakeCLI] x264 [info]: mb I  I16..4: 16.0% 75.3%  8.7%
+[HandBrakeCLI] x264 [info]: mb P  I16..4:  2.2%  4.9%  0.4%  P16..4:  2.3%  0.2%  0.2%  0.0%  0.0%    skip:89.8%
+[HandBrakeCLI] x264 [info]: mb B  I16..4:  0.1%  0.1%  0.0%  B16..8:  1.6%  0.0%  0.0%  direct: 0.0%  skip:98.2%  L0:44.0% L1:54.8% BI: 1.2%
+[HandBrakeCLI] x264 [info]: 8x8 transform intra:65.6% inter:64.8%
+[HandBrakeCLI] x264 [info]: coded y,uvDC,uvAC intra: 6.0% 3.2% 0.7% inter: 0.2% 0.1% 0.0%
+[HandBrakeCLI] x264 [info]: i16 v,h,dc,p: 63% 31%  3%  3%
+[HandBrakeCLI] x264 [info]: i8 v,h,dc,ddl,ddr,vr,hd,vl,hu: 41% 20% 36%  0%  0%  1%  0%  0%  0%
+[HandBrakeCLI] x264 [info]: i4 v,h,dc,ddl,ddr,vr,hd,vl,hu: 46% 13% 18%  3%  4%  6%  3%  5%  2%
+[HandBrakeCLI] x264 [info]: i8c dc,h,v,p: 92%  4%  4%  0%
+[HandBrakeCLI] x264 [info]: Weighted P-Frames: Y:6.7% UV:2.2%
+[HandBrakeCLI] x264 [info]: ref P L0: 64.7% 14.3% 15.7%  4.7%  0.5%
+[HandBrakeCLI] x264 [info]: ref B L0: 73.4% 23.8%  2.8%
+[HandBrakeCLI] x264 [info]: ref B L1: 96.8%  3.2%
+[HandBrakeCLI] x264 [info]: kb/s:243.87
+[HandBrakeCLI] [14:58:37] mux: track 0, 4620 frames, 2768043 bytes, 244.21 kbps, fifo 8192
+[HandBrakeCLI] [14:58:37] Finished work at: Wed May 21 14:58:37 2025
+[HandBrakeCLI] 
+[HandBrakeCLI] [14:58:37] libhb: work result = 0
+[HandBrakeCLI] 
+[HandBrakeCLI] Encode done!
+[HandBrakeCLI] HandBrake has exited.
+[HandBrakeCLI] 
+2025-05-21 14:59:06.225  INFO 157801 --- [nio-8080-exec-6] c.e.local_cloud.service.NotesService     : Getting folders from: /home/sangle/Desktop/LocalNotes
+2025-05-21 14:59:17.169  INFO 157801 --- [nio-8080-exec-6] c.e.local_cloud.service.NotesService     : Saved note: /home/sangle/Desktop/LocalNotes/Test env/bfdcad3b-7dfe-486f-bf32-91906dac412e.txt
+2025-05-21 14:59:20.918  INFO 157801 --- [nio-8080-exec-8] c.e.local_cloud.service.NotesService     : Saved note: /home/sangle/Desktop/LocalNotes/Test env/bfdcad3b-7dfe-486f-bf32-91906dac412e.txt
+[Sonos] Using preferred interface: wlp3s0 (/192.168.137.113)
+[Sonos] Using preferred interface: wlp3s0 (/192.168.137.113)
+[Sonos] Using preferred interface: wlp3s0 (/192.168.137.113)
+[Sonos] Using preferred interface: wlp3s0 (/192.168.0.69)
+[Sonos] Using preferred interface: wlp3s0 (/192.168.0.69)
+[Sonos] Using preferred interface: wlp3s0 (/192.168.0.69)
+[Sonos] Using preferred interface: wlp3s0 (/192.168.0.69)
+[Sonos] Using preferred interface: wlp3s0 (/192.168.0.69)

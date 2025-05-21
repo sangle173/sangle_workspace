@@ -15,9 +15,6 @@ import java.io.IOException;
 import java.net.*;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.concurrent.atomic.AtomicLong;
 
 @RestController
 @RequestMapping("/sonos-action")
@@ -216,17 +213,16 @@ public class SonosActionController {
                     msg = sonosService.playSource(ip, uri, volume, deviceName);
                     break;
                 }
-                case "set-volume": {
-                    Integer volume = request.getVolume();
-                    msg = sonosService.setVolume(ip, volume);
-                    break;
-                }
                 case "pause": {
                     msg = sonosService.pause(ip);
                     break;
                 }
                 case "resume": {
                     msg = sonosService.resume(ip);
+                    break;
+                }
+                case "playback-status": {
+                    msg = sonosService.getPlaybackStatus(ip);
                     break;
                 }
                 default:
@@ -239,6 +235,11 @@ public class SonosActionController {
         return "<div class='text-success'>✅ Action <b>" + request.getAction() + "</b> sent to "
                 + results.size() + " device(s).</div><ul><li>"
                 + String.join("</li><li>", results) + "</li></ul>";
+    }
+
+    @PostMapping("/cli")
+    public String runSonosCli(@RequestParam String ip, @RequestParam String cmd) {
+        return sonosService.sonosCli(ip, cmd);
     }
 
     @PostConstruct
@@ -527,6 +528,11 @@ public class SonosActionController {
         } catch (Exception e) {
             return "❌ Error: " + e.getMessage();
         }
+    }
+
+    @GetMapping("/get-volume")
+    public String getVolume(@RequestParam String ip) {
+        return sonosService.getVolume(ip);
     }
 
     // Helper to fetch device info with custom timeouts

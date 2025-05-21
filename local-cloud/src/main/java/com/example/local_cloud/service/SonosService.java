@@ -10,6 +10,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathFactory;
+import org.w3c.dom.Document;
 
 @Service
 public class SonosService {
@@ -50,9 +54,10 @@ public class SonosService {
             if (responseCode == 200) {
                 return "✅ Update command sent successfully via ZoneGroupTopology.";
             } else {
-                Scanner errorScanner = new Scanner(conn.getErrorStream()).useDelimiter("\\A");
-                String errorBody = errorScanner.hasNext() ? errorScanner.next() : "Unknown error";
-                return "❌ Failed (" + responseCode + "):\n" + errorBody;
+                try (Scanner errorScanner = new Scanner(conn.getErrorStream()).useDelimiter("\\A")) {
+                    String errorBody = errorScanner.hasNext() ? errorScanner.next() : "Unknown error";
+                    return "❌ Failed (" + responseCode + "):\n" + errorBody;
+                }
             }
     
         } catch (Exception e) {
@@ -68,25 +73,26 @@ public class SonosService {
             HttpURLConnection getConn = (HttpURLConnection) getUrl.openConnection();
             getConn.setRequestMethod("GET");
 
-            Scanner scanner = new Scanner(getConn.getInputStream()).useDelimiter("\\A");
-            String html = scanner.hasNext() ? scanner.next() : "";
+            try (Scanner scanner = new Scanner(getConn.getInputStream()).useDelimiter("\\A")) {
+                String html = scanner.hasNext() ? scanner.next() : "";
 
-            Matcher matcher = Pattern.compile("name=\"csrfToken\" value=\"([^\"]+)\"").matcher(html);
-            if (!matcher.find()) return "❌ CSRF token not found";
+                Matcher matcher = Pattern.compile("name=\"csrfToken\" value=\"([^\"]+)\"").matcher(html);
+                if (!matcher.find()) return "❌ CSRF token not found";
 
-            String token = matcher.group(1);
+                String token = matcher.group(1);
 
-            // POST token back to /reboot
-            URL postUrl = new URL("http://" + ip + ":1400/reboot");
-            HttpURLConnection postConn = (HttpURLConnection) postUrl.openConnection();
-            postConn.setRequestMethod("POST");
-            postConn.setDoOutput(true);
-            postConn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+                // POST token back to /reboot
+                URL postUrl = new URL("http://" + ip + ":1400/reboot");
+                HttpURLConnection postConn = (HttpURLConnection) postUrl.openConnection();
+                postConn.setRequestMethod("POST");
+                postConn.setDoOutput(true);
+                postConn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
 
-            String payload = "csrfToken=" + URLEncoder.encode(token, "UTF-8");
-            postConn.getOutputStream().write(payload.getBytes());
+                String payload = "csrfToken=" + URLEncoder.encode(token, "UTF-8");
+                postConn.getOutputStream().write(payload.getBytes());
 
-            return postConn.getResponseCode() == 200 ? "✅ Rebooted" : "❌ Failed (" + postConn.getResponseCode() + ")";
+                return postConn.getResponseCode() == 200 ? "✅ Rebooted" : "❌ Failed (" + postConn.getResponseCode() + ")";
+            }
         } catch (Exception e) {
             return "❌ Reboot error: " + e.getMessage();
         }
@@ -147,18 +153,20 @@ public class SonosService {
     
             int responseCode = conn.getResponseCode();
             if (responseCode == 200) {
-                Scanner scanner = new Scanner(conn.getInputStream()).useDelimiter("\\A");
-                String body = scanner.hasNext() ? scanner.next() : "";
-                Matcher m = Pattern.compile("<DiagnosticID>(\\d+)</DiagnosticID>").matcher(body);
-                if (m.find()) {
-                    return "✅ Diagnostic submitted. ID: " + m.group(1);
-                } else {
-                    return "✅ Submitted but no ID found in response.";
+                try (Scanner scanner = new Scanner(conn.getInputStream()).useDelimiter("\\A")) {
+                    String body = scanner.hasNext() ? scanner.next() : "";
+                    Matcher m = Pattern.compile("<DiagnosticID>(\\d+)</DiagnosticID>").matcher(body);
+                    if (m.find()) {
+                        return "✅ Diagnostic submitted. ID: " + m.group(1);
+                    } else {
+                        return "✅ Submitted but no ID found in response.";
+                    }
                 }
             } else {
-                Scanner err = new Scanner(conn.getErrorStream()).useDelimiter("\\A");
-                String errorBody = err.hasNext() ? err.next() : "Unknown";
-                return "❌ Failed (" + responseCode + "): " + errorBody;
+                try (Scanner err = new Scanner(conn.getErrorStream()).useDelimiter("\\A")) {
+                    String errorBody = err.hasNext() ? err.next() : "Unknown";
+                    return "❌ Failed (" + responseCode + "): " + errorBody;
+                }
             }
     
         } catch (Exception e) {
@@ -205,6 +213,42 @@ public class SonosService {
         }
     }
 
+    // Get current volume percent using UPnP SOAP
+    public String getVolume(String ip) {
+        try {
+            String soapEnvelope =
+                "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                "<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\" s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\">" +
+                "<s:Body>" +
+                "<u:GetVolume xmlns:u=\"urn:schemas-upnp-org:service:RenderingControl:1\">" +
+                "<InstanceID>0</InstanceID>" +
+                "<Channel>Master</Channel>" +
+                "</u:GetVolume>" +
+                "</s:Body>" +
+                "</s:Envelope>";
+            URL url = new URL("http://" + ip + ":1400/MediaRenderer/RenderingControl/Control");
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setDoOutput(true);
+            conn.setConnectTimeout(2000);
+            conn.setReadTimeout(2000);
+            conn.setRequestProperty("Content-Type", "text/xml; charset=\"utf-8\"");
+            conn.setRequestProperty("SOAPACTION", "\"urn:schemas-upnp-org:service:RenderingControl:1#GetVolume\"");
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(soapEnvelope.getBytes(StandardCharsets.UTF_8));
+            }
+            if (conn.getResponseCode() != 200) {
+                return "-";
+            }
+            Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(conn.getInputStream());
+            XPath xpath = XPathFactory.newInstance().newXPath();
+            String vol = xpath.evaluate("//*[local-name()='CurrentVolume']", doc);
+            return vol != null && !vol.isEmpty() ? vol : "-";
+        } catch (Exception e) {
+            return "-";
+        }
+    }
+
     // Pause playback using SonosPlay CLI
     public String pause(String ip) {
         try {
@@ -231,6 +275,58 @@ public class SonosService {
                 return "▶️ Resumed";
             } else {
                 return "❌ Failed to resume (exit " + exit + ")";
+            }
+        } catch (Exception e) {
+            return "❌ Exception: " + e.getMessage();
+        }
+    }
+
+    public String getPlaybackStatus(String ip) {
+        try {
+            String soapEnvelope =
+                "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                "<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\" s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\">" +
+                "<s:Body>" +
+                "<u:GetTransportInfo xmlns:u=\"urn:schemas-upnp-org:service:AVTransport:1\">" +
+                "<InstanceID>0</InstanceID>" +
+                "</u:GetTransportInfo>" +
+                "</s:Body>" +
+                "</s:Envelope>";
+            URL url = new URL("http://" + ip + ":1400/MediaRenderer/AVTransport/Control");
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setDoOutput(true);
+            conn.setConnectTimeout(2000);
+            conn.setReadTimeout(2000);
+            conn.setRequestProperty("Content-Type", "text/xml; charset=\"utf-8\"");
+            conn.setRequestProperty("SOAPACTION", "\"urn:schemas-upnp-org:service:AVTransport:1#GetTransportInfo\"");
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(soapEnvelope.getBytes(StandardCharsets.UTF_8));
+            }
+            if (conn.getResponseCode() != 200) {
+                return "❌ SOAP error: " + conn.getResponseCode();
+            }
+            Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(conn.getInputStream());
+            XPath xpath = XPathFactory.newInstance().newXPath();
+            String state = xpath.evaluate("//*[local-name()='CurrentTransportState']", doc);
+            return state != null && !state.isEmpty() ? state : "❓ Unknown";
+        } catch (Exception e) {
+            return "❌ Exception: " + e.getMessage();
+        }
+    }
+
+    // Run SonosPlay CLI with arbitrary command (play, pause, etc)
+    public String sonosCli(String ip, String cmd) {
+        try {
+            ProcessBuilder pb = new ProcessBuilder("SonosPlay", ip, cmd);
+            Process proc = pb.start();
+            int exit = proc.waitFor();
+            String output = new String(proc.getInputStream().readAllBytes());
+            String error = new String(proc.getErrorStream().readAllBytes());
+            if (exit == 0) {
+                return "✅ SonosPlay " + ip + " " + cmd + "\n" + output;
+            } else {
+                return "❌ SonosPlay failed (exit " + exit + ")\n" + error;
             }
         } catch (Exception e) {
             return "❌ Exception: " + e.getMessage();
