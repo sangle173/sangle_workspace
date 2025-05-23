@@ -1,0 +1,308 @@
+package com.example.local_cloud.service;
+
+import org.springframework.stereotype.Service;
+import java.io.*;
+import java.util.*;
+import java.net.URL;
+import java.net.*;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathFactory;
+import org.w3c.dom.Document;
+
+@Service
+public class NetworkSonosDiscoveryService {
+    private static final String DEVICES_JSON = "/opt/lampp/htdocs/sangle_workspace/local-cloud/sonos_devices.json";
+
+    private String toNetworkAddress(String ipWithCidr) {
+        // Example: 192.168.137.115/24 -> 192.168.137.0/24
+        if (ipWithCidr == null || !ipWithCidr.contains("/")) return ipWithCidr;
+        try {
+            String[] parts = ipWithCidr.split("/");
+            String[] octets = parts[0].split("\\.");
+            int prefix = Integer.parseInt(parts[1]);
+            int ip = (Integer.parseInt(octets[0]) << 24) |
+                     (Integer.parseInt(octets[1]) << 16) |
+                     (Integer.parseInt(octets[2]) << 8) |
+                     (Integer.parseInt(octets[3]));
+            int mask = 0xFFFFFFFF << (32 - prefix);
+            int network = ip & mask;
+            String networkAddr = String.format("%d.%d.%d.%d/%d",
+                (network >> 24) & 0xFF,
+                (network >> 16) & 0xFF,
+                (network >> 8) & 0xFF,
+                network & 0xFF,
+                prefix);
+            return networkAddr;
+        } catch (Exception e) {
+            return ipWithCidr;
+        }
+    }
+
+    public List<Map<String, String>> getAvailableWifiNetworks() {
+        List<Map<String, String>> networks = new ArrayList<>();
+        Set<String> activeSsids = new HashSet<>();
+        Map<String, String> activeSubnets = new HashMap<>();
+        try {
+            // Get active WiFi connections and their devices
+            Process activeProc = Runtime.getRuntime().exec("nmcli -t -f NAME,DEVICE,TYPE connection show --active");
+            BufferedReader activeReader = new BufferedReader(new InputStreamReader(activeProc.getInputStream()));
+            String activeLine;
+            while ((activeLine = activeReader.readLine()) != null) {
+                String[] parts = activeLine.split(":");
+                if (parts.length >= 3 && parts[2].equals("802-11-wireless")) {
+                    String ssid = parts[0];
+                    String device = parts[1];
+                    activeSsids.add(ssid);
+                    // Get subnet for this device
+                    try {
+                        Process ipProc = Runtime.getRuntime().exec("nmcli -t -f IP4.ADDRESS dev show " + device);
+                        BufferedReader ipReader = new BufferedReader(new InputStreamReader(ipProc.getInputStream()));
+                        String ipLine;
+                        while ((ipLine = ipReader.readLine()) != null) {
+                            if (ipLine.contains("/")) {
+                                String[] ipParts = ipLine.split(":");
+                                if (ipParts.length == 2) {
+                                    activeSubnets.put(ssid, ipParts[1].trim());
+                                    break;
+                                }
+                            }
+                        }
+                        ipReader.close();
+                    } catch (Exception e) {
+                        // Ignore, just leave subnet empty
+                    }
+                }
+            }
+            activeReader.close();
+
+            // List all saved WiFi connections
+            Process proc = Runtime.getRuntime().exec("nmcli -t -f NAME,TYPE connection show");
+            BufferedReader reader = new BufferedReader(new InputStreamReader(proc.getInputStream()));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] parts = line.split(":");
+                if (parts.length >= 2 && parts[1].equals("802-11-wireless")) {
+                    String ssid = parts[0];
+                    String subnet = activeSubnets.getOrDefault(ssid, "");
+                    if (!subnet.isEmpty()) subnet = toNetworkAddress(subnet);
+                    boolean active = activeSsids.contains(ssid);
+                    Map<String, String> net = new HashMap<>();
+                    net.put("ssid", ssid);
+                    net.put("subnet", subnet);
+                    net.put("active", Boolean.toString(active));
+                    networks.add(net);
+                }
+            }
+            reader.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return networks;
+    }
+
+    public Map<String, Object> scanAllNetworks() {
+        // SSDP/UPnP multicast discovery (like SonosActionController)
+        Set<String> seenLocations = new HashSet<>();
+        List<Map<String, String>> allDevices = new ArrayList<>();
+        try {
+            String searchMessage = "M-SEARCH * HTTP/1.1\r\n" +
+                    "HOST: 239.255.255.250:1900\r\n" +
+                    "MAN: \"ssdp:discover\"\r\n" +
+                    "MX: 3\r\n" +
+                    "ST: urn:schemas-upnp-org:device:ZonePlayer:1\r\n\r\n";
+            InetAddress localAddress = getWifiInterfaceAddress();
+            DatagramSocket socket = new DatagramSocket(0, localAddress);
+            socket.setSoTimeout(1000);
+            socket.send(new DatagramPacket(searchMessage.getBytes(), searchMessage.length(),
+                    InetAddress.getByName("239.255.255.250"), 1900));
+            byte[] buf = new byte[2048];
+            long endTime = System.currentTimeMillis() + 5000;
+            while (System.currentTimeMillis() < endTime) {
+                try {
+                    DatagramPacket response = new DatagramPacket(buf, buf.length);
+                    socket.receive(response);
+                    String data = new String(response.getData(), 0, response.getLength());
+                    String location = parseHeader(data, "LOCATION");
+                    if (location != null && seenLocations.add(location)) {
+                        Map<String, String> info = fetchDeviceInfo(location);
+                        if (info != null) {
+                            allDevices.add(info);
+                        }
+                    }
+                } catch (SocketTimeoutException ignored) {}
+            }
+            socket.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        // Save/append to JSON file
+        saveDevicesToJson(allDevices);
+        Map<String, Object> result = new HashMap<>();
+        result.put("message", "Scan complete. " + allDevices.size() + " devices found.");
+        return result;
+    }
+
+    private String parseHeader(String data, String header) {
+        for (String line : data.split("\r\n")) {
+            if (line.toLowerCase().startsWith(header.toLowerCase() + ":")) {
+                return line.split(":", 2)[1].trim();
+            }
+        }
+        return null;
+    }
+
+    private InetAddress getWifiInterfaceAddress() throws SocketException {
+        List<String> preferred = Arrays.asList("wlan", "wifi", "wl", "en", "eth");
+        InetAddress fallback = null;
+        Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+        while (interfaces.hasMoreElements()) {
+            NetworkInterface iface = interfaces.nextElement();
+            if (!iface.isUp() || iface.isLoopback() || iface.isVirtual())
+                continue;
+            String name = iface.getName().toLowerCase();
+            Enumeration<InetAddress> addresses = iface.getInetAddresses();
+            while (addresses.hasMoreElements()) {
+                InetAddress addr = addresses.nextElement();
+                if (addr instanceof Inet4Address && !addr.isLoopbackAddress()) {
+                    if (preferred.stream().anyMatch(name::contains)) {
+                        return addr;
+                    }
+                    if (fallback == null) {
+                        fallback = addr;
+                    }
+                }
+            }
+        }
+        if (fallback != null) {
+            return fallback;
+        }
+        throw new SocketException("No usable network interface with IPv4 address found.");
+    }
+
+    private Map<String, String> fetchDeviceInfo(String location) {
+        try {
+            URL url = new URL(location);
+            String ip = url.getHost();
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setConnectTimeout(1500);
+            conn.setReadTimeout(1500);
+            Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(conn.getInputStream());
+            XPath xpath = XPathFactory.newInstance().newXPath();
+            Map<String, String> map = new LinkedHashMap<>();
+            map.put("ip", ip);
+            map.put("modelName", xpath.evaluate("//*[local-name()='modelName']", doc));
+            map.put("serialNum", xpath.evaluate("//*[local-name()='serialNum']", doc));
+            map.put("MACAddress", xpath.evaluate("//*[local-name()='MACAddress']", doc));
+            map.put("hardwareVersion", xpath.evaluate("//*[local-name()='hardwareVersion']", doc));
+            map.put("roomName", xpath.evaluate("//*[local-name()='roomName']", doc));
+            map.put("softwareVersion", xpath.evaluate("//*[local-name()='softwareVersion']", doc));
+            return map;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Auto-connects to each saved WiFi network in sequence, scans for Sonos devices, and saves results.
+     * Only works if the system supports nmcli and the user has permissions.
+     */
+    public Map<String, Object> autoScanAllWifiNetworks() {
+        List<Map<String, String>> networks = getAvailableWifiNetworks();
+        List<Map<String, String>> allDevices = new ArrayList<>();
+        int scanned = 0, failed = 0;
+        for (Map<String, String> net : networks) {
+            String ssid = net.get("ssid");
+            try {
+                // Connect to the network
+                Process connectProc = Runtime.getRuntime().exec(new String[]{"nmcli", "connection", "up", ssid});
+                int exit = connectProc.waitFor();
+                if (exit != 0) {
+                    failed++;
+                    continue;
+                }
+                // Wait for connection to be established
+                Thread.sleep(3500); // May need to adjust for your environment
+                // Scan using SSDP/UPnP
+                Set<String> seenLocations = new HashSet<>();
+                String searchMessage = "M-SEARCH * HTTP/1.1\r\n" +
+                        "HOST: 239.255.255.250:1900\r\n" +
+                        "MAN: \"ssdp:discover\"\r\n" +
+                        "MX: 3\r\n" +
+                        "ST: urn:schemas-upnp-org:device:ZonePlayer:1\r\n\r\n";
+                InetAddress localAddress = getWifiInterfaceAddress();
+                DatagramSocket socket = new DatagramSocket(0, localAddress);
+                socket.setSoTimeout(1000);
+                socket.send(new DatagramPacket(searchMessage.getBytes(), searchMessage.length(),
+                        InetAddress.getByName("239.255.255.250"), 1900));
+                byte[] buf = new byte[2048];
+                long endTime = System.currentTimeMillis() + 5000;
+                while (System.currentTimeMillis() < endTime) {
+                    try {
+                        DatagramPacket response = new DatagramPacket(buf, buf.length);
+                        socket.receive(response);
+                        String data = new String(response.getData(), 0, response.getLength());
+                        String location = parseHeader(data, "LOCATION");
+                        if (location != null && seenLocations.add(location)) {
+                            Map<String, String> info = fetchDeviceInfo(location);
+                            if (info != null) {
+                                info.put("network", ssid);
+                                allDevices.add(info);
+                            }
+                        }
+                    } catch (SocketTimeoutException ignored) {}
+                }
+                socket.close();
+                scanned++;
+            } catch (Exception e) {
+                failed++;
+            }
+        }
+        // Save/append to JSON file
+        saveDevicesToJson(allDevices);
+        Map<String, Object> result = new HashMap<>();
+        result.put("message", "Auto-scan complete. " + scanned + " networks scanned, " + allDevices.size() + " devices found. " + (failed > 0 ? (failed + " failed.") : ""));
+        return result;
+    }
+
+    private void saveDevicesToJson(List<Map<String, String>> newDevices) {
+        try {
+            File file = new File(DEVICES_JSON);
+            List<Map<String, String>> all = new ArrayList<>();
+            if (file.exists()) {
+                all.addAll(readDevicesFromJson());
+            }
+            all.addAll(newDevices);
+            // Remove duplicates by IP
+            Map<String, Map<String, String>> unique = new LinkedHashMap<>();
+            for (Map<String, String> d : all) unique.put(d.get("ip"), d);
+            all = new ArrayList<>(unique.values());
+            try (PrintWriter out = new PrintWriter(new FileWriter(file))) {
+                out.println(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(all));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, String>> readDevicesFromJson() {
+        try {
+            File file = new File(DEVICES_JSON);
+            if (!file.exists()) return new ArrayList<>();
+            return (List<Map<String, String>>) new com.fasterxml.jackson.databind.ObjectMapper().readValue(file, List.class);
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
+    }
+
+    public Map<String, List<Map<String, String>>> getDevicesByNetwork() {
+        List<Map<String, String>> all = readDevicesFromJson();
+        Map<String, List<Map<String, String>>> grouped = new HashMap<>();
+        for (Map<String, String> d : all) {
+            String net = d.getOrDefault("network", "Unknown");
+            grouped.computeIfAbsent(net, k -> new ArrayList<>()).add(d);
+        }
+        return grouped;
+    }
+}
