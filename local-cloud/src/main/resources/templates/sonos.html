@@ -107,10 +107,15 @@
             <h5 class="mb-0 fw-semibold">Sonos Device Discovery
                 <i class="bi bi-info-circle ms-2" tabindex="0" data-bs-toggle="tooltip" data-bs-placement="right" title="Discover and manage Sonos devices on your network." onclick="showFeatureHelp('sonosDiscovery')" style="cursor:pointer;"></i>
             </h5>
-            <button id="scanBtn" class="btn btn-primary ms-3" onclick="scanSonos()">
-                🔍 Scan Devices
-                <span id="loadingSpinner" class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
-            </button>
+            <div class="d-flex align-items-center gap-2">
+                <button id="scanBtn" class="btn btn-primary ms-3" onclick="scanSonos()">
+                    🔍 Scan Devices
+                    <span id="loadingSpinner" class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
+                </button>
+                <button id="showAllDevicesBtn" class="btn btn-outline-secondary ms-2" style="display:none;" onclick="showAllDevicesModal()">
+                    <i class="bi bi-list-ul"></i> Show All Devices
+                </button>
+            </div>
         </div>
 
         <!-- Scan controls -->
@@ -562,6 +567,7 @@
       RoomName: ${d["Room Name"] || "-"} |
       Version: ${d["Software Version"] || "-"} |
       MAC: ${d["MAC Address"] || "-"} |
+      Serial: ${(d["MAC Address"] || "-").replace(/[^a-zA-F0-9]/g, '').toUpperCase()} |
       UPD: ${upd || "-"}
     </div>
   </td>
@@ -1260,7 +1266,6 @@
         document.getElementById('volumeSubmitBtn').onclick = function() {
             const vol = document.getElementById('volumeRange').value;
             if (!currentVolumeIp) return;
-            // Call backend CLI to set volume
             fetch(`/sonos-action/cli?ip=${encodeURIComponent(currentVolumeIp)}&cmd=vol%20${vol}`, { method: 'POST' })
                 .then(res => res.text())
                 .then(() => {
@@ -1271,6 +1276,50 @@
                     // Refresh this player's status and volume
                     reloadPlayerStatusAndVolume(currentVolumeIp);
                 });
+        };
+
+        function showAllDevicesModal() {
+            // Gather all devices from currentGroups
+            let allDevices = [];
+            Object.values(currentGroups).forEach(devices => {
+                allDevices = allDevices.concat(devices);
+            });
+            if (allDevices.length === 0) {
+                showModal('All Devices', '<div class="text-danger">No devices found.</div>');
+                return;
+            }
+            // Build table
+            let table = `<table class='table table-bordered table-sm'><thead><tr><th>#</th><th>IP</th><th>Model</th><th>Serial Number</th><th>UPD</th></tr></thead><tbody>`;
+            allDevices.forEach((d, i) => {
+                let serial = d["MAC Address"] || '-';
+                let upd = '';
+                if (d["Hardware Version"]) {
+                    const match = d["Hardware Version"].match(/^1\.(\d+)\./);
+                    if (match) upd = match[1];
+                }
+                table += `<tr><td>${i+1}</td><td>${d["IP"] || '-'}</td><td>${d["Model"] || '-'}</td><td>${serial}</td><td>${upd || '-'}</td></tr>`;
+            });
+            table += '</tbody></table>';
+            showModal('All Devices', table);
+        }
+
+        function updateShowAllDevicesBtn() {
+            const btn = document.getElementById('showAllDevicesBtn');
+            let count = 0;
+            Object.values(currentGroups).forEach(devs => count += devs.length);
+            btn.style.display = (count > 0) ? '' : 'none';
+        }
+
+        const origScanSonos = scanSonos;
+        scanSonos = function() {
+            origScanSonos();
+            setTimeout(updateShowAllDevicesBtn, 1000);
+        };
+
+        const origRenderGroupedResults = renderGroupedResults;
+        renderGroupedResults = function(groups) {
+            origRenderGroupedResults(groups);
+            updateShowAllDevicesBtn();
         };
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
