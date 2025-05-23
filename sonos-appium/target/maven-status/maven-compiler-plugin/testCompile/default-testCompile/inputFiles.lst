@@ -1,0 +1,11 @@
+/opt/lampp/htdocs/sangle_workspace/sonos-appium/src/test/java/com/sonos/data/TestData.java
+/opt/lampp/htdocs/sangle_workspace/sonos-appium/src/test/java/com/sonos/utils/CSVReaderUtil.java
+/opt/lampp/htdocs/sangle_workspace/sonos-appium/src/test/java/com/sonos/utils/ConfigReader.java
+/opt/lampp/htdocs/sangle_workspace/sonos-appium/src/test/java/com/sonos/utils/RetryAnalyzer.java
+/opt/lampp/htdocs/sangle_workspace/sonos-appium/src/test/java/com/sonos/AppTest.java
+/opt/lampp/htdocs/sangle_workspace/sonos-appium/src/test/java/com/sonos/tests/BeamSetupTest.java
+/opt/lampp/htdocs/sangle_workspace/sonos-appium/src/test/java/com/sonos/base/BaseTest.java
+/opt/lampp/htdocs/sangle_workspace/sonos-appium/src/test/java/com/sonos/pages/WelcomePage.java
+/opt/lampp/htdocs/sangle_workspace/sonos-appium/src/test/java/com/sonos/pages/BeamSetupPage.java
+/opt/lampp/htdocs/sangle_workspace/sonos-appium/src/test/java/com/sonos/utils/LoggerUtil.java
+/opt/lampp/htdocs/sangle_workspace/sonos-appium/src/test/java/com/sonos/utils/DriverManager.java

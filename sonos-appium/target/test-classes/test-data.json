@@ -1,0 +1,10 @@
+[
+  {
+    "deviceName": "Sonos Beam",
+    "macAddress": "00:0E:58:XX:XX:XX"
+  },
+  {
+    "deviceName": "Sonos Beam 2",
+    "macAddress": "00:0E:58:YY:YY:YY"
+  }
+]
