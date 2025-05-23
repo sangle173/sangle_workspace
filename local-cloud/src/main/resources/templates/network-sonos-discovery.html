@@ -29,6 +29,15 @@
             <div class="text-muted small" id="wifiHint">Only active networks (with subnet) can be scanned. Connect to a network to enable scanning.</div>
         </div>
         <div id="scanResult" class="mt-4"></div>
+        <div id="autoScanProgress" class="mt-3"></div>
+        <!-- CSV Export Section -->
+        <div class="mt-4">
+            <button class="btn btn-outline-success" id="exportCsvBtn">
+                <i class="bi bi-file-earmark-spreadsheet"></i> Export All Devices to CSV
+            </button>
+        </div>
+        <!-- Embedded JSON for all devices (populated by Thymeleaf) -->
+        <script id="allDevicesJson" type="application/json" th:utext="${allDevicesJson}"></script>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -67,14 +76,92 @@
         });
     });
     // Remove or disable the old scan all button
-    document.getElementById('scanBtn').style.display = 'none';
+    if (document.getElementById('scanBtn')) document.getElementById('scanBtn').style.display = 'none';
 
-    // Auto Scan All Networks button functionality
+    // Auto Scan All Networks button functionality with SSE progress
     document.getElementById('autoScanBtn').onclick = function() {
         document.getElementById('scanResult').innerHTML = 'Auto-scanning all networks...';
-        fetch('/network-sonos-discovery/auto-scan', {method:'POST'}).then(r=>r.json()).then(res=>{
-            document.getElementById('scanResult').innerHTML = res.message || 'Auto-scan complete.';
+        document.getElementById('autoScanProgress').innerHTML = '';
+        const progressDiv = document.getElementById('autoScanProgress');
+        let scanDone = false;
+        const evtSource = new EventSource('/network-sonos-discovery/auto-scan/progress');
+        evtSource.onmessage = function(e) {
+            const msg = e.data;
+            if (msg === '__SCAN_DONE__') {
+                scanDone = true;
+                evtSource.close();
+                progressDiv.innerHTML += '<div class="text-success">Auto-scan complete.</div>';
+                return;
+            }
+            progressDiv.innerHTML += `<div>${msg}</div>`;
+            progressDiv.scrollTop = progressDiv.scrollHeight;
+        };
+        evtSource.onerror = function() {
+            evtSource.close();
+            if (!scanDone) {
+                progressDiv.innerHTML += '<div class="text-danger">Auto-scan ended or connection lost.</div>';
+            }
+        };
+    };
+
+    // CSV Export Logic
+    document.getElementById('exportCsvBtn').onclick = function() {
+        const allDevicesJson = document.getElementById('allDevicesJson');
+        let allDevices = [];
+        if (allDevicesJson) {
+            try {
+                allDevices = JSON.parse(allDevicesJson.textContent);
+            } catch (e) {
+                alert('Failed to parse device data for export.');
+                return;
+            }
+        }
+        if (!allDevices || allDevices.length === 0) {
+            alert('No device data found.');
+            return;
+        }
+        // CSV mapping and order
+        const csvFields = [
+            { label: 'UPNP Name', key: 'roomName' },
+            { label: 'UUID', key: 'uuid' },
+            { label: 'IP', key: 'ip' },
+            { label: 'MAC', key: 'MACAddress' },
+            { label: 'Serial', key: 'serialNum' },
+            { label: 'SW Version', key: 'softwareVersion' },
+            { label: 'MinCompat Version', key: 'minCompatibleVersion' },
+            { label: 'Market Version', key: 'displayVersion' },
+            { label: 'HW Version', key: 'hardwareVersion' },
+            { label: 'HW Model', key: 'modelNumber' },
+            { label: 'HHID', key: 'householdId' },
+            { label: 'Status URL', key: 'statusUrl' }
+        ];
+        // Build CSV rows
+        const rows = [csvFields.map(f => f.label)];
+        allDevices.forEach(dev => {
+            // Compose UUID and Status URL if needed
+            let uuid = dev['UDN'] || dev['uuid'] || '';
+            if (uuid.startsWith('uuid:')) uuid = uuid.substring(5);
+            let statusUrl = dev['ip'] ? `http://${dev['ip']}:1400/status` : '';
+            rows.push(csvFields.map(f => {
+                if (f.key === 'uuid') return uuid;
+                if (f.key === 'statusUrl') return statusUrl;
+                return dev[f.key] || '';
+            }));
         });
+        // Convert to CSV string
+        const csv = rows.map(row => row.map(val => '"' + String(val).replace(/"/g,'""') + '"').join(',')).join('\r\n');
+        // Download
+        const blob = new Blob([csv], {type: 'text/csv'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'sonos_devices.csv';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(()=>{
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }, 100);
     };
     </script>
 </body>

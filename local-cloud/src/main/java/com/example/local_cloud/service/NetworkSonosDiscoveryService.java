@@ -9,6 +9,9 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathFactory;
 import org.w3c.dom.Document;
+import java.util.function.Consumer;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 @Service
 public class NetworkSonosDiscoveryService {
@@ -191,12 +194,36 @@ public class NetworkSonosDiscoveryService {
             XPath xpath = XPathFactory.newInstance().newXPath();
             Map<String, String> map = new LinkedHashMap<>();
             map.put("ip", ip);
-            map.put("modelName", xpath.evaluate("//*[local-name()='modelName']", doc));
-            map.put("serialNum", xpath.evaluate("//*[local-name()='serialNum']", doc));
-            map.put("MACAddress", xpath.evaluate("//*[local-name()='MACAddress']", doc));
-            map.put("hardwareVersion", xpath.evaluate("//*[local-name()='hardwareVersion']", doc));
             map.put("roomName", xpath.evaluate("//*[local-name()='roomName']", doc));
+            map.put("friendlyName", xpath.evaluate("//*[local-name()='friendlyName']", doc));
+            String udn = xpath.evaluate("//*[local-name()='UDN']", doc);
+            if (udn != null && udn.startsWith("uuid:")) udn = udn.substring(5);
+            map.put("UDN", udn);
+            map.put("MACAddress", xpath.evaluate("//*[local-name()='MACAddress']", doc));
+            map.put("serialNum", xpath.evaluate("//*[local-name()='serialNum']", doc));
             map.put("softwareVersion", xpath.evaluate("//*[local-name()='softwareVersion']", doc));
+            map.put("minCompatibleVersion", xpath.evaluate("//*[local-name()='minCompatibleVersion']", doc));
+            map.put("displayVersion", xpath.evaluate("//*[local-name()='displayVersion']", doc));
+            map.put("hardwareVersion", xpath.evaluate("//*[local-name()='hardwareVersion']", doc));
+            map.put("modelNumber", xpath.evaluate("//*[local-name()='modelNumber']", doc));
+            map.put("modelName", xpath.evaluate("//*[local-name()='modelName']", doc));
+            map.put("modelDescription", xpath.evaluate("//*[local-name()='modelDescription']", doc));
+            map.put("manufacturer", xpath.evaluate("//*[local-name()='manufacturer']", doc));
+            map.put("manufacturerURL", xpath.evaluate("//*[local-name()='manufacturerURL']", doc));
+            map.put("marketVersion", xpath.evaluate("//*[local-name()='displayVersion']", doc)); // alias for displayVersion
+            map.put("statusUrl", "http://" + ip + ":1400/status");
+            // iconList (concatenate all icon URLs)
+            StringBuilder icons = new StringBuilder();
+            try {
+                org.w3c.dom.NodeList iconNodes = (org.w3c.dom.NodeList) xpath.evaluate("//*[local-name()='iconList']/*[local-name()='icon']/*[local-name()='url']", doc, javax.xml.xpath.XPathConstants.NODESET);
+                for (int i = 0; i < iconNodes.getLength(); i++) {
+                    if (i > 0) icons.append(",");
+                    icons.append(iconNodes.item(i).getTextContent());
+                }
+            } catch (Exception ignore) {}
+            map.put("iconList", icons.toString());
+            // Add HHID if you have a way to fetch it, else blank
+            map.put("HHID", "");
             return map;
         } catch (Exception e) {
             return null;
@@ -211,6 +238,7 @@ public class NetworkSonosDiscoveryService {
         List<Map<String, String>> networks = getAvailableWifiNetworks();
         List<Map<String, String>> allDevices = new ArrayList<>();
         int scanned = 0, failed = 0;
+        String scanDateTime = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
         for (Map<String, String> net : networks) {
             String ssid = net.get("ssid");
             try {
@@ -247,6 +275,7 @@ public class NetworkSonosDiscoveryService {
                             Map<String, String> info = fetchDeviceInfo(location);
                             if (info != null) {
                                 info.put("network", ssid);
+                                info.put("scanDateTime", scanDateTime);
                                 allDevices.add(info);
                             }
                         }
@@ -262,6 +291,80 @@ public class NetworkSonosDiscoveryService {
         saveDevicesToJson(allDevices);
         Map<String, Object> result = new HashMap<>();
         result.put("message", "Auto-scan complete. " + scanned + " networks scanned, " + allDevices.size() + " devices found. " + (failed > 0 ? (failed + " failed.") : ""));
+        return result;
+    }
+
+    /**
+     * Auto-connects to each saved WiFi network in sequence, scans for Sonos devices, and saves results.
+     * Sends progress updates to the provided Consumer.
+     */
+    public Map<String, Object> autoScanAllWifiNetworksWithProgress(Consumer<String> progressCallback) {
+        List<Map<String, String>> networks = getAvailableWifiNetworks();
+        List<Map<String, String>> allDevices = new ArrayList<>();
+        int scanned = 0, failed = 0;
+        String scanDateTime = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        for (Map<String, String> net : networks) {
+            String ssid = net.get("ssid");
+            try {
+                progressCallback.accept("Connecting to network '" + ssid + "'...");
+                // Connect to the network
+                Process connectProc = Runtime.getRuntime().exec(new String[]{"nmcli", "connection", "up", ssid});
+                int exit = connectProc.waitFor();
+                if (exit != 0) {
+                    progressCallback.accept("Failed to connect to '" + ssid + "'. Skipping.");
+                    failed++;
+                    continue;
+                }
+                progressCallback.accept("Connected to '" + ssid + "'. Waiting for network to settle...");
+                // Wait for connection to be established
+                Thread.sleep(3500); // May need to adjust for your environment
+                progressCallback.accept("Scanning for Sonos devices in '" + ssid + "'...");
+                // Scan using SSDP/UPnP
+                Set<String> seenLocations = new HashSet<>();
+                String searchMessage = "M-SEARCH * HTTP/1.1\r\n" +
+                        "HOST: 239.255.255.250:1900\r\n" +
+                        "MAN: \"ssdp:discover\"\r\n" +
+                        "MX: 3\r\n" +
+                        "ST: urn:schemas-upnp-org:device:ZonePlayer:1\r\n\r\n";
+                InetAddress localAddress = getWifiInterfaceAddress();
+                DatagramSocket socket = new DatagramSocket(0, localAddress);
+                socket.setSoTimeout(1000);
+                socket.send(new DatagramPacket(searchMessage.getBytes(), searchMessage.length(),
+                        InetAddress.getByName("239.255.255.250"), 1900));
+                byte[] buf = new byte[2048];
+                long endTime = System.currentTimeMillis() + 5000;
+                int found = 0;
+                while (System.currentTimeMillis() < endTime) {
+                    try {
+                        DatagramPacket response = new DatagramPacket(buf, buf.length);
+                        socket.receive(response);
+                        String data = new String(response.getData(), 0, response.getLength());
+                        String location = parseHeader(data, "LOCATION");
+                        if (location != null && seenLocations.add(location)) {
+                            Map<String, String> info = fetchDeviceInfo(location);
+                            if (info != null) {
+                                info.put("network", ssid);
+                                info.put("scanDateTime", scanDateTime);
+                                allDevices.add(info);
+                                found++;
+                                progressCallback.accept("Discovered device: " + info.getOrDefault("roomName", info.getOrDefault("ip", "Unknown")));
+                            }
+                        }
+                    } catch (SocketTimeoutException ignored) {}
+                }
+                socket.close();
+                progressCallback.accept("Scan complete for '" + ssid + "'. " + found + " device(s) found.");
+                scanned++;
+            } catch (Exception e) {
+                progressCallback.accept("Error scanning '" + ssid + "': " + e.getMessage());
+                failed++;
+            }
+        }
+        // Save/append to JSON file
+        saveDevicesToJson(allDevices);
+        Map<String, Object> result = new HashMap<>();
+        result.put("message", "Auto-scan complete. " + scanned + " networks scanned, " + allDevices.size() + " devices found. " + (failed > 0 ? (failed + " failed.") : ""));
+        progressCallback.accept(result.get("message").toString());
         return result;
     }
 
@@ -286,7 +389,7 @@ public class NetworkSonosDiscoveryService {
     }
 
     @SuppressWarnings("unchecked")
-    private List<Map<String, String>> readDevicesFromJson() {
+    public List<Map<String, String>> readDevicesFromJson() {
         try {
             File file = new File(DEVICES_JSON);
             if (!file.exists()) return new ArrayList<>();
