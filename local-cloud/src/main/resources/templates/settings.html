@@ -1,108 +1,117 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
+
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Settings</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <style>
-        .color-input { width: 40px; height: 40px; border: none; }
+        .color-input {
+            width: 40px;
+            height: 40px;
+            border: none;
+        }
     </style>
 </head>
+
 <body style="font-family: var(--font-family), system-ui, sans-serif !important;">
-<div class="container py-4">
-    <h3 class="mb-4">Web App Settings</h3>
-    <form id="settingsForm">
-        <div class="mb-3">
-            <label class="form-label">Header Background Color</label>
-            <input type="color" class="form-control form-control-color" id="headerBgColor" name="headerBgColor">
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Header Text Color</label>
-            <input type="color" class="form-control form-control-color" id="headerTextColor" name="headerTextColor">
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Background Color</label>
-            <input type="color" class="form-control form-control-color" id="backgroundColor" name="backgroundColor">
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Font Size</label>
-            <input type="number" class="form-control" id="fontSize" name="fontSize" min="10" max="32">
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Font Family</label>
-            <select class="form-select" id="fontFamily" name="fontFamily">
-                <option value="system-ui">System Default</option>
-                <option value="Arial, sans-serif">Arial</option>
-                <option value="Georgia, serif">Georgia</option>
-                <option value="Courier New, monospace">Courier New</option>
-                <option value="Tahoma, Geneva, sans-serif">Tahoma</option>
-                <option value="Verdana, Geneva, sans-serif">Verdana</option>
-                <option value="Trebuchet MS, sans-serif">Trebuchet MS</option>
-                <option value="Times New Roman, Times, serif">Times New Roman</option>
-                <option value="Comic Sans MS, cursive, sans-serif">Comic Sans MS</option>
-                <option value="Lucida Console, Monaco, monospace">Lucida Console</option>
-                <option value="Fira Mono, monospace">Fira Mono</option>
-                <option value="Roboto, Arial, sans-serif">Roboto</option>
-                <option value="Montserrat, Arial, sans-serif">Montserrat</option>
-            </select>
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Border Radius</label>
-            <input type="number" class="form-control" id="borderRadius" name="borderRadius" min="0" max="32">
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Nav Link Hover Color</label>
-            <input type="color" class="form-control form-control-color" id="navHoverColor" name="navHoverColor">
-        </div>
-        <button type="submit" class="btn btn-primary">Save Settings</button>
-        <a href="/server-files" class="btn btn-secondary ms-2">Back</a>
-    </form>
-</div>
-<script>
-(function() {
-    fetch('/settings/api').then(r => r.json()).then(settings => {
-        if (settings.headerBgColor) document.documentElement.style.setProperty('--header-bg', settings.headerBgColor);
-        if (settings.headerTextColor) document.documentElement.style.setProperty('--header-text', settings.headerTextColor);
-        if (settings.backgroundColor) document.documentElement.style.setProperty('--background-color', settings.backgroundColor);
-        if (settings.fontSize) document.body.style.fontSize = settings.fontSize + 'px';
-        if (settings.fontFamily) document.body.style.fontFamily = settings.fontFamily;
-        if (settings.borderRadius) document.documentElement.style.setProperty('--border-radius', settings.borderRadius + 'px');
-        if (settings.navHoverColor) document.documentElement.style.setProperty('--nav-hover-color', settings.navHoverColor);
-        if (document.getElementById('navHoverColor') && settings.navHoverColor) document.getElementById('navHoverColor').value = settings.navHoverColor;
-    });
-})();
-</script>
-<script>
-function applySettings(settings) {
-    if (settings.headerBgColor) document.documentElement.style.setProperty('--header-bg', settings.headerBgColor);
-    if (settings.headerTextColor) document.documentElement.style.setProperty('--header-text', settings.headerTextColor);
-    if (settings.backgroundColor) document.body.style.backgroundColor = settings.backgroundColor;
-    if (settings.fontSize) document.body.style.fontSize = settings.fontSize + 'px';
-    if (settings.fontFamily) document.body.style.fontFamily = settings.fontFamily;
-    if (settings.borderRadius) document.documentElement.style.setProperty('--border-radius', settings.borderRadius + 'px');
-    if (settings.navHoverColor) document.documentElement.style.setProperty('--nav-hover-color', settings.navHoverColor);
-}
+    <!-- Shared navbar -->
+    <div th:replace="fragments/navbar :: navbar"></div>
+    <div class="container py-4">
+        <h3 class="mb-4">Web App Settings</h3>
+        <form id="settingsForm">
+            <div class="mb-3">
+                <label class="form-label">Header Background Color</label>
+                <input type="color" class="form-control form-control-color" id="headerBgColor" name="headerBgColor">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Header Text Color</label>
+                <input type="color" class="form-control form-control-color" id="headerTextColor" name="headerTextColor">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Background Color</label>
+                <input type="color" class="form-control form-control-color" id="backgroundColor" name="backgroundColor">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Font Size</label>
+                <input type="number" class="form-control" id="fontSize" name="fontSize" min="10" max="32">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Font Family</label>
+                <select class="form-select" id="fontFamily" name="fontFamily">
+                    <option value="system-ui">System Default</option>
+                    <option value="Arial, sans-serif">Arial</option>
+                    <option value="Georgia, serif">Georgia</option>
+                    <option value="Courier New, monospace">Courier New</option>
+                    <option value="Tahoma, Geneva, sans-serif">Tahoma</option>
+                    <option value="Verdana, Geneva, sans-serif">Verdana</option>
+                    <option value="Trebuchet MS, sans-serif">Trebuchet MS</option>
+                    <option value="Times New Roman, Times, serif">Times New Roman</option>
+                    <option value="Comic Sans MS, cursive, sans-serif">Comic Sans MS</option>
+                    <option value="Lucida Console, Monaco, monospace">Lucida Console</option>
+                    <option value="Fira Mono, monospace">Fira Mono</option>
+                    <option value="Roboto, Arial, sans-serif">Roboto</option>
+                    <option value="Montserrat, Arial, sans-serif">Montserrat</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Border Radius</label>
+                <input type="number" class="form-control" id="borderRadius" name="borderRadius" min="0" max="32">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Nav Link Hover Color</label>
+                <input type="color" class="form-control form-control-color" id="navHoverColor" name="navHoverColor">
+            </div>
+            <button type="submit" class="btn btn-primary">Save Settings</button>
+            <a href="/server-files" class="btn btn-secondary ms-2">Back</a>
+        </form>
+    </div>
+    <script>
+        (function () {
+            fetch('/settings/api').then(r => r.json()).then(settings => {
+                if (settings.headerBgColor) document.documentElement.style.setProperty('--header-bg', settings.headerBgColor);
+                if (settings.headerTextColor) document.documentElement.style.setProperty('--header-text', settings.headerTextColor);
+                if (settings.backgroundColor) document.documentElement.style.setProperty('--background-color', settings.backgroundColor);
+                if (settings.fontSize) document.body.style.fontSize = settings.fontSize + 'px';
+                if (settings.fontFamily) document.body.style.fontFamily = settings.fontFamily;
+                if (settings.borderRadius) document.documentElement.style.setProperty('--border-radius', settings.borderRadius + 'px');
+                if (settings.navHoverColor) document.documentElement.style.setProperty('--nav-hover-color', settings.navHoverColor);
+                if (document.getElementById('navHoverColor') && settings.navHoverColor) document.getElementById('navHoverColor').value = settings.navHoverColor;
+            });
+        })();
+    </script>
+    <script>
+        function applySettings(settings) {
+            if (settings.headerBgColor) document.documentElement.style.setProperty('--header-bg', settings.headerBgColor);
+            if (settings.headerTextColor) document.documentElement.style.setProperty('--header-text', settings.headerTextColor);
+            if (settings.backgroundColor) document.body.style.backgroundColor = settings.backgroundColor;
+            if (settings.fontSize) document.body.style.fontSize = settings.fontSize + 'px';
+            if (settings.fontFamily) document.body.style.fontFamily = settings.fontFamily;
+            if (settings.borderRadius) document.documentElement.style.setProperty('--border-radius', settings.borderRadius + 'px');
+            if (settings.navHoverColor) document.documentElement.style.setProperty('--nav-hover-color', settings.navHoverColor);
+        }
 
-fetch('/settings/api').then(r=>r.json()).then(settings => {
-    for (const k in settings) {
-        if (document.getElementById(k)) document.getElementById(k).value = settings[k];
-    }
-    applySettings(settings);
-});
+        fetch('/settings/api').then(r => r.json()).then(settings => {
+            for (const k in settings) {
+                if (document.getElementById(k)) document.getElementById(k).value = settings[k];
+            }
+            applySettings(settings);
+        });
 
-document.getElementById('settingsForm').onsubmit = function(e) {
-    e.preventDefault();
-    const data = Object.fromEntries(new FormData(this).entries());
-    fetch('/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    }).then(() => {
-        applySettings(data);
-        alert('Settings saved!');
-    });
-};
-</script>
+        document.getElementById('settingsForm').onsubmit = function (e) {
+            e.preventDefault();
+            const data = Object.fromEntries(new FormData(this).entries());
+            fetch('/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            }).then(() => {
+                applySettings(data);
+                alert('Settings saved!');
+            });
+        };
+    </script>
 </body>
+
 </html>

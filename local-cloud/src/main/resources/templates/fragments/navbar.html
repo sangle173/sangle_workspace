@@ -8,6 +8,66 @@
             --header-text: #fff;
             --nav-hover-color: #6c63ff;
         }
+        
+        /* Ensure navbar is above other content but below its own dropdowns */
+        nav.navbar {
+            position: relative;
+            z-index: 1050 !important;
+        }
+        
+        .nav-item.dropdown {
+            position: relative;
+        }
+        
+        .dropdown-menu {
+            border-radius: 8px;
+            padding: 0.5rem;
+            margin-top: 0.5rem;
+            border: none;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            background-color: var(--header-bg, #0d6efd) !important;
+            color: var(--header-text, #fff) !important;
+            font-family: inherit !important;
+            z-index: 1051 !important; /* Ensure dropdowns appear above navbar */
+        }
+        
+        .navbar .nav-link {
+            color: var(--header-text, rgba(255, 255, 255, 0.8)) !important;
+            margin: 0 2px;
+            padding: 0.5rem 0.75rem;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            font-family: inherit !important;
+        }
+        
+        .navbar .nav-link:hover {
+            color: #fff !important;
+            background-color: var(--nav-hover-color, #6c63ff) !important;
+        }
+        
+        .navbar .nav-link.active {
+            color: white !important;  
+            background-color: rgba(255, 255, 255, 0.15);
+        }
+        
+        .dropdown-item {
+            border-radius: 4px;
+            padding: 0.5rem 1rem;
+            margin-bottom: 2px;
+            font-family: inherit !important;
+            background: transparent !important;
+            color: var(--header-text, #fff) !important;
+        }
+        
+        .dropdown-item:hover {
+            background-color: var(--nav-hover-color, #6c63ff) !important;
+            color: #fff !important;
+        }
+        
+        .dropdown-item.active {
+            background-color: rgba(255, 255, 255, 0.15);
+            font-weight: bold;
+        }
     </style>
     <nav class="navbar navbar-expand-lg shadow-sm" style="background-color: var(--header-bg) !important; color: var(--header-text) !important; font-family: inherit !important;">
         <div class="container">
@@ -24,28 +84,6 @@
                         <a class="nav-link" th:classappend="${#httpServletRequest.getRequestURI().startsWith('/sonos') ? 'active fw-bold' : ''}" href="/sonos">
                             <i class="bi bi-speaker-fill me-1"></i>Discovery
                         </a>
-                    </li>
-                    
-                    <!-- Dropdown for URL Converter and Downloads -->
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" 
-                           th:classappend="${#httpServletRequest.getRequestURI().startsWith('/url-converter') || #httpServletRequest.getRequestURI().startsWith('/files') ? 'active fw-bold' : ''}"
-                           href="#" id="downloadToolsDropdown" role="button" 
-                           data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-cloud-download me-1"></i>Download Tools
-                        </a>
-                        <ul class="dropdown-menu" aria-labelledby="downloadToolsDropdown">
-                            <li>
-                                <a class="dropdown-item" th:classappend="${#httpServletRequest.getRequestURI().startsWith('/url-converter') ? 'active' : ''}" href="/url-converter">
-                                    <i class="bi bi-arrow-repeat me-1"></i>URL Converter
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item" th:classappend="${#httpServletRequest.getRequestURI().startsWith('/files') ? 'active' : ''}" href="/files">
-                                    <i class="bi bi-download me-1"></i>Downloads
-                                </a>
-                            </li>
-                        </ul>
                     </li>
                     
                     <li class="nav-item">
@@ -80,7 +118,7 @@
                            th:classappend="${#httpServletRequest.getRequestURI().startsWith('/jira-dashboard') ? 'active fw-bold' : ''}"
                            href="#" id="jiraToolsDropdown" role="button" 
                            data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-kanban me-1"></i>Jira Tools
+                            <i class="bi bi-kanban me-1"></i>Others
                         </a>
                         <ul class="dropdown-menu" aria-labelledby="jiraToolsDropdown">
                             <li>
@@ -94,13 +132,23 @@
                                 </a>
                             </li>
                             <li>
-                                <a class="dropdown-item" th:classappend="${#httpServletRequest.getRequestURI().startsWith('/settings') ? 'active' : ''}" href="/settings">
-                                    <i class="bi bi-filter-square-fill me-1"></i>Settings
+                                <a class="dropdown-item" th:classappend="${#httpServletRequest.getRequestURI().startsWith('/network-sonos-discovery') ? 'active' : ''}" href="/network-sonos-discovery">
+                                    <i class="bi bi-wifi me-1"></i>Network Sonos Discovery
                                 </a>
                             </li>
                             <li>
-                                <a class="dropdown-item" th:classappend="${#httpServletRequest.getRequestURI().startsWith('/network-sonos-discovery') ? 'active' : ''}" href="/network-sonos-discovery">
-                                    <i class="bi bi-wifi me-1"></i>Network Sonos Discovery
+                                <a class="dropdown-item" th:classappend="${#httpServletRequest.getRequestURI().startsWith('/url-converter') ? 'active' : ''}" href="/url-converter">
+                                    <i class="bi bi-arrow-repeat me-1"></i>URL Converter
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" th:classappend="${#httpServletRequest.getRequestURI().startsWith('/files') ? 'active' : ''}" href="/files">
+                                    <i class="bi bi-download me-1"></i> Fetch & Downloads
+                                </a>
+                            </li>
+                              <li>
+                                <a class="dropdown-item" th:classappend="${#httpServletRequest.getRequestURI().startsWith('/settings') ? 'active' : ''}" href="/settings">
+                                    <i class="bi bi-gear me-1"></i>Settings
                                 </a>
                             </li>
                         </ul>
@@ -110,50 +158,6 @@
             </div>
         </div>
     </nav>
-    <style>
-        .navbar .nav-link {
-            color: var(--header-text, rgba(255, 255, 255, 0.8)) !important;
-            margin: 0 2px;
-            padding: 0.5rem 0.75rem;
-            border-radius: 4px;
-            transition: all 0.2s ease;
-            font-family: inherit !important;
-        }
-        .navbar .nav-link:hover {
-            color: #fff !important;
-            background-color: var(--nav-hover-color, #6c63ff) !important;
-        }
-        .navbar .nav-link.active {
-            color: white !important;
-            background-color: rgba(255, 255, 255, 0.15);
-        }
-        .dropdown-menu {
-            border-radius: 8px;
-            padding: 0.5rem;
-            margin-top: 0.5rem;
-            border: none;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            background-color: var(--header-bg, #0d6efd) !important;
-            color: var(--header-text, #fff) !important;
-            font-family: inherit !important;
-        }
-        .dropdown-item {
-            border-radius: 4px;
-            padding: 0.5rem 1rem;
-            margin-bottom: 2px;
-            font-family: inherit !important;
-            background: transparent !important;
-            color: var(--header-text, #fff) !important;
-        }
-        .dropdown-item:hover {
-            background-color: var(--nav-hover-color, #6c63ff) !important;
-            color: #fff !important;
-        }
-        .dropdown-item.active {
-            background-color: rgba(255, 255, 255, 0.15);
-            font-weight: bold;
-        }
-    </style>
 </div>
 </body>
 </html>
