@@ -147,6 +147,7 @@
                     <li><a class="dropdown-item" href="#" onclick="performBulkAction('update-by-link')">🔗 Update by Link</a></li>
                     <li><a class="dropdown-item" href="#" onclick="performBulkAction('play-source')">▶️ Play Source</a></li>
                     <li><a class="dropdown-item" href="#" onclick="performBulkAction('playback-status')">🎵 PlayBack status</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="performBulkAction('sonosupdate')">🛠️ SonosUpdate</a></li>
                 </ul>
             </div>
         </div>
@@ -347,6 +348,28 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- Add SonosUpdate modal (large size) -->
+    <div class="modal fade" id="sonosUpdateModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">SonosUpdate Bulk Action</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div id="sonosUpdateDeviceList"></div>
+            <label for="sonosUpdateLinkInput" class="form-label mt-3">Update Link (UPD/UPM/URI):</label>
+            <input type="text" class="form-control" id="sonosUpdateLinkInput" placeholder="http://host/path/to/update.upd">
+            <pre id="sonosUpdateLog" style="display:none;height: 500px; min-width: 100%; background: #222; color: #eee; margin-top: 1em; overflow-y: auto; font-size: 1em; white-space: pre-wrap;"></pre>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" id="sonosUpdateCancelBtn" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" id="sonosUpdateRunBtn" onclick="confirmSonosUpdate()">Run SonosUpdate</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div th:replace="fragments/footer :: footer"></div>
@@ -791,6 +814,51 @@
                     .then(res => res.text())
                     .then(msg => showModal("Playback Status", msg))
                     .catch(err => showModal("Error", "❌ Failed: " + err));
+                return;
+            }
+            if (action === 'sonosupdate') {
+                window.pendingBulkDevices = selected;
+                let html = '<label class="form-label">Selected Devices:</label><div class="row">';
+                selected.forEach(ip => {
+                    let found = null;
+                    for (const group of Object.values(currentGroups)) {
+                        found = group.find(d => d["IP"] === ip);
+                        if (found) break;
+                    }
+                    if (found) {
+                        const name = found['Room Name'] || '';
+                        const mac = found['MAC Address'] || found['MACAddress'] || '-';
+                        const build = found['Software Version'] || found['softwareVersion'] || '-';
+                        const img = found['Image'] || '/default-device.png';
+                        html += `
+                        <div class="col-md-6 mb-2">
+                            <div class="card p-2">
+                              <div class="d-flex align-items-center gap-3">
+                                <img src="${img}" alt="Device" style="width:48px;height:48px;">
+                                <div>
+                                  <div class="fw-bold" style="font-size:1.1em;">${name} (${found['IP']})</div>
+                                  <div class="text-muted small">${mac} - ${build}</div>
+                                </div>
+                              </div>
+                            </div>
+                        </div>`;
+                    }
+                });
+                html += '</div>';
+                document.getElementById('sonosUpdateDeviceList').innerHTML = html;
+                document.getElementById('sonosUpdateLinkInput').value = '';
+                const logEl = document.getElementById('sonosUpdateLog');
+                logEl.textContent = '';
+                logEl.style.display = 'none'; // Hide log area until update starts
+                const modalEl = document.getElementById('sonosUpdateModal');
+                const modal = new bootstrap.Modal(modalEl, { backdrop: 'static', keyboard: true });
+                // Reset buttons
+                document.getElementById('sonosUpdateRunBtn').disabled = false;
+                const cancelBtn = document.getElementById('sonosUpdateCancelBtn');
+                cancelBtn.textContent = 'Cancel';
+                cancelBtn.classList.remove('btn-primary');
+                cancelBtn.classList.add('btn-secondary');
+                modal.show();
                 return;
             }
 
@@ -1321,6 +1389,51 @@
             origRenderGroupedResults(groups);
             updateShowAllDevicesBtn();
         };
+
+        function confirmSonosUpdate() {
+            const link = document.getElementById('sonosUpdateLinkInput').value.trim();
+            if (!link) {
+                alert('Please enter an update link.');
+                return;
+            }
+            const selected = window.pendingBulkDevices;
+            const logEl = document.getElementById('sonosUpdateLog');
+            logEl.textContent = '';
+            logEl.style.display = 'block'; // Show log area only after clicking update
+            // Disable Run button
+            const runBtn = document.getElementById('sonosUpdateRunBtn');
+            runBtn.disabled = true;
+            // Open WebSocket
+            const ws = new WebSocket('ws://' + window.location.host + '/ws/sonosupdate');
+            ws.onopen = function() {
+                ws.send(JSON.stringify({ devices: selected, updateLink: link }));
+            };
+            ws.onmessage = function(event) {
+                // Filter out the executed command line
+                if (event.data.startsWith('[SonosUpdate] Executed:')) return;
+                logEl.textContent += event.data + '\n';
+                logEl.scrollTop = logEl.scrollHeight;
+                if (event.data.includes('✅ SonosUpdate completed.')) {
+                    setTimeout(() => { scanSonos(); }, 1000); // Refresh device list after update
+                    // Change Cancel to Close
+                    const cancelBtn = document.getElementById('sonosUpdateCancelBtn');
+                    cancelBtn.textContent = 'Close';
+                    cancelBtn.classList.remove('btn-secondary');
+                    cancelBtn.classList.add('btn-primary');
+                    cancelBtn.onclick = function() {
+                        const modalEl = document.getElementById('sonosUpdateModal');
+                        const modal = bootstrap.Modal.getInstance(modalEl);
+                        modal.hide();
+                    };
+                }
+            };
+            ws.onerror = function(event) {
+                logEl.textContent += '\n❌ WebSocket error';
+            };
+            ws.onclose = function() {
+                // Do not display '[WebSocket closed]'
+            };
+        }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
