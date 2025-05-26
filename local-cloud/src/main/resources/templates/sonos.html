@@ -93,6 +93,35 @@
             font-size: 1.2em;
             line-height: 1;
         }
+
+        .animated-histogram {
+            display: inline-block;
+            width: 10px;
+            height: 12px;
+            vertical-align: middle;
+            white-space: nowrap;
+            line-height: 1;
+            margin-top: -3px;
+        }
+        .animated-histogram .bar {
+            display: inline-block;
+            width: 2px;
+            margin: 0;
+            background: #28a745;
+            height: 100%;
+            animation: histogramBar 1s infinite;
+        }
+        .animated-histogram .bar:nth-child(1) { animation-delay: 0s; }
+        .animated-histogram .bar:nth-child(2) { animation-delay: 0.12s; }
+        .animated-histogram .bar:nth-child(3) { animation-delay: 0.24s; }
+        .animated-histogram .bar:nth-child(4) { animation-delay: 0.12s; }
+        @keyframes histogramBar {
+            0%, 100% { height: 50%; }
+            20% { height: 90%; }
+            40% { height: 60%; }
+            60% { height: 100%; }
+            80% { height: 50%; }
+        }
     </style>
 
 </head>
@@ -659,17 +688,40 @@
                                 let volHtml = '';
                                 if (el) el.innerHTML = '';
                                 if (status === 'PLAYING') {
-                                    iconHtml = '<i class="bi bi-bar-chart-fill text-success" title="Playing"></i>';
-                                    ctaHtml = `<button class="btn btn-link btn-sm p-0 ms-1" title="Pause" onclick="confirmSonosCtaAction('${ip}', 'pause')"><i class='bi bi-pause-circle text-secondary'></i></button>`;
                                     // Fetch volume and update badge
                                     fetch(`/sonos-action/get-volume?ip=${encodeURIComponent(ip)}`)
                                         .then(res => res.text())
                                         .then(vol => {
-                                            volHtml = `<span class='ms-1 badge bg-success-subtle text-success-emphasis' title='Volume' style='cursor:pointer;' onclick='showVolumeModal("${ip}", ${parseInt(vol,10)})'>${vol}%</span>`;
-                                            if (el) el.innerHTML = iconHtml + ctaHtml + volHtml;
+                                            iconHtml = `
+                                            <span class="d-inline-flex align-items-center" style="gap:2px;">
+                                              <button class="btn btn-link btn-sm p-0 ms-1" title="Pause" style="vertical-align:middle;" onclick="confirmSonosCtaAction('${ip}', 'pause')">
+                                                <i class='bi bi-pause-circle text-secondary'></i>
+                                              </button>
+                                              <span class='ms-1 badge bg-success-subtle text-success-emphasis' title='Volume' style='cursor:pointer;vertical-align:middle;' onclick='showVolumeModal(\"${ip}\", ${parseInt(vol,10)})'>${vol}%</span>
+                                              <span class="animated-histogram" title="Playing">
+                                                <span class="bar"></span>
+                                                <span class="bar"></span>
+                                                <span class="bar"></span>
+                                                <span class="bar"></span>
+                                              </span>
+                                            </span>`;
+                                            if (el) el.innerHTML = iconHtml;
                                         });
                                     // Show icon and CTA immediately, badge will be added when volume arrives
-                                    if (el) el.innerHTML = iconHtml + ctaHtml;
+                                    iconHtml = `
+                                    <span class="d-inline-flex align-items-center" style="gap:2px;">
+                                      <button class="btn btn-link btn-sm p-0 ms-1" title="Pause" style="vertical-align:middle;" onclick="confirmSonosCtaAction('${ip}', 'pause')">
+                                        <i class='bi bi-pause-circle text-secondary'></i>
+                                      </button>
+                                      <span class='ms-1 badge bg-success-subtle text-success-emphasis' title='Volume' style='cursor:pointer;vertical-align:middle;'></span>
+                                      <span class="animated-histogram" title="Playing">
+                                        <span class="bar"></span>
+                                        <span class="bar"></span>
+                                        <span class="bar"></span>
+                                        <span class="bar"></span>
+                                      </span>
+                                    </span>`;
+                                    if (el) el.innerHTML = iconHtml;
                                 } else if (status === 'PAUSED_PLAYBACK') {
                                     iconHtml = '<i class="bi bi-pause-fill text-warning" title="Paused"></i>';
                                     ctaHtml = `<button class="btn btn-link btn-sm p-0 ms-1" title="Play" onclick="confirmSonosCtaAction('${ip}', 'play')"><i class='bi bi-play-circle text-success'></i></button>`;
@@ -1294,15 +1346,40 @@
                     let volHtml = '';
                     if (el) el.innerHTML = '';
                     if (status === 'PLAYING') {
-                        // Fetch volume first, then update all at once
+                        // Fetch volume and update badge
                         fetch(`/sonos-action/get-volume?ip=${encodeURIComponent(ip)}`)
-                          .then(res => res.text())
-                          .then(vol => {
-                            iconHtml = '<i class="bi bi-bar-chart-fill text-success" title="Playing"></i>';
-                            ctaHtml = `<button class="btn btn-link btn-sm p-0 ms-1" title="Pause" onclick="confirmSonosCtaAction('${ip}', 'pause')"><i class='bi bi-pause-circle text-secondary'></i></button>`;
-                            volHtml = `<span class='ms-1 badge bg-success-subtle text-success-emphasis' title='Volume' style='cursor:pointer;' onclick='showVolumeModal("${ip}", ${parseInt(vol,10)})'>${vol}%</span>`;
-                            if (el) el.innerHTML = iconHtml + ctaHtml + volHtml;
-                          });
+                            .then(res => res.text())
+                            .then(vol => {
+                                iconHtml = `
+                                <span class="d-inline-flex align-items-center" style="gap:2px;">
+                                  <button class="btn btn-link btn-sm p-0 ms-1" title="Pause" style="vertical-align:middle;" onclick="confirmSonosCtaAction('${ip}', 'pause')">
+                                    <i class='bi bi-pause-circle text-secondary'></i>
+                                  </button>
+                                  <span class='ms-1 badge bg-success-subtle text-success-emphasis' title='Volume' style='cursor:pointer;vertical-align:middle;' onclick='showVolumeModal(\"${ip}\", ${parseInt(vol,10)})'>${vol}%</span>
+                                  <span class="animated-histogram" title="Playing">
+                                    <span class="bar"></span>
+                                    <span class="bar"></span>
+                                    <span class="bar"></span>
+                                    <span class="bar"></span>
+                                  </span>
+                                </span>`;
+                                if (el) el.innerHTML = iconHtml;
+                            });
+                        // Show icon and CTA immediately, badge will be added when volume arrives
+                        iconHtml = `
+                        <span class="d-inline-flex align-items-center" style="gap:2px;">
+                          <button class="btn btn-link btn-sm p-0 ms-1" title="Pause" style="vertical-align:middle;" onclick="confirmSonosCtaAction('${ip}', 'pause')">
+                            <i class='bi bi-pause-circle text-secondary'></i>
+                          </button>
+                          <span class='ms-1 badge bg-success-subtle text-success-emphasis' title='Volume' style='cursor:pointer;vertical-align:middle;'></span>
+                          <span class="animated-histogram" title="Playing">
+                            <span class="bar"></span>
+                            <span class="bar"></span>
+                            <span class="bar"></span>
+                            <span class="bar"></span>
+                          </span>
+                        </span>`;
+                        if (el) el.innerHTML = iconHtml;
                     } else if (status === 'PAUSED_PLAYBACK') {
                         iconHtml = '<i class="bi bi-pause-fill text-warning" title="Paused"></i>';
                         ctaHtml = `<button class="btn btn-link btn-sm p-0 ms-1" title="Play" onclick="confirmSonosCtaAction('${ip}', 'play')"><i class='bi bi-play-circle text-success'></i></button>`;
@@ -1418,8 +1495,8 @@
                     // Change Cancel to Close
                     const cancelBtn = document.getElementById('sonosUpdateCancelBtn');
                     cancelBtn.textContent = 'Close';
-                    cancelBtn.classList.remove('btn-secondary');
-                    cancelBtn.classList.add('btn-primary');
+                    cancelBtn.classList.remove('btn-primary');
+                    cancelBtn.classList.add('btn-secondary');
                     cancelBtn.onclick = function() {
                         const modalEl = document.getElementById('sonosUpdateModal');
                         const modal = bootstrap.Modal.getInstance(modalEl);

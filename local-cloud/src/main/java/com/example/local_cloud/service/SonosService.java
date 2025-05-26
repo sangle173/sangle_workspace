@@ -14,6 +14,8 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathFactory;
 import org.w3c.dom.Document;
+import java.util.List;
+import java.util.ArrayList;
 
 @Service
 public class SonosService {
@@ -318,7 +320,14 @@ public class SonosService {
     // Run SonosPlay CLI with arbitrary command (play, pause, etc)
     public String sonosCli(String ip, String cmd) {
         try {
-            ProcessBuilder pb = new ProcessBuilder("SonosPlay", ip, cmd);
+            List<String> args = new ArrayList<>();
+            args.add("SonosPlay");
+            args.add(ip);
+            // Split cmd into parts and add each as an argument
+            for (String part : cmd.split("\\s+")) {
+                args.add(part);
+            }
+            ProcessBuilder pb = new ProcessBuilder(args);
             Process proc = pb.start();
             int exit = proc.waitFor();
             String output = new String(proc.getInputStream().readAllBytes());
