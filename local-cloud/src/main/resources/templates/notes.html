@@ -3,6 +3,7 @@
 
 <head>
     <title>📝 Notes Editor</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <style>
@@ -329,17 +330,21 @@
             }
             
             #editor {
-                min-height: 40vh !important;
+                min-height: 60vh !important;
+                border-radius: 18px !important;
+                margin-bottom: 70px !important; /* Space for sticky action bar */
             }
             
+            .ck-editor__editable {
+                min-height: 60vh !important;
+                border-radius: 18px !important;
+            }
             
             /* Small mobile devices */
             @media (max-width: 576px) {
                 .card-header .d-flex.gap-2 {
                     display: none !important;
                 }
-                
-                
                 
                 /* Add padding to prevent content from being hidden behind fixed buttons */
                 .card-body {
@@ -384,6 +389,75 @@
             margin-top: 5px;
             color: #6c757d;
         }
+
+        /* Editor area improvements for better UI */
+        .card-body.d-flex.flex-column {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            padding: 0 !important;
+        }
+        #noteTitle {
+            font-size: 1.2rem;
+            border: none;
+            padding: 12px 16px 8px 16px;
+            background: transparent;
+            width: 100%;
+            margin-bottom: 0;
+        }
+        #toolbar-container {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            background: #fff;
+            border-bottom: 1px solid #eee;
+            padding: 8px 16px 8px 16px;
+            border-radius: 12px 12px 0 0;
+        }
+        #editor {
+            flex: 1 1 auto;
+            min-height: 0;
+            max-height: none;
+            overflow-y: auto;
+            border: none;
+            border-radius: 0 0 12px 12px;
+            padding: 16px;
+            background: #fff;
+        }
+        .ck-editor__editable {
+            min-height: 40vh !important;
+            max-height: none !important;
+            height: 100% !important;
+            border-radius: 0 0 12px 12px !important;
+            background: #fff !important;
+        }
+        @media (max-width: 767px) {
+            #editor, .ck-editor__editable {
+                min-height: 40vh !important;
+                height: 100% !important;
+                border-radius: 0 0 18px 18px !important;
+                padding-bottom: 80px !important; /* for sticky action bar */
+            }
+            #toolbar-container {
+                padding: 8px 8px 8px 8px;
+                border-radius: 12px 12px 0 0;
+            }
+            #noteTitle {
+                padding: 10px 8px 6px 8px;
+            }
+        }
+        #editor, .ck-editor__editable {
+            min-height: 60vh !important;
+            height: 100% !important;
+        }
+        @media (max-width: 767px) {
+            #editor, .ck-editor__editable {
+                min-height: 60vh !important;
+                height: 100% !important;
+            }
+        }
+        .note-actions { opacity: 0; transition: opacity 0.2s; }
+        .note-item:hover .note-actions { opacity: 1; }
     </style>
 </head>
 
@@ -391,10 +465,28 @@
     <!-- Shared navbar -->
     <div th:replace="fragments/navbar :: navbar"></div>
 
+    <!-- Mobile Hamburger Button (moved below navbar) -->
+    <div class="d-md-none" style="position:relative; z-index:1100;">
+      <button class="btn btn-primary m-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar" aria-controls="mobileSidebar">
+        <i class="bi bi-list"></i>
+      </button>
+    </div>
+
+    <!-- Offcanvas Sidebar for Mobile -->
+    <div class="offcanvas offcanvas-start d-md-none" tabindex="-1" id="mobileSidebar" aria-labelledby="mobileSidebarLabel">
+      <div class="offcanvas-header">
+        <h5 class="offcanvas-title" id="mobileSidebarLabel">Folders</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+      </div>
+      <div class="offcanvas-body" id="folderTreeMobile">
+        <!-- Folders will be loaded here by JS -->
+      </div>
+    </div>
+
     <div class="container-fluid px-0" style="background: #f8f9fa; height: calc(100vh - 56px);">
         <div class="row g-0 h-100">
-            <!-- Left: Folder Structure -->
-            <div class="col-md-3 h-100">
+            <!-- Left: Folder Structure (Desktop only) -->
+            <div class="col-md-3 h-100 d-none d-md-block">
                 <div class="card h-100 d-flex flex-column" style="border-radius: 0;">
                     <div class="search-box px-3">
                         <div class="input-group">
@@ -419,31 +511,32 @@
             </div>
 
             <!-- Right: Editor -->
-            <div class="col-md-9 h-100">
+            <div class="col-md-9 h-100 col-12">
                 <div class="card h-100" style="border-radius: 0;">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <div class="d-flex align-items-center flex-grow-1">
                             <input type="text" id="noteTitle" class="form-control" placeholder="Note Title">
                             <div class="ms-2" id="currentFolderDisplay"></div>
                         </div>
-                        <div class="d-flex gap-2">
+                        <div class="d-flex gap-2 d-none d-md-flex">
                             <button class="btn btn-success" onclick="saveNote()" title="Save note">
                                 <i class="bi bi-save"></i>
-                            </button>
-                            <button class="btn btn-danger" onclick="deleteNote()" title="Delete note">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                            <button class="btn btn-info" id="viewButton" onclick="viewNote()" style="display: none;" title="View note">
-                                <i class="bi bi-eye"></i>
                             </button>
                         </div>
                     </div>
                     <div class="card-body d-flex flex-column">
+                        <div id="toolbar-container"></div>
                         <div id="editor"></div>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- Sticky Action Bar for Mobile -->
+    <div class="fixed-bottom bg-white border-top d-flex justify-content-around py-2 d-md-none" style="z-index: 1200;">
+      <button class="btn btn-success flex-fill mx-1" onclick="saveNote()"><i class="bi bi-save"></i></button>
+      <button class="btn btn-primary flex-fill mx-1" onclick="createNewNote(currentFolder)"><i class="bi bi-plus-lg"></i></button>
     </div>
 
     <!-- Shared footer -->
@@ -463,21 +556,12 @@
         let autoSaveTimeout = null;
         let lastSavedContent = '';
         let isTyping = false;
+        let folderCollapseState = {};
 
         // Initialize CKEditor
         async function initEditor() {
             try {
                 console.log('Initializing editor...');
-                
-                // Create toolbar container
-                const toolbarContainer = document.createElement('div');
-                toolbarContainer.id = 'toolbar-container';
-                toolbarContainer.classList.add('mb-2');
-                
-                // Add toolbar to the card body before the editor
-                const cardBody = document.querySelector('.col-md-9 .card-body');
-                cardBody.insertBefore(toolbarContainer, document.querySelector('#editor'));
-
                 // Initialize editor
                 editor = await DecoupledEditor.create(document.querySelector('#editor'), {
                     toolbar: [
@@ -516,8 +600,8 @@
                         ]
                     }
                 });
-
-                // Add toolbar
+                // Attach toolbar to the static container
+                const toolbarContainer = document.getElementById('toolbar-container');
                 toolbarContainer.appendChild(editor.ui.view.toolbar.element);
 
                 // Set up auto-save functionality
@@ -655,14 +739,10 @@
             }
         }
 
-        // Toggle folder collapse
+        // Toggle folder
         function toggleFolder(folderName) {
-            const folderContent = document.getElementById(`folder-${folderName}`);
-            const toggleIcon = document.querySelector(`#folder-${folderName}-toggle i`);
-            
-            folderContent.classList.toggle('collapsed');
-            toggleIcon.classList.toggle('bi-caret-down-fill');
-            toggleIcon.classList.toggle('bi-caret-right-fill');
+            folderCollapseState[folderName] = !folderCollapseState[folderName];
+            loadFolders(); // Re-render both sidebars to reflect the new state
         }
 
         // Search notes
@@ -864,7 +944,8 @@
                 console.log('Folder response status:', response.status);
                 const folders = await response.json();
                 console.log('Received folders:', folders);
-                displayFolders(folders);
+                displayFolders(folders, document.getElementById('folderTree'));
+                displayFolders(folders, document.getElementById('folderTreeMobile'));
             } catch (error) {
                 console.error('Error loading folders:', error);
             }
@@ -872,10 +953,8 @@
 
         // Display folders in the tree
         function displayFolders(folders, parentElement = document.getElementById('folderTree')) {
-            console.log('Displaying folders:', folders);
             parentElement.innerHTML = '';
             if (!folders || folders.length === 0) {
-                console.log('No folders to display');
                 parentElement.innerHTML = `
                     <div class="text-center py-4">
                         <div class="text-muted mb-3">No folders found.</div>
@@ -886,19 +965,16 @@
                 `;
                 return;
             }
-            
-            // Sort folders alphabetically
             folders.sort((a, b) => a.localeCompare(b));
-            
             folders.forEach(folder => {
-                console.log('Creating folder element for:', folder);
+                const isCollapsed = folderCollapseState[folder];
                 const folderDiv = document.createElement('div');
                 folderDiv.className = 'folder-item';
                 folderDiv.innerHTML = `
                     <div class="folder-header">
                         <div class="d-flex align-items-center" onclick="selectFolder('${folder}')">
-                            <span id="folder-${folder}-toggle" onclick="event.stopPropagation(); toggleFolder('${folder}')">
-                                <i class="bi bi-caret-down-fill text-primary me-1"></i>
+                            <span id="folder-${folder}-toggle" onclick="event.stopPropagation(); toggleFolder('${folder}')" style="cursor:pointer;">
+                                <i class="bi ${isCollapsed ? 'bi-caret-right-fill' : 'bi-caret-down-fill'} text-primary me-1"></i>
                             </span>
                             <i class="bi bi-folder-fill text-warning me-1"></i>
                             <span>${folder}</span>
@@ -909,11 +985,9 @@
                             </button>
                         </div>
                     </div>
-                    <div class="folder-content" id="folder-${folder}"></div>
+                    <div class="folder-content${isCollapsed ? ' collapsed' : ''}" id="folder-${folder}"></div>
                 `;
                 parentElement.appendChild(folderDiv);
-
-                // Load notes for this folder
                 loadNotes(folder, folderDiv.querySelector('.folder-content'));
             });
         }
@@ -957,7 +1031,8 @@
             }
             
             // Hide share button when no specific note is selected
-            document.getElementById('viewButton').style.display = 'none';
+            if (document.getElementById('viewButton')) document.getElementById('viewButton').style.display = 'none';
+            if (document.getElementById('viewButtonMobile')) document.getElementById('viewButtonMobile').style.display = 'none';
             
             // Load notes for the folder
             loadNotes(folderName, document.getElementById(`folder-${folderName}`));
@@ -980,7 +1055,8 @@
             }
             
             // Hide share button for new unsaved note
-            document.getElementById('viewButton').style.display = 'none';
+            if (document.getElementById('viewButton')) document.getElementById('viewButton').style.display = 'none';
+            if (document.getElementById('viewButtonMobile')) document.getElementById('viewButtonMobile').style.display = 'none';
             
             // Load notes for the folder
             loadNotes(folderName, document.getElementById(`folder-${folderName}`));
@@ -1002,7 +1078,11 @@
                         noteDiv.className = 'note-item';
                         noteDiv.innerHTML = `
                             <i class="bi bi-file-earmark-text text-warning me-1"></i>
-                            <div class="note-title">${note.title}</div>
+                            <div class="note-title flex-grow-1">${note.title}</div>
+                            <div class="note-actions ms-auto" style="display: flex; gap: 4px;">
+                                <button class="btn btn-sm btn-link text-info note-view-btn" title="View" onclick="event.stopPropagation(); viewNoteFromSidebar('${folderName}', '${note.id}')"><i class="bi bi-eye"></i></button>
+                                <button class="btn btn-sm btn-link text-danger note-delete-btn" title="Delete" onclick="event.stopPropagation(); deleteNoteFromSidebar('${folderName}', '${note.id}')"><i class="bi bi-trash"></i></button>
+                            </div>
                         `;
                         noteDiv.onclick = () => loadNote(folderName, note.id);
                         parentElement.appendChild(noteDiv);
@@ -1055,7 +1135,8 @@
                 }
                 
                 // Show view button
-                document.getElementById('viewButton').style.display = 'block';
+                if (document.getElementById('viewButton')) document.getElementById('viewButton').style.display = 'block';
+                if (document.getElementById('viewButtonMobile')) document.getElementById('viewButtonMobile').style.display = 'block';
                 
                 // Update active states
                 document.querySelectorAll('.note-item').forEach(item => {
@@ -1490,6 +1571,23 @@
                 alert('Failed to initialize the editor. Please refresh the page.');
             }
         });
+
+        function viewNoteFromSidebar(folder, noteId) {
+            window.open(`${window.location.origin}/view/${folder}/${noteId}`, '_blank');
+        }
+
+        async function deleteNoteFromSidebar(folder, noteId) {
+            if (confirm('Are you sure you want to delete this note?')) {
+                try {
+                    const response = await fetch(`/api/notes/${folder}/${noteId}`, { method: 'DELETE' });
+                    if (response.ok) {
+                        loadFolders();
+                    }
+                } catch (error) {
+                    console.error('Error deleting note:', error);
+                }
+            }
+        }
     </script>
 
     <script>
