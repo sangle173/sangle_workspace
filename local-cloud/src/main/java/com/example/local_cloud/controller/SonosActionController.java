@@ -3,6 +3,7 @@ package com.example.local_cloud.controller;
 import com.example.local_cloud.dto.BulkActionRequest;
 import com.example.local_cloud.service.SonosService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.w3c.dom.Document;
@@ -584,6 +585,15 @@ public class SonosActionController {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    @GetMapping("/now-playing")
+    public ResponseEntity<Map<String, String>> getNowPlaying(@RequestParam String ip) {
+        Map<String, String> info = sonosService.getNowPlayingInfo(ip);
+        if (info.containsKey("error")) {
+            return ResponseEntity.status(500).body(info);
+        }
+        return ResponseEntity.ok(info);
     }
 
     public static class DeviceStatus {

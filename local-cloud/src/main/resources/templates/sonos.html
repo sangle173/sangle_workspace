@@ -722,6 +722,28 @@
                                       </span>
                                     </span>`;
                                     if (el) el.innerHTML = iconHtml;
+                                    // Fetch now playing info and display next to histogram
+                                    fetch(`/sonos-action/now-playing?ip=${encodeURIComponent(ip)}`)
+                                      .then(res => res.json())
+                                      .then(data => {
+                                        if (data && data.title) {
+                                          // Find the parent cell containing the device name and histogram
+                                          const parent = el.closest('.fw-semibold.text-primary').parentElement;
+                                          // Remove any previous now playing info in the parent cell
+                                          const old = parent.querySelector('.now-playing-info');
+                                          if (old) old.remove();
+                                          let infoHtml = `<div class="now-playing-info d-flex align-items-center gap-2 small p-1" style="background:#eeeeee; border-radius:6px; color:#000000; max-width:320px;">`;
+                                          if (data.albumArtURI) {
+                                            infoHtml += `<img src="${data.albumArtURI}" alt="Art" style="height:32px;width:32px;object-fit:cover;border-radius:4px;">`;
+                                          }
+                                          infoHtml += `<div>`;
+                                          infoHtml += `<div class="fw-semibold" style="color:#000000;">${data.title}</div>`;
+                                          infoHtml += `<div class="text-muted" style="font-size:0.95em;">`;
+                                          infoHtml += `<i class="bi bi-mic-fill" style="color:#1db954;"></i> ${data.artist || ''}`;
+                                          infoHtml += `</div></div></div>`;
+                                          parent.insertAdjacentHTML('beforeend', infoHtml);
+                                        }
+                                      });
                                 } else if (status === 'PAUSED_PLAYBACK') {
                                     iconHtml = '<i class="bi bi-pause-fill text-warning" title="Paused"></i>';
                                     ctaHtml = `<button class="btn btn-link btn-sm p-0 ms-1" title="Play" onclick="confirmSonosCtaAction('${ip}', 'play')"><i class='bi bi-play-circle text-success'></i></button>`;

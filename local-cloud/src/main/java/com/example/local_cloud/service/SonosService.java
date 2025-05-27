@@ -16,6 +16,8 @@ import javax.xml.xpath.XPathFactory;
 import org.w3c.dom.Document;
 import java.util.List;
 import java.util.ArrayList;
+import org.apache.commons.lang3.StringEscapeUtils;
+import java.util.Map;
 
 @Service
 public class SonosService {
@@ -340,5 +342,70 @@ public class SonosService {
         } catch (Exception e) {
             return "❌ Exception: " + e.getMessage();
         }
+    }
+
+    /**
+     * Get now playing info (title, artist, album, albumArtURI) from Sonos device via UPnP SOAP.
+     */
+    public Map<String, String> getNowPlayingInfo(String ip) {
+        Map<String, String> result = new java.util.HashMap<>();
+        try {
+            String soapEnvelope =
+                "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
+                "<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\" s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\">" +
+                "<s:Body>" +
+                "<u:GetPositionInfo xmlns:u=\"urn:schemas-upnp-org:service:AVTransport:1\">" +
+                "<InstanceID>0</InstanceID>" +
+                "</u:GetPositionInfo>" +
+                "</s:Body>" +
+                "</s:Envelope>";
+            URL url = new URL("http://" + ip + ":1400/MediaRenderer/AVTransport/Control");
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setDoOutput(true);
+            conn.setConnectTimeout(2000);
+            conn.setReadTimeout(2000);
+            conn.setRequestProperty("Content-Type", "text/xml; charset=\"utf-8\"");
+            conn.setRequestProperty("SOAPACTION", "\"urn:schemas-upnp-org:service:AVTransport:1#GetPositionInfo\"");
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(soapEnvelope.getBytes(StandardCharsets.UTF_8));
+            }
+            if (conn.getResponseCode() != 200) {
+                result.put("error", "SOAP error: " + conn.getResponseCode());
+                return result;
+            }
+            Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(conn.getInputStream());
+            XPath xpath = XPathFactory.newInstance().newXPath();
+            String trackMetaData = xpath.evaluate("//*[local-name()='TrackMetaData']", doc);
+            if (trackMetaData == null || trackMetaData.isEmpty() || trackMetaData.equals("NOT_IMPLEMENTED")) {
+                result.put("title", "");
+                result.put("artist", "");
+                result.put("album", "");
+                result.put("albumArtURI", "");
+                return result;
+            }
+            // Unescape XML
+            String didl = StringEscapeUtils.unescapeXml(trackMetaData);
+            // Fix unescaped ampersands (but not already escaped ones)
+            didl = didl.replaceAll("&(?!amp;|lt;|gt;|apos;|quot;)", "&amp;");
+            // Parse DIDL-Lite XML
+            Document didlDoc = DocumentBuilderFactory.newInstance().newDocumentBuilder()
+                .parse(new java.io.ByteArrayInputStream(didl.getBytes(StandardCharsets.UTF_8)));
+            String title = xpath.evaluate("//*[local-name()='title']", didlDoc);
+            String artist = xpath.evaluate("//*[local-name()='creator']", didlDoc);
+            String album = xpath.evaluate("//*[local-name()='album']", didlDoc);
+            String albumArtURI = xpath.evaluate("//*[local-name()='albumArtURI']", didlDoc);
+            // Some URIs may be relative, prepend device IP if needed
+            if (albumArtURI != null && !albumArtURI.isEmpty() && albumArtURI.startsWith("/")) {
+                albumArtURI = "http://" + ip + ":1400" + albumArtURI;
+            }
+            result.put("title", title != null ? title : "");
+            result.put("artist", artist != null ? artist : "");
+            result.put("album", album != null ? album : "");
+            result.put("albumArtURI", albumArtURI != null ? albumArtURI : "");
+        } catch (Exception e) {
+            result.put("error", e.getMessage());
+        }
+        return result;
     }
 }
