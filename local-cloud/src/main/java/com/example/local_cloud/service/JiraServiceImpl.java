@@ -117,13 +117,26 @@ public class JiraServiceImpl implements JiraService {
                     Map<String, Object> assignee = (Map<String, Object>) fields.get("assignee");
                     issueData.put("assignee", assignee != null ? assignee.get("displayName") : "Unassigned");
                     
-                    // QA Contact - using a placeholder field ID, update with your actual field
-                    Map<String, Object> qaContact = (Map<String, Object>) fields.get("customfield_12345");
+                    // QA Contact - use the correct field ID
+                    Map<String, Object> qaContact = (Map<String, Object>) fields.get("customfield_10408");
                     issueData.put("qa_contact", qaContact != null ? qaContact.get("displayName") : "Not Set");
                     
                     // Labels
                     List<String> labels = (List<String>) fields.get("labels");
                     issueData.put("labels", labels != null && !labels.isEmpty() ? String.join(", ", labels) : "None");
+                    
+                    // Teams (customfield_12600)
+                    List<Map<String, Object>> teamsField = (List<Map<String, Object>>) fields.get("customfield_12600");
+                    if (teamsField != null && !teamsField.isEmpty()) {
+                        List<String> teamNames = new ArrayList<>();
+                        for (Map<String, Object> team : teamsField) {
+                            Object value = team.get("value");
+                            if (value != null) teamNames.add(value.toString());
+                        }
+                        issueData.put("teams", String.join(", ", teamNames));
+                    } else {
+                        issueData.put("teams", "Not Assigned");
+                    }
                     
                     issuesData.add(issueData);
                 }
@@ -143,6 +156,7 @@ public class JiraServiceImpl implements JiraService {
                 errorData.put("assignee", "N/A");
                 errorData.put("qa_contact", "N/A");
                 errorData.put("labels", "N/A");
+                errorData.put("teams", "N/A");
                 
                 issuesData.add(errorData);
             }
@@ -232,9 +246,22 @@ public class JiraServiceImpl implements JiraService {
                     Map<String, Object> assignee = (Map<String, Object>) fields.get("assignee");
                     issueData.put("assignee", assignee != null ? assignee.get("displayName") : "Unassigned");
                     
-                    // QA Contact - using a placeholder field ID, update with your actual field
-                    Map<String, Object> qaContact = (Map<String, Object>) fields.get("customfield_12345");
+                    // QA Contact - use the correct field ID
+                    Map<String, Object> qaContact = (Map<String, Object>) fields.get("customfield_10408");
                     issueData.put("qa_contact", qaContact != null ? qaContact.get("displayName") : "Not Set");
+                    
+                    // Teams (customfield_12600)
+                    List<Map<String, Object>> teamsField = (List<Map<String, Object>>) fields.get("customfield_12600");
+                    if (teamsField != null && !teamsField.isEmpty()) {
+                        List<String> teamNames = new ArrayList<>();
+                        for (Map<String, Object> team : teamsField) {
+                            Object value = team.get("value");
+                            if (value != null) teamNames.add(value.toString());
+                        }
+                        issueData.put("teams", String.join(", ", teamNames));
+                    } else {
+                        issueData.put("teams", "Not Assigned");
+                    }
                     
                     issuesData.add(issueData);
                 }
