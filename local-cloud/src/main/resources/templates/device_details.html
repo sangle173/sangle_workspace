@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/head.html :: head(title=${device['Model']}, customStyles=~{::customStyles})">
+    <th:block th:fragment="customStyles">
+        <style>
+            .device-header { display: flex; align-items: center; gap: 1.5rem; margin-bottom: 1rem; }
+            .device-img { width: 80px; height: 80px; border-radius: 12px; object-fit: cover; }
+            .device-actions { margin-bottom: 1.5rem; }
+            .device-info-table { width: 100%; max-width: 600px; }
+            .latency-badge { font-weight: bold; }
+        </style>
+    </th:block>
+</head>
+<body style="font-family: var(--font-family), system-ui, sans-serif !important;">
+<div th:replace="fragments/navbar :: navbar"></div>
+<div class="container-fluid my-4">
+    <div class="row">
+        <div class="col-md-6">
+            <div class="device-header">
+                <img th:src="${device['Image']}" class="device-img" alt="Device Image"/>
+                <div>
+                    <h3 th:text="${device['Room Name']} + ' (' + ${device['Model']} + ')'">Device Name</h3>
+                    <div>
+                        <span>IP: <a th:href="'http://' + ${device['IP']} + ':1400/status/zp'" th:text="${device['IP']}" target="_blank"></a></span> |
+                        <span>MAC: <span th:text="${device['MAC Address']}"></span></span> |
+                        <span>HHID: <span th:text="${device['HHID']}"></span></span> |
+                        <span>Latency: <span id="latency" class="latency-badge"><span id="latency-dot" style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#ccc;margin-right:6px;vertical-align:middle;"></span>Waiting for device response...</span></span>
+                    </div>
+                </div>
+            </div>
+            <table class="table device-info-table">
+                <tbody>
+                    <tr><th>Model</th><td th:text="${device['Model']}"></td></tr>
+                    <tr><th>Room Name</th><td th:text="${device['Room Name']}"></td></tr>
+                    <tr><th>Software Version</th><td th:text="${device['Software Version']}"></td></tr>
+                    <tr><th>Hardware Version</th><td th:text="${device['Hardware Version']}"></td></tr>
+                    <tr><th>Serial</th><td th:text="${device['MAC Address']}"></td></tr>
+                    <tr><th>Reset link</th><td><a th:href="'http://' + ${device['IP']} + ':1400/reset'" target="_blank">Reset Link</a></td></tr>
+                    <tr><th>HHID</th><td th:text="${device['HHID']}"></td></tr>
+                    <tr><th>OnlineUpdateBaseURL</th><td id="systemStringCell">Loading...</td></tr>
+                    <!-- Add more fields as needed -->
+                </tbody>
+            </table>
+            <div id="statusSection"></div>
+        </div>
+        <div class="col-md-6">
+        
+            <div class="card p-3 mb-3">
+                <h6 class="mb-2">Sonos Update</h6>
+                <input type="text" class="form-control mb-2" id="sonosUpdateLinkInput" placeholder="Update Link (.upd/.upm/URI)">
+                <button class="btn btn-primary w-100" onclick="showSonosUpdateModal()">Run SonosUpdate</button>
+                <pre id="sonosUpdateLog" style="display:none;height: 180px; background: #222; color: #eee; margin-top: 1em; overflow-y: auto; font-size: 0.95em; white-space: pre-wrap;"></pre>
+            </div>
+            <div class="card p-3">
+                <h6 class="mb-2">Set System String</h6>
+                <input type="text" class="form-control mb-2" id="setStringValueInput" placeholder="New System String">
+                <button class="btn btn-primary w-100" onclick="submitSetSystemString()">Set String</button>
+                <div id="setStringResult" class="mt-2 small"></div>
+            </div>
+        </div>
+    </div>
+</div>
+<script th:inline="javascript">
+    // Ping and update latency every 3s
+    function updateLatency() {
+        var ip = /*[[${ip}]]*/ '';
+        fetch('/sonos-action/ping-status')
+            .then(res => res.json())
+            .then(data => {
+                const entry = data.find(d => d.ip === ip);
+                const latencyEl = document.getElementById('latency');
+                const dotEl = document.getElementById('latency-dot');
+                if (entry) {
+                    latencyEl.childNodes[1].textContent = entry.latency + ' ms';
+                    let latency = parseFloat(entry.latency);
+                    if (!isNaN(latency)) {
+                        if (latency < 20) {
+                            dotEl.style.background = '#28a745'; // green
+                        } else if (latency < 100) {
+                            dotEl.style.background = '#ffc107'; // yellow
+                        } else {
+                            dotEl.style.background = '#dc3545'; // red
+                        }
+                        // Remove duplicate 'ms' if present
+                        if (latencyEl.childNodes[1].textContent.endsWith('ms ms')) {
+                            latencyEl.childNodes[1].textContent = latencyEl.childNodes[1].textContent.replace('ms ms', 'ms');
+                        }
+                    } else {
+                        dotEl.style.background = '#ccc';
+                    }
+                } else {
+                    latencyEl.childNodes[1].textContent = 'Waiting for device response...';
+                    dotEl.style.background = '#ccc';
+                }
+            })
+            .catch(() => {
+                const latencyEl = document.getElementById('latency');
+                const dotEl = document.getElementById('latency-dot');
+                latencyEl.childNodes[1].textContent = 'Waiting for device response...';
+                dotEl.style.background = '#ccc';
+            });
+    }
+    setInterval(updateLatency, 3000);
+    updateLatency();
+
+    function performAction(action) {
+        var ip = /*[[${ip}]]*/ '';
+        fetch('/sonos-action/bulk', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ action, devices: [ip] })
+        }).then(r => r.text()).then(msg => alert(msg));
+    }
+    // Fetch and display OnlineUpdateBaseURL
+    function fetchSystemString() {
+        var ip = /*[[${ip}]]*/ '';
+        fetch(`/sonos-action/get-system-string?ip=${encodeURIComponent(ip)}`)
+            .then(res => res.text())
+            .then(val => {
+                document.getElementById('systemStringCell').textContent = val;
+            });
+    }
+    fetchSystemString();
+    function submitSonosUpdate() {
+        var ip = /*[[${ip}]]*/ '';
+        var link = document.getElementById('sonosUpdateLinkInput').value.trim();
+        var logEl = document.getElementById('sonosUpdateLog');
+        logEl.textContent = '';
+        logEl.style.display = 'block';
+        if (!link) {
+            logEl.textContent = 'Please enter an update link.';
+            return;
+        }
+        // Open WebSocket for SonosUpdate
+        var ws = new WebSocket('ws://' + window.location.host + '/ws/sonosupdate');
+        ws.onopen = function() {
+            ws.send(JSON.stringify({ devices: [ip], updateLink: link }));
+        };
+        ws.onmessage = function(event) {
+            if (event.data.startsWith('[SonosUpdate] Executed:')) return;
+            logEl.textContent += event.data + '\n';
+            logEl.scrollTop = logEl.scrollHeight;
+            if (event.data.includes('✅ SonosUpdate completed.')) {
+                ws.close();
+            }
+        };
+        ws.onerror = function() {
+            logEl.textContent += '\n❌ WebSocket error';
+        };
+        ws.onclose = function() {
+            // Optionally handle close
+        };
+    }
+    function submitSetSystemString() {
+        var ip = /*[[${ip}]]*/ '';
+        var value = document.getElementById('setStringValueInput').value.trim();
+        var resultEl = document.getElementById('setStringResult');
+        resultEl.textContent = '';
+        if (!value) {
+            resultEl.textContent = 'Please enter a value.';
+            return;
+        }
+        fetch(`/sonos-action/set-system-string?ip=${encodeURIComponent(ip)}&stringValue=${encodeURIComponent(value)}`, {
+            method: 'POST'
+        })
+        .then(res => res.text())
+        .then(msg => { resultEl.textContent = msg; })
+        .catch(err => { resultEl.textContent = '❌ Error: ' + err; });
+    }
+    // Modal logic for SonosUpdate
+    function showSonosUpdateModal() {
+        var ip = /*[[${ip}]]*/ '';
+        var link = document.getElementById('sonosUpdateLinkInput').value.trim();
+        if (!link) {
+            alert('Please enter an update link.');
+            return;
+        }
+        var modalHtml = `<div class='modal fade' id='sonosUpdateModal' tabindex='-1' aria-hidden='true'>
+            <div class='modal-dialog modal-lg modal-dialog-centered'>
+                <div class='modal-content'>
+                    <div class='modal-header'>
+                        <h5 class='modal-title'>SonosUpdate Confirmation</h5>
+                        <button type='button' class='btn-close' data-bs-dismiss='modal' aria-label='Close'></button>
+                    </div>
+                    <div class='modal-body'>
+                        <div>Are you sure you want to run SonosUpdate for <b>${ip}</b> with link:</div>
+                        <div class='mb-2 text-break'><code>${link}</code></div>
+                        <pre id='modalSonosUpdateLog' style='height: 180px; background: #222; color: #eee; margin-top: 1em; overflow-y: auto; font-size: 0.95em; white-space: pre-wrap;'></pre>
+                    </div>
+                    <div class='modal-footer'>
+                        <button type='button' class='btn btn-secondary' data-bs-dismiss='modal'>Cancel</button>
+                        <button type='button' class='btn btn-primary' id='modalSonosUpdateRunBtn'>Run SonosUpdate</button>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+        var tempDiv = document.createElement('div');
+        tempDiv.innerHTML = modalHtml;
+        document.body.appendChild(tempDiv.firstChild);
+        var modalEl = document.getElementById('sonosUpdateModal');
+        var modal = new bootstrap.Modal(modalEl, { backdrop: 'static', keyboard: true });
+        modal.show();
+        document.getElementById('modalSonosUpdateRunBtn').onclick = function() {
+            var logEl = document.getElementById('modalSonosUpdateLog');
+            logEl.textContent = '';
+            this.disabled = true;
+            var ws = new WebSocket('ws://' + window.location.host + '/ws/sonosupdate');
+            ws.onopen = function() {
+                ws.send(JSON.stringify({ devices: [ip], updateLink: link }));
+            };
+            ws.onmessage = function(event) {
+                if (event.data.startsWith('[SonosUpdate] Executed:')) return;
+                logEl.textContent += event.data + '\n';
+                logEl.scrollTop = logEl.scrollHeight;
+                if (event.data.includes('✅ SonosUpdate completed.')) {
+                    ws.close();
+                }
+            };
+            ws.onerror = function() {
+                logEl.textContent += '\n❌ WebSocket error';
+            };
+            ws.onclose = function() {
+                document.getElementById('modalSonosUpdateRunBtn').disabled = false;
+            };
+        };
+        modalEl.addEventListener('hidden.bs.modal', function() {
+            modalEl.remove();
+        });
+    }
+    // Change SonosUpdate button to show modal
+    document.querySelector('.btn.btn-primary.w-100[onclick="submitSonosUpdate()"]')
+        .setAttribute('onclick', 'showSonosUpdateModal()');
+    // Set the reset button link dynamically
+    document.addEventListener('DOMContentLoaded', function() {
+        var ip = /*[[${ip}]]*/ '';
+        var resetBtn = document.getElementById('resetBtn');
+        if (resetBtn && ip) {
+            resetBtn.href = `http://${ip}:1400/reset`;
+        }
+    });
+</script>
+<div th:replace="fragments/footer :: footer"></div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

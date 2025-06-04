@@ -503,15 +503,15 @@
     <img src="${d["Image"]}" alt="Icon" style="max-height: 56px;">
   </td>
   <td>
-    <div class="fw-semibold text-primary">${d["Model"] || "Unknown"}
-      <span id="histogram-${ipId}" style="margin-left:8px;"></span>
-    </div>
+    <a href="/sonos-action/device-details?ip=${d['IP']}" target="_blank" class="fw-semibold text-primary">
+      ${d["Model"] || "Unknown"}
+    </a>
     <div>
   IP: 
   <a href="http://${d["IP"]}:1400/status/zp" target="_blank" style="text-decoration: none; color: inherit;">
     ${d["IP"]}
   </a> 
-  | <span id="latency-${ipId}">ping...</span>
+  | <span id="latency-${ipId}"><span id="latency-dot-${ipId}" style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#ccc;margin-right:6px;vertical-align:middle;"></span>ping...</span>
 </div>
     <div class="text-muted small">
       RoomName: ${d["Room Name"] || "-"} |
@@ -668,28 +668,31 @@
                 .then(data => {
                     data.forEach(({ ip, latency }) => {
                         const el = document.getElementById("latency-" + ip.replaceAll('.', '-'));
-                        if (el) {
-                            let dotClass = '';
+                        const dotEl = document.getElementById("latency-dot-" + ip.replaceAll('.', '-'));
+                        if (el && dotEl) {
+                            let color = '#ccc';
                             let raw = latency;
-
-                            if (latency === 'lost') {
-                                dotClass = 'latency-danger';
+                            if (latency === 'lost' || latency === undefined) {
+                                color = '#dc3545'; // red for lost
+                                raw = 'Waiting for device response...';
                             } else {
-                                const num = parseInt(latency);
-                                if (num < 100) {
-                                    dotClass = 'latency-success';
-                                } else if (num < 300) {
-                                    dotClass = 'latency-warning';
-                                } else {
-                                    dotClass = 'latency-danger';
+                                const num = parseFloat(latency);
+                                if (!isNaN(num)) {
+                                    if (num < 20) color = '#28a745'; // green
+                                    else if (num < 100) color = '#ffc107'; // yellow
+                                    else color = '#dc3545'; // red
+                                    raw = num + ' ms';
                                 }
                             }
-
-                            el.innerHTML = `<span class="latency-dot ${dotClass}"></span>${raw}`;
+                            dotEl.style.background = color;
+                            // Only update the text node after the dot
+                            if (el.childNodes.length > 1) {
+                                el.childNodes[1].textContent = raw;
+                            }
                         }
                     });
                 });
-        }, 5000);
+        }, 3000);
 
 
         function getActionDropdown(ip, roomName) {
@@ -1300,6 +1303,28 @@
                           </span>
                         </span>`;
                         if (el) el.innerHTML = iconHtml;
+                        // Fetch now playing info and display next to histogram
+                        fetch(`/sonos-action/now-playing?ip=${encodeURIComponent(ip)}`)
+                          .then(res => res.json())
+                          .then(data => {
+                            if (data && data.title) {
+                              // Find the parent cell containing the device name and histogram
+                              const parent = el.closest('.fw-semibold.text-primary').parentElement;
+                              // Remove any previous now playing info in the parent cell
+                              const old = parent.querySelector('.now-playing-info');
+                              if (old) old.remove();
+                              let infoHtml = `<div class="now-playing-info d-flex align-items-center gap-2 small p-1" style="background:#eeeeee; border-radius:6px; color:#000000; max-width:320px;">`;
+                              if (data.albumArtURI) {
+                                infoHtml += `<img src="${data.albumArtURI}" alt="Art" style="height:32px;width:32px;object-fit:cover;border-radius:4px;">`;
+                              }
+                              infoHtml += `<div>`;
+                              infoHtml += `<div class="fw-semibold" style="color:#000000;">${data.title}</div>`;
+                              infoHtml += `<div class="text-muted" style="font-size:0.95em;">`;
+                              infoHtml += `<i class="bi bi-mic-fill" style="color:#1db954;"></i> ${data.artist || ''}`;
+                              infoHtml += `</div></div></div>`;
+                              parent.insertAdjacentHTML('beforeend', infoHtml);
+                            }
+                          });
                     } else if (status === 'PAUSED_PLAYBACK') {
                         iconHtml = '<i class="bi bi-pause-fill text-warning" title="Paused"></i>';
                         ctaHtml = `<button class="btn btn-link btn-sm p-0 ms-1" title="Play" onclick="confirmSonosCtaAction('${ip}', 'play')"><i class='bi bi-play-circle text-success'></i></button>`;
@@ -1386,6 +1411,47 @@
             origRenderGroupedResults(groups);
             updateShowAllDevicesBtn();
         };
+
+        // After rendering the table, update latency and dot for each device
+        setTimeout(() => {
+          fetch('/sonos-action/ping-status')
+            .then(res => res.json())
+            .then(data => {
+              Object.entries(groups).forEach(([hhid, devices]) => {
+                devices.forEach(d => {
+                  const ip = d["IP"];
+                  const ipId = ip.replace(/\./g, '-');
+                  const latencyEl = document.getElementById(`latency-${ipId}`);
+                  const dotEl = document.getElementById(`latency-dot-${ipId}`);
+                  const entry = data.find(e => e.ip === ip);
+                  if (latencyEl && dotEl) {
+                    if (entry) {
+                      latencyEl.childNodes[1].textContent = entry.latency + ' ms';
+                      let latency = parseFloat(entry.latency);
+                      if (!isNaN(latency)) {
+                        if (latency < 20) {
+                          dotEl.style.background = '#28a745'; // green
+                        } else if (latency < 100) {
+                          dotEl.style.background = '#ffc107'; // yellow
+                        } else {
+                          dotEl.style.background = '#dc3545'; // red
+                        }
+                        // Remove duplicate 'ms' if present
+                        if (latencyEl.childNodes[1].textContent.endsWith('ms ms')) {
+                          latencyEl.childNodes[1].textContent = latencyEl.childNodes[1].textContent.replace('ms ms', 'ms');
+                        }
+                      } else {
+                        dotEl.style.background = '#ccc';
+                      }
+                    } else {
+                      latencyEl.childNodes[1].textContent = 'Waiting for device response...';
+                      dotEl.style.background = '#ccc';
+                    }
+                  }
+                });
+              });
+            });
+        }, 500);
 
         function confirmSonosUpdate() {
             const link = document.getElementById('sonosUpdateLinkInput').value.trim();

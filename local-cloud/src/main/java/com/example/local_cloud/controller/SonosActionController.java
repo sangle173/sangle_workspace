@@ -4,9 +4,11 @@ import com.example.local_cloud.dto.BulkActionRequest;
 import com.example.local_cloud.service.SonosService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.w3c.dom.Document;
+import org.springframework.ui.Model;
 
 import javax.annotation.PostConstruct;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -17,7 +19,7 @@ import java.net.*;
 import java.util.*;
 import java.util.concurrent.*;
 
-@RestController
+@Controller
 @RequestMapping("/sonos-action")
 public class SonosActionController {
 
@@ -42,21 +44,25 @@ public class SonosActionController {
     }
 
     @PostMapping("/update")
+    @ResponseBody
     public String updateSonosDevice(@RequestParam String ip, @RequestParam String url) {
         return sonosService.sendSoftwareUpdate(ip, url);
     }
 
     @PostMapping("/reboot")
+    @ResponseBody
     public String reboot(@RequestParam String ip) {
         return sonosService.rebootDevice(ip);
     }
 
     @PostMapping("/rename")
+    @ResponseBody
     public String rename(@RequestParam String ip, @RequestParam String name, @RequestParam String current) {
         return sonosService.renameDevice(ip, name, current);
     }
 
     @GetMapping("/ping-status")
+    @ResponseBody
     public List<Map<String, String>> getPingStatus() {
         List<Map<String, String>> list = new ArrayList<>();
         for (DeviceStatus status : deviceStatusMap.values()) {
@@ -69,6 +75,7 @@ public class SonosActionController {
     }
 
     @PostMapping("/submit-diagnostics")
+    @ResponseBody
     public String submitDiagnostics(
             @RequestParam String ip,
             @RequestParam(defaultValue = "1") int includeControllers,
@@ -77,6 +84,7 @@ public class SonosActionController {
     }
 
     @GetMapping("/stream-sonos")
+    @ResponseBody
     public SseEmitter streamSonos() {
         // Clear device caches and status before each scan
         deviceStatusMap.clear();
@@ -149,6 +157,7 @@ public class SonosActionController {
     }
 
     @PostMapping("/bulk")
+    @ResponseBody
     public String performBulkAction(@RequestBody BulkActionRequest request) {
         List<String> results = new ArrayList<>();
         List<String> deviceNames = request.getDeviceNames();
@@ -239,6 +248,7 @@ public class SonosActionController {
     }
 
     @PostMapping("/cli")
+    @ResponseBody
     public String runSonosCli(@RequestParam String ip, @RequestParam String cmd) {
         return sonosService.sonosCli(ip, cmd);
     }
@@ -378,6 +388,7 @@ public class SonosActionController {
     }
 
     @GetMapping("/get-network-info")
+    @ResponseBody
     public Map<String, String> getNetworkInfo() {
         Map<String, String> info = new HashMap<>();
         try {
@@ -469,6 +480,7 @@ public class SonosActionController {
     }
 
     @GetMapping("/get-system-string")
+    @ResponseBody
     public String getSystemString(@RequestParam String ip, @RequestParam(defaultValue = "OnlineUpdateBaseURL") String variableName) {
         try {
             String soapBody = "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
@@ -500,6 +512,7 @@ public class SonosActionController {
     }
 
     @PostMapping("/set-system-string")
+    @ResponseBody
     public String setSystemString(@RequestParam String ip,
                                   @RequestParam(defaultValue = "OnlineUpdateBaseURL") String variableName,
                                   @RequestParam String stringValue) {
@@ -532,6 +545,7 @@ public class SonosActionController {
     }
 
     @GetMapping("/get-volume")
+    @ResponseBody
     public String getVolume(@RequestParam String ip) {
         return sonosService.getVolume(ip);
     }
@@ -588,12 +602,21 @@ public class SonosActionController {
     }
 
     @GetMapping("/now-playing")
+    @ResponseBody
     public ResponseEntity<Map<String, String>> getNowPlaying(@RequestParam String ip) {
         Map<String, String> info = sonosService.getNowPlayingInfo(ip);
         if (info.containsKey("error")) {
             return ResponseEntity.status(500).body(info);
         }
         return ResponseEntity.ok(info);
+    }
+
+    @GetMapping("/device-details")
+    public String deviceDetails(@RequestParam String ip, Model model) {
+        Map<String, String> info = fetchDeviceInfo("http://" + ip + ":1400/xml/device_description.xml");
+        model.addAttribute("device", info);
+        model.addAttribute("ip", ip);
+        return "device_details";
     }
 
     public static class DeviceStatus {
