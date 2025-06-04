@@ -42,6 +42,10 @@
                 </tbody>
             </table>
             <div id="statusSection"></div>
+            <div id="nowPlayingSection" class="my-3">
+                <h6 class="mb-2">Now Playing</h6>
+                <div id="nowPlayingInfo" class="d-flex align-items-center gap-2 small p-2" style="background:#f8f9fa; border-radius:8px; min-height:48px; color:#222; max-width:420px;"></div>
+            </div>
         </div>
         <div class="col-md-6">
         
@@ -238,6 +242,37 @@
             resetBtn.href = `http://${ip}:1400/reset`;
         }
     });
+    // Now Playing info fetch/update
+    function updateNowPlaying() {
+        var ip = /*[[${ip}]]*/ '';
+        fetch(`/sonos-action/now-playing?ip=${encodeURIComponent(ip)}`)
+            .then(res => res.json())
+            .then(data => {
+                var el = document.getElementById('nowPlayingInfo');
+                if (!el) return;
+                if (data && data.title) {
+                    let html = `<div class='d-flex align-items-center gap-2'>`;
+                    if (data.albumArtURI) {
+                        html += `<img src='${data.albumArtURI}' alt='Art' style='height:40px;width:40px;object-fit:cover;border-radius:6px;'>`;
+                    }
+                    html += `<div>`;
+                    html += `<div class='fw-semibold' style='color:#000;'>${data.title}</div>`;
+                    html += `<div class='text-muted' style='font-size:0.95em;'>`;
+                    if (data.artist) html += `<i class='bi bi-mic-fill' style='color:#1db954;'></i> ${data.artist}`;
+                    if (data.album) html += ` <span class='ms-2'><i class='bi bi-disc'></i> ${data.album}</span>`;
+                    html += `</div></div></div>`;
+                    el.innerHTML = html;
+                } else {
+                    el.innerHTML = `<span class='text-muted'>No track info available.</span>`;
+                }
+            })
+            .catch(() => {
+                var el = document.getElementById('nowPlayingInfo');
+                if (el) el.innerHTML = `<span class='text-danger'>Failed to fetch now playing info.</span>`;
+            });
+    }
+    setInterval(updateNowPlaying, 4000);
+    updateNowPlaying();
 </script>
 <div th:replace="fragments/footer :: footer"></div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
