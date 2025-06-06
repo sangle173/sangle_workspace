@@ -27,15 +27,15 @@ public class SonosActionController {
     private final Map<String, DeviceStatus> deviceStatusMap = new ConcurrentHashMap<>();
 
     // Device info cache: IP -> CachedDeviceInfo
-    private static class CachedDeviceInfo {
+    public static class CachedDeviceInfo {
         final Map<String, String> info;
         final long timestamp;
-        CachedDeviceInfo(Map<String, String> info, long timestamp) {
+        public CachedDeviceInfo(Map<String, String> info, long timestamp) {
             this.info = info;
             this.timestamp = timestamp;
         }
     }
-    private final ConcurrentHashMap<String, CachedDeviceInfo> deviceInfoCache = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, CachedDeviceInfo> deviceInfoCache = new ConcurrentHashMap<>();
     private static final long DEVICE_INFO_CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes
 
     @Autowired
@@ -617,6 +617,166 @@ public class SonosActionController {
         model.addAttribute("device", info);
         model.addAttribute("ip", ip);
         return "device_details";
+    }
+
+    @GetMapping("/household-details")
+    public String householdDetails(@RequestParam String hhid, Model model) {
+        // Collect all devices with this HHID from cache and sonos_devices.json
+        List<Map<String, String>> devices = new ArrayList<>();
+        Set<String> seenIps = new HashSet<>();
+        // 1. Check deviceInfoCache for live devices
+        for (CachedDeviceInfo cached : deviceInfoCache.values()) {
+            String deviceHhid = cached.info.getOrDefault("HHID", "");
+            if (hhid.equals(deviceHhid)) {
+                devices.add(new LinkedHashMap<>(cached.info));
+                seenIps.add(cached.info.get("IP"));
+                // Ensure device is tracked for latency
+                deviceStatusMap.putIfAbsent(cached.info.get("IP"), new DeviceStatus(cached.info.get("IP")));
+            }
+        }
+        // 2. Load from sonos_devices.json for any not in cache
+        try {
+            java.nio.file.Path path = java.nio.file.Paths.get("sonos_devices.json");
+            if (java.nio.file.Files.exists(path)) {
+                String json = java.nio.file.Files.readString(path);
+                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> all = (List<Map<String, Object>>) mapper.readValue(json, List.class);
+                for (Map<String, Object> dev : all) {
+                    String devHhid = String.valueOf(dev.getOrDefault("HHID", ""));
+                    String ip = String.valueOf(dev.getOrDefault("ip", dev.get("IP")));
+                    if (hhid.equals(devHhid) && !seenIps.contains(ip)) {
+                        Map<String, String> devMap = new LinkedHashMap<>();
+                        for (Map.Entry<String, Object> entry : dev.entrySet()) {
+                            devMap.put(entry.getKey(), entry.getValue() == null ? "" : entry.getValue().toString());
+                        }
+                        devices.add(devMap);
+                        // Ensure device is tracked for latency
+                        deviceStatusMap.putIfAbsent(ip, new DeviceStatus(ip));
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // Ignore
+        }
+        model.addAttribute("hhid", hhid);
+        model.addAttribute("devices", devices);
+        return "household_details";
+    }
+
+    @PostMapping("/set-system-string-hh")
+    @ResponseBody
+    public String setSystemStringForHousehold(@RequestParam String hhid,
+                                              @RequestParam(defaultValue = "OnlineUpdateBaseURL") String variableName,
+                                              @RequestParam String stringValue) {
+        // Find all device IPs in this HHID (from cache and sonos_devices.json)
+        Set<String> ips = new HashSet<>();
+        for (CachedDeviceInfo cached : deviceInfoCache.values()) {
+            String deviceHhid = cached.info.getOrDefault("HHID", "");
+            if (hhid.equals(deviceHhid)) {
+                ips.add(cached.info.get("IP"));
+            }
+        }
+        try {
+            java.nio.file.Path path = java.nio.file.Paths.get("sonos_devices.json");
+            if (java.nio.file.Files.exists(path)) {
+                String json = java.nio.file.Files.readString(path);
+                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> all = (List<Map<String, Object>>) mapper.readValue(json, List.class);
+                for (Map<String, Object> dev : all) {
+                    String devHhid = String.valueOf(dev.getOrDefault("HHID", ""));
+                    String ip = String.valueOf(dev.getOrDefault("ip", dev.get("IP")));
+                    if (hhid.equals(devHhid)) {
+                        ips.add(ip);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // Ignore
+        }
+        if (ips.isEmpty()) return "❌ No devices found for this HHID.";
+        List<String> results = new ArrayList<>();
+        for (String ip : ips) {
+            String result = setSystemString(ip, variableName, stringValue);
+            results.add(ip + ": " + result);
+        }
+        return "<b>Set System String for HHID " + hhid + "</b><ul><li>"
+                + String.join("</li><li>", results) + "</li></ul>";
+    }
+
+    @PostMapping("/sonos-update-hh")
+    @ResponseBody
+    public String sonosUpdateForHousehold(@RequestParam String hhid, @RequestParam String uri) {
+        // Find all device IPs in this HHID (from cache and sonos_devices.json)
+        Set<String> ips = new HashSet<>();
+        for (CachedDeviceInfo cached : deviceInfoCache.values()) {
+            String deviceHhid = cached.info.getOrDefault("HHID", "");
+            if (hhid.equals(deviceHhid)) {
+                ips.add(cached.info.get("IP"));
+            }
+        }
+        try {
+            java.nio.file.Path path = java.nio.file.Paths.get("sonos_devices.json");
+            if (java.nio.file.Files.exists(path)) {
+                String json = java.nio.file.Files.readString(path);
+                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> all = (List<Map<String, Object>>) mapper.readValue(json, List.class);
+                for (Map<String, Object> dev : all) {
+                    String devHhid = String.valueOf(dev.getOrDefault("HHID", ""));
+                    String ip = String.valueOf(dev.getOrDefault("ip", dev.get("IP")));
+                    if (hhid.equals(devHhid)) {
+                        ips.add(ip);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // Ignore
+        }
+        if (ips.isEmpty()) return "❌ No devices found for this HHID.";
+        List<String> results = new ArrayList<>();
+        for (String ip : ips) {
+            String msg = sonosService.sendSoftwareUpdate(ip, uri);
+            results.add(ip + ": " + msg);
+        }
+        return String.join("\n", results);
+    }
+
+    // Public static helper to get all device IPs for a given HHID
+    public static List<String> getDeviceIpsForHHID(String hhid) {
+        Set<String> ips = new LinkedHashSet<>();
+        // 1. From cache
+        for (CachedDeviceInfo cached : getDeviceInfoCache().values()) {
+            String deviceHhid = cached.info.getOrDefault("HHID", "");
+            if (hhid.equals(deviceHhid)) {
+                ips.add(cached.info.get("IP"));
+            }
+        }
+        // 2. From sonos_devices.json
+        try {
+            java.nio.file.Path path = java.nio.file.Paths.get("sonos_devices.json");
+            if (java.nio.file.Files.exists(path)) {
+                String json = java.nio.file.Files.readString(path);
+                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> all = (List<Map<String, Object>>) mapper.readValue(json, List.class);
+                for (Map<String, Object> dev : all) {
+                    String devHhid = String.valueOf(dev.getOrDefault("HHID", ""));
+                    String ip = String.valueOf(dev.getOrDefault("ip", dev.get("IP")));
+                    if (hhid.equals(devHhid)) {
+                        ips.add(ip);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // Ignore
+        }
+        return new ArrayList<>(ips);
+    }
+    // Expose deviceInfoCache for static access
+    public static ConcurrentHashMap<String, CachedDeviceInfo> getDeviceInfoCache() {
+        return deviceInfoCache;
     }
 
     public static class DeviceStatus {

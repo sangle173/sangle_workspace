@@ -1,0 +1,300 @@
+<!-- filepath: /src/main/resources/templates/household_details.html -->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="fragments/head.html :: head(title='Household Details', customStyles=~{::customStyles})">
+    <th:block th:fragment="customStyles">
+        <style>
+            .hh-header { display: flex; align-items: center; gap: 1.5rem; margin-bottom: 1.5rem; }
+            .hh-title { font-size: 2rem; font-weight: 600; }
+            .device-card {
+                border-radius: 18px;
+                transition: box-shadow 0.2s, background 0.2s;
+                background: linear-gradient(135deg, #f7fafd 60%, #e3e9f7 100%);
+                border: 1.5px solid #e3e9f7;
+                box-shadow: 0 2px 12px #0001;
+            }
+            .device-card.hover-shadow:hover {
+                box-shadow: 0 6px 32px #0002;
+                background: linear-gradient(135deg, #e3e9f7 60%, #f7fafd 100%);
+            }
+            .device-img {
+                width: 64px;
+                height: 64px;
+                border-radius: 8px;
+                object-fit: cover;
+                background: #f8f9fa;
+            }
+            .set-string-section {
+                max-width: 420px;
+                margin-left: auto;
+                margin-right: auto;
+                border-radius: 16px;
+                background: #f7fafd;
+            }
+            .device-link:hover {
+                color: #1565c0 !important;
+                text-decoration: underline;
+            }
+            .latency-dot {
+                display: inline-block;
+                width: 12px;
+                height: 12px;
+                border-radius: 50%;
+                background: #ccc;
+                margin-right: 4px;
+                transition: background 0.2s;
+                border: 1.5px solid #e3e9f7;
+            }
+            .latency-dot.good { background: #4caf50; }
+            .latency-dot.warn { background: #ffc107; }
+            .latency-dot.bad { background: #f44336; }
+            @media (max-width: 991.98px) {
+                .set-string-section { margin-top: 2rem; }
+            }
+        </style>
+    </th:block>
+</head>
+<body style="font-family: var(--font-family), system-ui, sans-serif !important;">
+<div th:replace="fragments/navbar :: navbar"></div>
+<div class="container my-4">
+    <div class="hh-header">
+        <span class="hh-title">Household: <span th:text="${hhid}"></span></span>
+    </div>
+    <div class="row g-4 align-items-start">
+        <!-- Devices List: col-8 -->
+        <div class="col-12 col-lg-8">
+            <div class="row row-cols-1 row-cols-md-2 g-4">
+                <div class="col" th:each="device : ${devices}">
+                    <div class="card device-card h-100 p-3 border-0 shadow-sm hover-shadow">
+                        <div class="d-flex align-items-center gap-3 mb-2">
+                            <img th:src="${device['Image']}" class="device-img" alt="Device Image"/>
+                            <div>
+                                <a th:href="'/sonos-action/device-details?ip=' + ${device['IP']}" class="fw-bold device-link" style="text-decoration:underline; color:#1a237e;">
+                                    <span th:text="${device['Room Name']} + ' (' + ${device['Model']} + ')'">Device Name</span>
+                                </a>
+                                <div class="text-muted small" th:text="'IP: ' + ${device['IP']}"></div>
+                                <div class="text-muted small" th:text="'MAC: ' + ${device['MAC Address']}"></div>
+                                <div class="latency-row mt-1 d-flex align-items-center gap-2">
+                                    <span class="latency-dot" th:id="${'latency-dot-' + #strings.replace(device['IP'], '.', '-')}" style="margin-right:6px;"></span>
+                                    <span class="latency-text small text-muted" th:id="${'latency-' + #strings.replace(device['IP'], '.', '-')}" style="font-weight:500;color:#222;"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-2">
+                            <span class="badge bg-secondary" th:text="${device['Software Version']}"></span>
+                            <span class="badge bg-info text-dark" th:text="${device['Hardware Version']}"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Set System String Action: col-4 -->
+        <div class="col-12 col-lg-4">
+            <div class="set-string-section card p-4 shadow-sm border-0">
+                <h5 class="mb-3">Set System String for Household</h5>
+                <input type="text" class="form-control mb-3" id="setStringValueInput" placeholder="New System String">
+                <button class="btn btn-primary w-100" onclick="submitSetSystemString()">Set String</button>
+                <div id="setStringResult" class="mt-2 small"></div>
+                <hr class="my-4">
+                <h5 class="mb-3">Sonos Update (All Devices in Household)</h5>
+                <div class="mb-2">
+                    <input type="text" class="form-control mb-2" id="updateUriInput" placeholder="Update URI (e.g. http://.../RELEASEALL/)">
+                    <button class="btn btn-warning w-100" onclick="showSonosUpdateModal()">Run SonosUpdate</button>
+                </div>
+                <div id="sonosUpdateResult" class="mt-2 small"></div>
+                <div class="text-muted small mt-2">Example CLI:<br><code>SonosUpdate --hhid <span th:text="${hhid}"></span> --uri &lt;your_update_uri&gt;</code></div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Sonos Update Modal for Household (console log) -->
+<div class="modal fade" id="sonosUpdateModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">SonosUpdate Bulk Action</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="sonosUpdateDeviceList"></div>
+        <pre id="sonosUpdateLog" style="display:none;height: 220px; background: #222; color: #eee; margin-top: 1em; overflow-y: auto; font-size: 0.95em; white-space: pre-wrap;"></pre>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="sonosUpdateCancelBtn" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="sonosUpdateRunBtn" onclick="confirmSonosUpdate()">Run SonosUpdate</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script th:inline="javascript">
+    function submitSetSystemString() {
+        var hhid = /*[[${hhid}]]*/ '';
+        var value = document.getElementById('setStringValueInput').value.trim();
+        var resultEl = document.getElementById('setStringResult');
+        resultEl.textContent = '';
+        if (!value) {
+            resultEl.textContent = 'Please enter a value.';
+            return;
+        }
+        fetch(`/sonos-action/set-system-string-hh?hhid=${encodeURIComponent(hhid)}&stringValue=${encodeURIComponent(value)}`, {
+            method: 'POST'
+        })
+        .then(res => res.text())
+        .then(msg => {
+            // If the response looks like HTML (e.g. contains <ul> or <li>), convert to plain text
+            if (/<\/?[a-z][\s\S]*>/i.test(msg)) {
+                // Create a temporary element to parse HTML
+                var tempDiv = document.createElement('div');
+                tempDiv.innerHTML = msg;
+                // Extract text from all list items, or fallback to all text
+                var items = tempDiv.querySelectorAll('li');
+                if (items.length > 0) {
+                    msg = Array.from(items).map(li => li.textContent).join('\n');
+                } else {
+                    msg = tempDiv.textContent || msg;
+                }
+            }
+            resultEl.textContent = msg;
+        })
+        .catch(err => { resultEl.textContent = '❌ Error: ' + err; });
+    }
+    // Show SonosUpdate modal for household (no URI input)
+    function showSonosUpdateModal() {
+        // Gather all device IPs in this household
+        const deviceEls = document.querySelectorAll('.device-card');
+        let ips = [];
+        deviceEls.forEach(card => {
+            const ipDiv = card.querySelector('[th\\:text*="IP:"]');
+            if (ipDiv) {
+                const ip = ipDiv.textContent.replace('IP: ', '').trim();
+                if (ip) ips.push(ip);
+            }
+        });
+        // Get URI from main panel input
+        let uri = document.getElementById('updateUriInput').value.trim();
+        // Remove trailing filename from URI for CLI display
+        let cliUri = uri;
+        if (uri) {
+            // Remove trailing file if it looks like update.upm, update.upd, update.upm?... etc
+            const lastSlash = uri.lastIndexOf('/');
+            if (lastSlash > 0) {
+                const afterSlash = uri.substring(lastSlash + 1);
+                if (/^update\.(upm|upd)(\?.*)?$/i.test(afterSlash)) {
+                    cliUri = uri.substring(0, lastSlash + 1);
+                }
+            }
+        }
+        // Get HHID from page (Thymeleaf variable rendered as text)
+        let hhid = '';
+        const hhidSpan = document.querySelector('.hh-title span');
+        if (hhidSpan) hhid = hhidSpan.textContent.trim();
+        // Build modal content
+        let html = '';
+        html += '<div class="mb-2"><strong>Update URI:</strong> <span style="word-break:break-all;">' + (uri ? uri : '<span class="text-danger">[Not entered]</span>') + '</span></div>';
+        html += '<div class="mb-2"><strong>CLI:</strong> <code>SonosUpdate --hhid ' + hhid + ' --uri ' + (cliUri ? cliUri : '[Not entered]') + '</code></div>';
+        html += '<label class="form-label">Devices in Household:</label><div class="row">';
+        ips.forEach(function(ip) {
+            html += '<div class="col-md-6 mb-2"><div class="card p-2"><div>' + ip + '</div></div></div>';
+        });
+        html += '</div>';
+        document.getElementById('sonosUpdateDeviceList').innerHTML = html;
+        // No URI input in modal
+        const logEl = document.getElementById('sonosUpdateLog');
+        logEl.textContent = '';
+        logEl.style.display = 'none';
+        const modalEl = document.getElementById('sonosUpdateModal');
+        const modal = new bootstrap.Modal(modalEl, { backdrop: 'static', keyboard: true });
+        document.getElementById('sonosUpdateRunBtn').disabled = false;
+        const cancelBtn = document.getElementById('sonosUpdateCancelBtn');
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.classList.remove('btn-primary');
+        cancelBtn.classList.add('btn-secondary');
+        modal.show();
+    }
+
+    function confirmSonosUpdate() {
+        // Get URI from main panel input, not modal
+        const link = document.getElementById('updateUriInput').value.trim();
+        if (!link) {
+            alert('Please enter an update link.');
+            return;
+        }
+        // Get HHID from page (Thymeleaf variable rendered as text)
+        let hhid = '';
+        const hhidSpan = document.querySelector('.hh-title span');
+        if (hhidSpan) hhid = hhidSpan.textContent.trim();
+        const logEl = document.getElementById('sonosUpdateLog');
+        logEl.textContent = '';
+        logEl.style.display = 'block';
+        document.getElementById('sonosUpdateRunBtn').disabled = true;
+        // Open WebSocket for SonosUpdate, send only HHID and updateLink
+        var ws = new WebSocket('ws://' + window.location.host + '/ws/sonosupdate');
+        ws.onopen = function() {
+            ws.send(JSON.stringify({ hhid: hhid, updateLink: link }));
+        };
+        ws.onmessage = function(event) {
+            if (event.data.startsWith('[SonosUpdate] Executed:')) return;
+            logEl.textContent += event.data + '\n';
+            logEl.scrollTop = logEl.scrollHeight;
+            if (event.data.includes('✅ SonosUpdate completed.')) {
+                ws.close();
+                document.getElementById('sonosUpdateRunBtn').disabled = false;
+                document.getElementById('sonosUpdateCancelBtn').textContent = 'Close';
+            }
+        };
+        ws.onerror = function() {
+            logEl.textContent += '\n❌ WebSocket error';
+        };
+        ws.onclose = function() {
+            document.getElementById('sonosUpdateRunBtn').disabled = false;
+        };
+    }
+    // Replace the default button to show modal
+    document.addEventListener('DOMContentLoaded', function() {
+        const btn = document.querySelector('.btn.btn-warning.w-100[onclick="showSonosUpdateModal()"]');
+        if (btn) {
+            btn.setAttribute('onclick', 'showSonosUpdateModal()');
+        }
+    });
+    // Latency update logic for device cards
+    function updateDeviceLatencies() {
+        fetch('/sonos-action/ping-status')
+            .then(res => res.json())
+            .then(data => {
+                data.forEach(entry => {
+                    const ip = entry.ip;
+                    let latency = entry.latency;
+                    const dot = document.getElementById('latency-dot-' + ip.replaceAll('.', '-'));
+                    const text = document.getElementById('latency-' + ip.replaceAll('.', '-'));
+                    if (dot && text) {
+                        let ms = -1;
+                        let latencyDisplay = '—';
+                        if (latency && latency !== 'lost' && latency !== 'ping...') {
+                            ms = parseFloat(latency);
+                            if (!isNaN(ms)) {
+                                latencyDisplay = ms.toFixed(2) + ' ms';
+                            }
+                        }
+                        text.textContent = latencyDisplay;
+                        dot.classList.remove('good', 'warn', 'bad');
+                        dot.style.background = '';
+                        if (ms < 0) {
+                            dot.style.background = '#ccc';
+                        } else if (ms < 50) {
+                            dot.classList.add('good');
+                        } else if (ms < 150) {
+                            dot.classList.add('warn');
+                        } else {
+                            dot.classList.add('bad');
+                        }
+                    }
+                });
+            });
+    }
+    setInterval(updateDeviceLatencies, 3000);
+    updateDeviceLatencies();
+</script>
+<div th:replace="fragments/footer :: footer"></div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

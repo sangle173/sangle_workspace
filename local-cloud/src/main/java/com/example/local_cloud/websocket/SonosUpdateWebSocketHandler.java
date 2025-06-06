@@ -11,10 +11,29 @@ public class SonosUpdateWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void handleTextMessage(WebSocketSession session, TextMessage message) throws IOException {
-        Map<String, Object> req = objectMapper.readValue(message.getPayload(), Map.class);
-        List<String> ips = (List<String>) req.get("devices");
+        Map<String, Object> req = objectMapper.readValue(
+            message.getPayload(),
+            new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {}
+        );
+        List<String> ips = null;
+        // Support both old (devices) and new (hhid) protocol
+        if (req.containsKey("hhid")) {
+            String hhid = (String) req.get("hhid");
+            ips = com.example.local_cloud.controller.SonosActionController.getDeviceIpsForHHID(hhid);
+        } else {
+            Object devObj = req.get("devices");
+            if (devObj instanceof List<?>) {
+                ips = new ArrayList<>();
+                for (Object o : (List<?>) devObj) {
+                    if (o != null) ips.add(o.toString());
+                }
+            }
+        }
         String updateLink = (String) req.get("updateLink");
-
+        if (ips == null || ips.isEmpty()) {
+            session.sendMessage(new TextMessage("❌ No devices found for this HHID."));
+            return;
+        }
         List<String> cmd = new ArrayList<>();
         cmd.add("stdbuf");
         cmd.add("-oL");
@@ -25,9 +44,7 @@ public class SonosUpdateWebSocketHandler extends TextWebSocketHandler {
         }
         cmd.add("--uri");
         cmd.add(updateLink);
-
         session.sendMessage(new TextMessage("[SonosUpdate] Executed: " + String.join(" ", cmd)));
-
         // Run process in a new thread for real-time streaming
         new Thread(() -> {
             try {
@@ -38,19 +55,16 @@ public class SonosUpdateWebSocketHandler extends TextWebSocketHandler {
                     String line;
                     while ((line = reader.readLine()) != null) {
                         session.sendMessage(new TextMessage(line));
+                        System.out.println("[SonosUpdate] " + line); // Log to Spring Boot console
                     }
                 }
-                int exit = proc.waitFor();
-                if (exit == 0) {
-                    session.sendMessage(new TextMessage("✅ SonosUpdate completed."));
-                } else {
-                    session.sendMessage(new TextMessage("❌ SonosUpdate failed (exit " + exit + ")"));
-                }
+                proc.waitFor();
+                session.sendMessage(new TextMessage("✅ SonosUpdate completed."));
+                System.out.println("[SonosUpdate] ✅ SonosUpdate completed."); // Log completion
             } catch (Exception e) {
-                try { session.sendMessage(new TextMessage("❌ Exception: " + e.getMessage())); } catch (IOException ignored) {}
-            } finally {
-                try { session.close(); } catch (IOException ignored) {}
+                try { session.sendMessage(new TextMessage("❌ Error: " + e)); } catch (Exception ignore) {}
+                System.err.println("[SonosUpdate] ❌ Error: " + e); // Log error
             }
         }).start();
     }
-} 
+}
