@@ -408,6 +408,18 @@
             }
             .note-actions { opacity: 0; transition: opacity 0.2s; }
             .note-item:hover .note-actions { opacity: 1; }
+            .folder-name-container {
+                position: relative;
+            }
+            .folder-name-container .rename-folder-btn {
+                opacity: 0;
+                transition: opacity 0.2s;
+                pointer-events: none;
+            }
+            .folder-name-container:hover .rename-folder-btn {
+                opacity: 1;
+                pointer-events: auto;
+            }
         </style>
     </th:block>
 </head>
@@ -924,14 +936,15 @@
                 folderDiv.className = 'folder-item';
                 folderDiv.innerHTML = `
                     <div class="folder-header">
-                        <div class="d-flex align-items-center" onclick="selectFolder('${folder}')">
+                        <div class="d-flex align-items-center folder-name-container" data-folder="${folder}" style="position:relative;">
                             <span id="folder-${folder}-toggle" onclick="event.stopPropagation(); toggleFolder('${folder}')" style="cursor:pointer;">
                                 <i class="bi ${isCollapsed ? 'bi-caret-right-fill' : 'bi-caret-down-fill'} text-primary me-1"></i>
                             </span>
                             <i class="bi bi-folder-fill text-warning me-1"></i>
-                            <span>${folder}</span>
+                            <span class="folder-name-span" onclick="selectFolder('${folder}')">${folder}</span>
                         </div>
-                        <div class="folder-actions">
+                        <div class="folder-actions d-flex align-items-center" style="gap:4px;">
+                            <button class="btn btn-sm btn-outline-secondary rename-folder-btn" title="Rename Folder" onclick="event.stopPropagation(); renameFolder('${folder}')"><i class="bi bi-pencil"></i></button>
                             <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); createNewNote('${folder}')">
                                 <i class="bi bi-plus-lg"></i>
                             </button>
@@ -944,74 +957,39 @@
             });
         }
 
-        // Select a folder
-        function selectFolder(folderName) {
-            // Remove active class from all folders
-            document.querySelectorAll('.folder-item').forEach(item => {
-                item.classList.remove('active');
-            });
+        // Show/hide rename button on hover
+        window.showRenameBtn = function(el) {
+            const btn = el.querySelector('.rename-folder-btn');
+            if (btn) btn.classList.remove('d-none');
+        };
+        window.hideRenameBtn = function(el) {
+            const btn = el.querySelector('.rename-folder-btn');
+            if (btn) btn.classList.add('d-none');
+        };
 
-            // Add active class to selected folder
-            const folderElements = document.querySelectorAll('.folder-item');
-            folderElements.forEach(element => {
-                const folderSpan = element.querySelector('span');
-                if (folderSpan && folderSpan.textContent === folderName) {
-                    element.classList.add('active');
+        // Rename folder function
+        async function renameFolder(oldName) {
+            const newName = prompt('Enter new folder name:', oldName);
+            if (!newName || newName.trim() === '' || newName === oldName) return;
+            try {
+                const response = await fetch('/api/notes/folders/rename', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ oldName, newName })
+                });
+                if (response.ok) {
+                    // If currentFolder was renamed, update it
+                    if (currentFolder === oldName) {
+                        currentFolder = newName;
+                        document.getElementById('currentFolderDisplay').innerHTML = `<span class="badge bg-primary">${newName}</span>`;
+                    }
+                    await loadFolders();
+                } else {
+                    alert('Failed to rename folder.');
                 }
-            });
-
-            // Update current folder
-            currentFolder = folderName;
-            currentNote = null;
-
-            // Update folder display
-            document.getElementById('currentFolderDisplay').innerHTML = `
-                <span class="badge bg-primary">${folderName}</span>
-            `;
-
-            // Clear editor
-            document.getElementById('noteTitle').value = '';
-            editor.setData('');
-            
-            // Reset auto-save state
-            lastSavedContent = '';
-            
-            // Clear save indicator
-            let saveIndicator = document.getElementById('autoSaveIndicator');
-            if (saveIndicator) {
-                saveIndicator.style.opacity = '0';
+            } catch (error) {
+                alert('Error renaming folder: ' + error.message);
             }
-            
-            // Hide share button when no specific note is selected
-            if (document.getElementById('viewButton')) document.getElementById('viewButton').style.display = 'none';
-            if (document.getElementById('viewButtonMobile')) document.getElementById('viewButtonMobile').style.display = 'none';
-            
-            // Load notes for the folder
-            loadNotes(folderName, document.getElementById(`folder-${folderName}`));
-        }
-
-        // Create new note in selected folder
-        function createNewNote(folderName) {
-            selectFolder(folderName);
-            document.getElementById('noteTitle').value = '';
-            editor.setData(''); // Empty content, no title
-            currentNote = null;
-            
-            // Reset last saved content
-            lastSavedContent = '';
-            
-            // Clear save indicator
-            let saveIndicator = document.getElementById('autoSaveIndicator');
-            if (saveIndicator) {
-                saveIndicator.style.opacity = '0';
-            }
-            
-            // Hide share button for new unsaved note
-            if (document.getElementById('viewButton')) document.getElementById('viewButton').style.display = 'none';
-            if (document.getElementById('viewButtonMobile')) document.getElementById('viewButtonMobile').style.display = 'none';
-            
-            // Load notes for the folder
-            loadNotes(folderName, document.getElementById(`folder-${folderName}`));
         }
 
         // Load notes for a folder
@@ -1033,6 +1011,7 @@
                             <div class="note-title flex-grow-1">${note.title}</div>
                             <div class="note-actions ms-auto" style="display: flex; gap: 4px;">
                                 <button class="btn btn-sm btn-link text-info note-view-btn" title="View" onclick="event.stopPropagation(); viewNoteFromSidebar('${folderName}', '${note.id}')"><i class="bi bi-eye"></i></button>
+                                <button class="btn btn-sm btn-link text-secondary note-rename-btn" title="Rename" onclick="event.stopPropagation(); renameNote('${folderName}', '${note.id}', '${note.title.replace(/'/g, "&#39;")}')"><i class="bi bi-pencil"></i></button>
                                 <button class="btn btn-sm btn-link text-danger note-delete-btn" title="Delete" onclick="event.stopPropagation(); deleteNoteFromSidebar('${folderName}', '${note.id}')"><i class="bi bi-trash"></i></button>
                             </div>
                         `;
@@ -1114,276 +1093,100 @@
                 alert('Editor is not initialized. Please refresh the page.');
                 return;
             }
-
-            try {
-                const title = document.getElementById('noteTitle').value;
+            let title = document.getElementById('noteTitle').value.trim();
+            let content = editor.getData();
+            let folder = currentFolder;
+            // If no folder or title, use temp folder and temp title
+            if (!folder || !title) {
+                if (!folder) {
+                    folder = 'temp';
+                    currentFolder = 'temp';
+                }
                 if (!title) {
-                    alert('Please enter a title for the note');
-                    return;
+                    const now = new Date();
+                    const pad = n => n.toString().padStart(2, '0');
+                    title = `temp_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+                    document.getElementById('noteTitle').value = title;
                 }
-
-                if (!currentFolder) {
-                    alert('Please select a folder first');
-                    return;
+                if (typeof folders === 'undefined' || !folders.includes('temp')) {
+                    if (typeof createNewFolder === 'function') await createNewFolder('temp');
                 }
-
-                // Get the content without checking for the title
-                const content = editor.getData();
-                console.log('Saving note:', { title, content, folder: currentFolder });
-                
+            }
+            try {
                 const noteData = {
                     title: title,
-                    content: content, // The title is not part of the content
-                    folder: currentFolder,
+                    content: content,
+                    folder: folder,
                     id: currentNote ? currentNote.id : null
                 };
-
                 const response = await fetch('/api/notes/save', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(noteData)
                 });
-
                 if (response.ok) {
-                    console.log('Note saved successfully');
-                    // Update last saved content
                     lastSavedContent = content;
-                    
-                    // Update save indicator if exists
                     let saveIndicator = document.getElementById('autoSaveIndicator');
-                    if (saveIndicator) {
-                        saveIndicator.innerText = 'Saved';
-                        saveIndicator.className = 'badge bg-success ms-2';
+                    if (saveIndicator) { saveIndicator.style.opacity = '1'; setTimeout(() => { saveIndicator.style.opacity = '0'; }, 1200); }
+                    // Reload folders and notes via AJAX
+                    await loadFolders();
+                    // Optionally, re-select the current folder and note
+                    if (folder) {
+                        selectFolder(folder);
+                        // If editing an existing note, reload it
+                        if (currentNote && currentNote.id) {
+                            await loadNote(folder, currentNote.id);
+                        }
                     }
-                    
-                    // Reload the current folder's notes
-                    loadNotes(currentFolder, document.getElementById(`folder-${currentFolder}`));
                 } else {
-                    console.error('Failed to save note');
                     alert('Failed to save note. Please try again.');
                 }
             } catch (error) {
-                console.error('Error saving note:', error);
                 alert('Error saving note: ' + error.message);
             }
         }
 
         // Auto-save function
         async function autoSaveNote(title, content) {
-            if (!currentFolder) return;
-            
-            // Find note element in sidebar for visual indicators
-            let noteElement = null;
-            if (currentNote && currentNote.title) {
-                const noteElements = document.querySelectorAll('.note-item');
-                noteElements.forEach(element => {
-                    const titleElement = element.querySelector('.note-title');
-                    if (titleElement && titleElement.textContent === currentNote.title) {
-                        noteElement = element;
-                    }
-                });
-            }
-            
-            // Add spinner to the note in sidebar
-            let spinner = null;
-            if (noteElement) {
-                const titleElement = noteElement.querySelector('.note-title');
-                // Remove any existing indicators first
-                const existingSpinner = noteElement.querySelector('.note-saving-indicator');
-                const successIcon = noteElement.querySelector('.note-save-success');
-                const errorIcon = noteElement.querySelector('.note-save-error');
-                if (existingSpinner) existingSpinner.remove();
-                if (successIcon) successIcon.remove();
-                if (errorIcon) errorIcon.remove();
-                
-                // Add new spinner
-                spinner = document.createElement('span');
-                spinner.className = 'note-saving-indicator';
-                titleElement.insertAdjacentElement('afterend', spinner);
-            }
-            
-            try {
-                // Main save indicator in toolbar
-                let saveIndicator = document.getElementById('autoSaveIndicator');
-                if (!saveIndicator) {
-                    saveIndicator = document.createElement('span');
-                    saveIndicator.id = 'autoSaveIndicator';
-                    saveIndicator.className = 'badge bg-info ms-2';
-                    saveIndicator.innerText = 'Saving...';
-                    document.querySelector('.card-header .d-flex.gap-2').prepend(saveIndicator);
-                } else {
-                    saveIndicator.innerText = 'Saving...';
-                    saveIndicator.className = 'badge bg-info ms-2';
+            let folder = currentFolder;
+            if (!folder || !title) {
+                if (!folder) {
+                    folder = 'temp';
+                    currentFolder = 'temp';
                 }
-                
-                // Store the original title for comparison
-                const oldTitle = currentNote ? currentNote.title : null;
-                const titleChanged = oldTitle && oldTitle !== title;
-                
+                if (!title) {
+                    const now = new Date();
+                    const pad = n => n.toString().padStart(2, '0');
+                    title = `temp_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+                    document.getElementById('noteTitle').value = title;
+                }
+                if (typeof folders === 'undefined' || !folders.includes('temp')) {
+                    if (typeof createNewFolder === 'function') await createNewFolder('temp');
+                }
+            }
+            try {
                 const noteData = {
                     title: title,
                     content: content,
-                    folder: currentFolder,
+                    folder: folder,
                     id: currentNote ? currentNote.id : null
                 };
-
-                const response = await fetch('/api/notes/save', {
+                await fetch('/api/notes/save', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(noteData)
                 });
-
-                if (response.ok) {
-                    console.log('Note auto-saved successfully');
-                    saveIndicator.innerText = 'Saved';
-                    saveIndicator.className = 'badge bg-success ms-2';
-                    
-                    // Update save status indicator
-                    setTimeout(() => {
-                        if (saveIndicator.innerText === 'Saved') {
-                            saveIndicator.style.opacity = '0.5';
-                        }
-                    }, 2000);
-                    
-                    // Get updated note data
-                    try {
-                        const data = await response.json();
-                        currentNote = data;
-                        
-                        // Update the note element in the sidebar
-                        if (noteElement) {
-                            // Remove spinner
-                            const spinner = noteElement.querySelector('.note-saving-indicator');
-                            if (spinner) spinner.remove();
-                            
-                            // Add success icon that fades out
-                            const titleElement = noteElement.querySelector('.note-title');
-                            const successIcon = document.createElement('span');
-                            successIcon.className = 'note-save-success';
-                            successIcon.innerHTML = '<i class="bi bi-check-circle-fill"></i>';
-                            titleElement.insertAdjacentElement('afterend', successIcon);
-                            
-                            // If title changed, update it
-                            if (titleChanged) {
-                                titleElement.textContent = title;
-                            }
-                            
-                            // Fade out success icon
-                            setTimeout(() => {
-                                if (successIcon) {
-                                    successIcon.style.opacity = '0';
-                                    setTimeout(() => successIcon.remove(), 500);
-                                }
-                            }, 2000);
-                        } else if (!noteData.id || titleChanged) {
-                            // If it's a new note or title changed and no element found, reload the folder
-                            console.log('Title changed or new note, updating sidebar');
-                            loadNotes(currentFolder, document.getElementById(`folder-${currentFolder}`));
-                            
-                            // After reloading, find and highlight the updated note
-                            setTimeout(() => {
-                                const noteElements = document.querySelectorAll('.note-item');
-                                noteElements.forEach(element => {
-                                    element.classList.remove('active');
-                                    const titleElement = element.querySelector('.note-title');
-                                    if (titleElement && titleElement.textContent === title) {
-                                        element.classList.add('active');
-                                    }
-                                });
-                            }, 100);
-                        }
-                    } catch (jsonError) {
-                        console.error('Error parsing JSON response:', jsonError);
-                        
-                        // Even with JSON error, the save likely succeeded
-                        // Remove any spinner to prevent infinite loading
-                        if (noteElement) {
-                            const spinner = noteElement.querySelector('.note-saving-indicator');
-                            if (spinner) spinner.remove();
-                            
-                            // Add warning icon to indicate partial success
-                            const titleElement = noteElement.querySelector('.note-title');
-                            const warningIcon = document.createElement('span');
-                            warningIcon.className = 'note-save-success'; 
-                            warningIcon.style.color = '#ffc107'; // Warning color
-                            warningIcon.innerHTML = '<i class="bi bi-exclamation-triangle-fill"></i>';
-                            titleElement.insertAdjacentElement('afterend', warningIcon);
-                            
-                            // Fade out warning icon
-                            setTimeout(() => {
-                                if (warningIcon) {
-                                    warningIcon.style.opacity = '0';
-                                    setTimeout(() => warningIcon.remove(), 500);
-                                }
-                            }, 3000);
-                            
-                            // If title changed, still update it since save succeeded
-                            if (titleChanged) {
-                                titleElement.textContent = title;
-                            }
-                        }
-                    }
-                } else {
-                    console.error('Failed to auto-save note');
-                    saveIndicator.innerText = 'Save failed';
-                    saveIndicator.className = 'badge bg-danger ms-2';
-                    
-                    // Update the note element in the sidebar
-                    if (noteElement) {
-                        // Remove spinner
-                        const spinner = noteElement.querySelector('.note-saving-indicator');
-                        if (spinner) spinner.remove();
-                        
-                        // Add error icon
-                        const titleElement = noteElement.querySelector('.note-title');
-                        const errorIcon = document.createElement('span');
-                        errorIcon.className = 'note-save-error';
-                        errorIcon.innerHTML = '<i class="bi bi-exclamation-circle-fill"></i>';
-                        titleElement.insertAdjacentElement('afterend', errorIcon);
-                        
-                        // Fade out error icon
-                        setTimeout(() => {
-                            if (errorIcon) {
-                                errorIcon.style.opacity = '0';
-                                setTimeout(() => errorIcon.remove(), 500);
-                            }
-                        }, 4000);
+                lastSavedContent = content;
+                // Reload folders and notes via AJAX
+                await loadFolders();
+                if (folder) {
+                    selectFolder(folder);
+                    if (currentNote && currentNote.id) {
+                        await loadNote(folder, currentNote.id);
                     }
                 }
             } catch (error) {
-                console.error('Error auto-saving note:', error);
-                // Update the main indicator
-                const saveIndicator = document.getElementById('autoSaveIndicator');
-                if (saveIndicator) {
-                    saveIndicator.innerText = 'Save failed';
-                    saveIndicator.className = 'badge bg-danger ms-2';
-                }
-                
-                // Make sure to remove spinner and show error icon in the sidebar
-                if (noteElement) {
-                    // Remove spinner
-                    const spinner = noteElement.querySelector('.note-saving-indicator');
-                    if (spinner) spinner.remove();
-                    
-                    // Add error icon
-                    const titleElement = noteElement.querySelector('.note-title');
-                    const errorIcon = document.createElement('span');
-                    errorIcon.className = 'note-save-error';
-                    errorIcon.innerHTML = '<i class="bi bi-exclamation-circle-fill"></i>';
-                    titleElement.insertAdjacentElement('afterend', errorIcon);
-                    
-                    // Fade out error icon
-                    setTimeout(() => {
-                        if (errorIcon) {
-                            errorIcon.style.opacity = '0';
-                            setTimeout(() => errorIcon.remove(), 500);
-                        }
-                    }, 4000);
-                }
+                // Optionally handle error
             }
         }
 
@@ -1540,6 +1343,38 @@
                 }
             }
         }
+
+        // Add note rename function to global scope
+        window.renameNote = async function(folder, noteId, oldTitle) {
+            const newTitle = prompt('Enter new note title:', oldTitle);
+            if (!newTitle || newTitle.trim() === '' || newTitle === oldTitle) return;
+            try {
+                // Load the note to get its content
+                const response = await fetch(`/api/notes/${folder}/${noteId}`);
+                if (!response.ok) throw new Error('Failed to load note');
+                const note = await response.json();
+                // Save note with new title (keep same id and content)
+                const saveResp = await fetch('/api/notes/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ...note,
+                        title: newTitle
+                    })
+                });
+                if (saveResp.ok) {
+                    await loadFolders();
+                    // If this note is currently loaded, update the title field
+                    if (currentNote && currentNote.id === noteId && currentFolder === folder) {
+                        document.getElementById('noteTitle').value = newTitle;
+                    }
+                } else {
+                    alert('Failed to rename note.');
+                }
+            } catch (error) {
+                alert('Error renaming note: ' + error.message);
+            }
+        };
     </script>
 
     <script>

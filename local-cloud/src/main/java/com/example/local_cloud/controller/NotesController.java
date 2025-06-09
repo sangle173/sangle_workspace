@@ -178,4 +178,20 @@ public class NotesController {
             return ResponseEntity.internalServerError().build();
         }
     }
-} 
+
+    @PostMapping("/api/notes/folders/rename")
+    @ResponseBody
+    public ResponseEntity<?> renameFolder(@RequestBody Map<String, String> request) {
+        String oldName = request.get("oldName");
+        String newName = request.get("newName");
+        if (oldName == null || oldName.trim().isEmpty() || newName == null || newName.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body("Both oldName and newName are required");
+        }
+        try {
+            notesService.renameFolder(oldName.trim(), newName.trim());
+            return ResponseEntity.ok().build();
+        } catch (IOException e) {
+            return ResponseEntity.internalServerError().body(e.getMessage());
+        }
+    }
+}

@@ -165,4 +165,17 @@ public class NotesService {
         }
         return Files.readAllBytes(imagePath);
     }
-} 
+
+    public void renameFolder(String oldName, String newName) throws IOException {
+        Path oldFolder = notesDir.resolve(oldName);
+        Path newFolder = notesDir.resolve(newName);
+        if (!Files.exists(oldFolder) || !Files.isDirectory(oldFolder)) {
+            throw new IOException("Folder does not exist: " + oldName);
+        }
+        if (Files.exists(newFolder)) {
+            throw new IOException("Target folder already exists: " + newName);
+        }
+        Files.move(oldFolder, newFolder);
+        logger.info("Renamed folder from {} to {}", oldFolder, newFolder);
+    }
+}
