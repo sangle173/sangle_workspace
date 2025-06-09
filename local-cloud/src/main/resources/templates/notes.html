@@ -943,7 +943,7 @@
                             <i class="bi bi-folder-fill text-warning me-1"></i>
                             <span class="folder-name-span" onclick="selectFolder('${folder}')">${folder}</span>
                         </div>
-                        <div class="folder-actions d-flex align-items-center" style="gap:4px;">
+                        <div class="folder-actions d-flex align-items-center" style="gap:4px; pointer-events:auto;">
                             <button class="btn btn-sm btn-outline-secondary rename-folder-btn" title="Rename Folder" onclick="event.stopPropagation(); renameFolder('${folder}')"><i class="bi bi-pencil"></i></button>
                             <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); createNewNote('${folder}')">
                                 <i class="bi bi-plus-lg"></i>
@@ -1254,6 +1254,47 @@
             }
         }
 
+        // Create new note in a folder and display it for editing
+        window.createNewNote = async function(folderName) {
+            if (!folderName) return;
+            // Generate a unique temp title
+            const now = new Date();
+            const pad = n => n.toString().padStart(2, '0');
+            const tempTitle = `New Note ${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+            try {
+                // Save a new note with empty content
+                const noteData = {
+                    title: tempTitle,
+                    content: '',
+                    folder: folderName,
+                    id: null
+                };
+                const response = await fetch('/api/notes/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(noteData)
+                });
+                if (response.ok) {
+                    // Reload folders and notes
+                    await loadFolders();
+                    // Get the list of notes to find the new note's id
+                    const notesResp = await fetch(`/api/notes/${folderName}`);
+                    const notes = await notesResp.json();
+                    // Find the note with the matching title (should be unique)
+                    const newNote = notes.find(n => n.title === tempTitle);
+                    if (newNote) {
+                        // Select the folder and load the new note for editing
+                        selectFolder(folderName);
+                        await loadNote(folderName, newNote.id);
+                    }
+                } else {
+                    alert('Failed to create new note.');
+                }
+            } catch (error) {
+                alert('Error creating new note: ' + error.message);
+            }
+        };
+
         // Delete current note
         async function deleteNote() {
             if (currentNote && confirm('Are you sure you want to delete this note?')) {
@@ -1309,6 +1350,32 @@
             // Show toast or alert
             alert('Shareable URL copied to clipboard: ' + shareUrl);
         }
+
+        // Select a folder and update the UI
+        window.selectFolder = async function(folderName) {
+            currentFolder = folderName;
+            // Update current folder display badge
+            const display = document.getElementById('currentFolderDisplay');
+            if (display) {
+                display.innerHTML = `<span class="badge bg-primary">${folderName}</span>`;
+            }
+            // Highlight the selected folder in the sidebar
+            document.querySelectorAll('.folder-item').forEach(item => {
+                const nameSpan = item.querySelector('.folder-name-span');
+                if (nameSpan && nameSpan.textContent === folderName) {
+                    item.classList.add('active');
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+            // Expand the folder if collapsed
+            folderCollapseState[folderName] = false;
+            // Reload notes for the selected folder
+            const folderContent = document.getElementById(`folder-${folderName}`);
+            if (folderContent) {
+                await loadNotes(folderName, folderContent);
+            }
+        };
 
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
