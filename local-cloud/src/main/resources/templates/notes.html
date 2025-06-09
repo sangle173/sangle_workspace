@@ -1257,14 +1257,13 @@
         // Create new note in a folder and display it for editing
         window.createNewNote = async function(folderName) {
             if (!folderName) return;
-            // Generate a unique temp title
-            const now = new Date();
-            const pad = n => n.toString().padStart(2, '0');
-            const tempTitle = `New Note ${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+            // Prompt user for note title
+            const noteTitle = prompt('Enter note title:');
+            if (!noteTitle || noteTitle.trim() === '') return;
             try {
                 // Save a new note with empty content
                 const noteData = {
-                    title: tempTitle,
+                    title: noteTitle.trim(),
                     content: '',
                     folder: folderName,
                     id: null
@@ -1281,7 +1280,7 @@
                     const notesResp = await fetch(`/api/notes/${folderName}`);
                     const notes = await notesResp.json();
                     // Find the note with the matching title (should be unique)
-                    const newNote = notes.find(n => n.title === tempTitle);
+                    const newNote = notes.find(n => n.title === noteTitle.trim());
                     if (newNote) {
                         // Select the folder and load the new note for editing
                         selectFolder(folderName);
