@@ -194,4 +194,27 @@ public class NotesController {
             return ResponseEntity.internalServerError().body(e.getMessage());
         }
     }
+
+    @PostMapping("/api/notes/{folder}/{noteId}/rename")
+    @ResponseBody
+    public ResponseEntity<?> renameNote(@PathVariable String folder, @PathVariable String noteId, 
+                                       @RequestBody Map<String, String> request) {
+        try {
+            String newTitle = request.get("newTitle");
+            if (newTitle == null || newTitle.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("New title cannot be empty");
+            }
+            
+            Note note = notesService.getNote(folder, noteId);
+            if (note == null) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            note.setTitle(newTitle.trim());
+            notesService.saveNote(note);
+            return ResponseEntity.ok().build();
+        } catch (IOException e) {
+            return ResponseEntity.internalServerError().body(e.getMessage());
+        }
+    }
 }

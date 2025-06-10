@@ -22,7 +22,7 @@
             .folder-item:hover {
                 background-color: #f1f3f5;
             }
-            .folder-item.active {
+            .folder-item.active, .note-item.active {
                 background-color: #e9ecef;
                 border-left: 4px solid #0d6efd;
             }
@@ -66,6 +66,25 @@
                 margin-bottom: 5px;
                 z-index: 100;
                 flex-shrink: 0;
+            }
+            .note-item {
+                padding: 6px 10px;
+                border-radius: 6px;
+                margin-bottom: 2px;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                display: flex;
+                align-items: center;
+                position: relative;
+                overflow: hidden;
+            }
+            .note-item:hover {
+                background-color: #f1f3f5;
+            }
+            .note-item.active {
+                background-color: #e7f1ff;
+                border-left: 4px solid #0d6efd;
+                padding-left: 6px;
             }
             .note-preview {
                 max-height: 100px;
@@ -420,6 +439,263 @@
                 opacity: 1;
                 pointer-events: auto;
             }
+            /* Sidebar collapse/expand animation */
+            .sidebar-animated {
+                transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+            }
+            .sidebar-collapsed .col-md-3 {
+                /* margin-left: -340px !important; */
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.3s;
+            }
+            @media (min-width: 768px) {
+              .col-md-3.sidebar-collapsed {
+                width: 0 !important;
+                min-width: 0 !important;
+                max-width: 0 !important;
+                overflow: hidden !important;
+                padding: 0 !important;
+                transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+                opacity: 0;
+              }
+              .col-md-3 {
+                transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+              }
+              .col-md-9.editor-expanded {
+                width: 100% !important;
+                max-width: 100% !important;
+                flex: 0 0 100% !important;
+                transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+              }
+            }
+            /* Floating sidebar toggle button */
+            #floatingToggleBtn {
+              left: 24px;
+              bottom: 24px;
+              z-index: 2000;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+              border-radius: 50%;
+              width: 48px;
+              height: 48px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 1.5rem;
+              transition: opacity 0.2s;
+            }
+            .card-header .btn {
+                height: 38px;
+                width: 38px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0;
+            }
+            @media (max-width: 767px) {
+                .container-fluid {
+                    padding: 0 !important;
+                }
+                .row.g-0 {
+                    flex-direction: column;
+                    height: calc(100vh - 56px);
+                }
+                .col-md-3, .col-md-9 {
+                    width: 100%;
+                }
+                .col-md-3 {
+                    height: auto !important;
+                    max-height: 40vh;
+                    overflow-y: auto;
+                }
+                .col-md-9 {
+                    height: 60vh !important;
+                }
+                .card-header {
+                    padding: 10px;
+                }
+                #noteTitle {
+                    font-size: 1.2rem;
+                    width: 100%;
+                }
+                .card-header .d-flex {
+                    flex-wrap: wrap;
+                    gap: 5px;
+                }
+                .card-header .d-flex.align-items-center {
+                    margin-bottom: 8px;
+                }
+                #editor {
+                    min-height: 60vh !important;
+                    border-radius: 18px !important;
+                    margin-bottom: 70px !important; /* Space for sticky action bar */
+                }
+                .ck-editor__editable {
+                    min-height: 60vh !important;
+                    border-radius: 18px !important;
+                }
+                @media (max-width: 576px) {
+                    .card-header .d-flex.gap-2 {
+                        display: none !important;
+                    }
+                    .card-body {
+                        padding-bottom: 65px;
+                    }
+                    .col-md-9 {
+                        height: calc(60vh - 65px) !important;
+                    }
+                    .ck-toolbar {
+                        flex-wrap: wrap !important;
+                    }
+                    .ck-toolbar__items {
+                        flex-wrap: wrap !important;
+                    }
+                }
+            }
+            .search-highlight {
+                background-color: #fff3cd;
+                color: #664d03;
+                padding: 0 2px;
+                border-radius: 2px;
+                font-weight: bold;
+            }
+            .content-match-indicator {
+                font-size: 0.7rem;
+                color: #6c757d;
+                background-color: #f8f9fa;
+                padding: 1px 4px;
+                border-radius: 3px;
+                margin-left: 5px;
+            }
+            #searchStatus {
+                font-size: 0.8rem;
+                margin-top: 5px;
+                color: #6c757d;
+            }
+            .card-body.d-flex.flex-column {
+                display: flex;
+                flex-direction: column;
+                height: 100%;
+                padding: 0 !important;
+            }
+            #noteTitle {
+                font-size: 1.2rem;
+                border: none;
+                padding: 12px 16px 8px 16px;
+                background: transparent;
+                width: 100%;
+                margin-bottom: 0;
+            }
+            #toolbar-container {
+                position: sticky;
+                top: 0;
+                z-index: 2;
+                background: #fff;
+                border-bottom: 1px solid #eee;
+                padding: 8px 16px 8px 16px;
+                border-radius: 12px 12px 0 0;
+            }
+            #editor {
+                flex: 1 1 auto;
+                min-height: 0;
+                max-height: none;
+                overflow-y: auto;
+                border: none;
+                border-radius: 0 0 12px 12px;
+                padding: 16px;
+                background: #fff;
+            }
+            .ck-editor__editable {
+                min-height: 40vh !important;
+                max-height: none !important;
+                height: 100% !important;
+                border-radius: 0 0 12px 12px !important;
+                background: #fff !important;
+            }
+            @media (max-width: 767px) {
+                #editor, .ck-editor__editable {
+                    min-height: 40vh !important;
+                    height: 100% !important;
+                    border-radius: 0 0 18px 18px !important;
+                    padding-bottom: 80px !important; /* for sticky action bar */
+                }
+                #toolbar-container {
+                    padding: 8px 8px 8px 8px;
+                    border-radius: 12px 12px 0 0;
+                }
+                #noteTitle {
+                    padding: 10px 8px 6px 8px;
+                }
+            }
+            #editor, .ck-editor__editable {
+                min-height: 60vh !important;
+                height: 100% !important;
+            }
+            @media (max-width: 767px) {
+                #editor, .ck-editor__editable {
+                    min-height: 60vh !important;
+                    height: 100% !important;
+                }
+            }
+            .note-actions { opacity: 0; transition: opacity 0.2s; }
+            .note-item:hover .note-actions { opacity: 1; }
+            .folder-name-container {
+                position: relative;
+            }
+            .folder-name-container .rename-folder-btn {
+                opacity: 0;
+                transition: opacity 0.2s;
+                pointer-events: none;
+            }
+            .folder-name-container:hover .rename-folder-btn {
+                opacity: 1;
+                pointer-events: auto;
+            }
+            /* Sidebar collapse/expand animation */
+            .sidebar-animated {
+                transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+            }
+            .sidebar-collapsed .col-md-3 {
+                /* margin-left: -340px !important; */
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.3s;
+            }
+            @media (min-width: 768px) {
+              .col-md-3.sidebar-collapsed {
+                width: 0 !important;
+                min-width: 0 !important;
+                max-width: 0 !important;
+                overflow: hidden !important;
+                padding: 0 !important;
+                transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+                opacity: 0;
+              }
+              .col-md-3 {
+                transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+              }
+              .col-md-9.editor-expanded {
+                width: 100% !important;
+                max-width: 100% !important;
+                flex: 0 0 100% !important;
+                transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+              }
+            }
+            /* Floating sidebar toggle button */
+            #floatingToggleBtn {
+              left: 24px;
+              bottom: 24px;
+              z-index: 2000;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+              border-radius: 50%;
+              width: 48px;
+              height: 48px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 1.5rem;
+              transition: opacity 0.2s;
+            }
         </style>
     </th:block>
 </head>
@@ -485,6 +761,9 @@
                             <button class="btn btn-success" onclick="saveNote()" title="Save note">
                                 <i class="bi bi-save"></i>
                             </button>
+                            <button class="btn btn-secondary" onclick="viewCurrentNote()" title="View note">
+                                <i class="bi bi-eye"></i>
+                            </button>
                         </div>
                     </div>
                     <div class="card-body d-flex flex-column">
@@ -501,9 +780,6 @@
       <button class="btn btn-success flex-fill mx-1" onclick="saveNote()"><i class="bi bi-save"></i></button>
       <button class="btn btn-primary flex-fill mx-1" onclick="createNewNote(currentFolder)"><i class="bi bi-plus-lg"></i></button>
     </div>
-
-    <!-- Shared footer -->
-    <div th:replace="fragments/footer :: footer"></div>
 
     <!-- Load Bootstrap first -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -664,42 +940,34 @@
 
         // Toggle sidebar
         function toggleSidebar() {
+            // Find the row containing sidebar and editor
+            const mainRow = document.querySelector('.container-fluid .row.g-0, .container-fluid .row.g-4, .container-fluid .row');
             const sidebarCol = document.querySelector('.col-md-3');
             const editorCol = document.querySelector('.col-md-9');
-            
+            let floatingBtn = document.getElementById('floatingToggleBtn');
+            if (mainRow) mainRow.classList.add('sidebar-animated');
+
             isSidebarCollapsed = !isSidebarCollapsed;
-            
             if (isSidebarCollapsed) {
-                sidebarCol.classList.add('d-none');
-                editorCol.classList.remove('col-md-9');
-                editorCol.classList.add('col-md-12');
-                
-                // Show floating toggle button
-                let floatingBtn = document.getElementById('floatingToggleBtn');
+                if (mainRow) mainRow.classList.add('sidebar-collapsed');
+                if (sidebarCol) sidebarCol.classList.add('sidebar-collapsed');
+                if (editorCol) editorCol.classList.add('editor-expanded');
                 if (!floatingBtn) {
                     floatingBtn = document.createElement('button');
                     floatingBtn.id = 'floatingToggleBtn';
                     floatingBtn.className = 'btn btn-primary position-fixed';
-                    floatingBtn.style.left = '20px';
-                    floatingBtn.style.bottom = '20px';
-                    floatingBtn.style.zIndex = '1000';
                     floatingBtn.innerHTML = '<i class="bi bi-layout-sidebar"></i>';
                     floatingBtn.title = 'Show Sidebar';
                     floatingBtn.onclick = toggleSidebar;
                     document.body.appendChild(floatingBtn);
                 } else {
-                    floatingBtn.style.display = 'block';
+                    floatingBtn.style.display = 'flex';
                 }
             } else {
-                sidebarCol.classList.remove('d-none');
-                editorCol.classList.remove('col-md-12');
-                editorCol.classList.add('col-md-9');
-                
-                // Hide floating toggle button
-                const floatingBtn = document.getElementById('floatingToggleBtn');
-                if (floatingBtn) {
-                    floatingBtn.style.display = 'none';
-                }
+                if (mainRow) mainRow.classList.remove('sidebar-collapsed');
+                if (sidebarCol) sidebarCol.classList.remove('sidebar-collapsed');
+                if (editorCol) editorCol.classList.remove('editor-expanded');
+                if (floatingBtn) floatingBtn.style.display = 'none';
             }
         }
 
@@ -710,7 +978,7 @@
         }
 
         // Search notes
-        function searchNotes(query) {
+        function searchNotes(query = '') {
             if (!query || query.trim() === '') {
                 // Reset everything if search is cleared
                 document.querySelectorAll('.note-item').forEach(item => {
@@ -995,6 +1263,7 @@
         // Load notes for a folder
         async function loadNotes(folderName, parentElement) {
             try {
+                console.log(`Loading notes for folder: ${folderName}`);
                 const response = await fetch(`/api/notes/${folderName}`);
                 const notes = await response.json();
                 parentElement.innerHTML = '';
@@ -1006,16 +1275,80 @@
                     notes.forEach(note => {
                         const noteDiv = document.createElement('div');
                         noteDiv.className = 'note-item';
-                        noteDiv.innerHTML = `
-                            <i class="bi bi-file-earmark-text text-warning me-1"></i>
-                            <div class="note-title flex-grow-1">${note.title}</div>
-                            <div class="note-actions ms-auto" style="display: flex; gap: 4px;">
-                                <button class="btn btn-sm btn-link text-info note-view-btn" title="View" onclick="event.stopPropagation(); viewNoteFromSidebar('${folderName}', '${note.id}')"><i class="bi bi-eye"></i></button>
-                                <button class="btn btn-sm btn-link text-secondary note-rename-btn" title="Rename" onclick="event.stopPropagation(); renameNote('${folderName}', '${note.id}', '${note.title.replace(/'/g, "&#39;")}')"><i class="bi bi-pencil"></i></button>
-                                <button class="btn btn-sm btn-link text-danger note-delete-btn" title="Delete" onclick="event.stopPropagation(); deleteNoteFromSidebar('${folderName}', '${note.id}')"><i class="bi bi-trash"></i></button>
-                            </div>
-                        `;
-                        noteDiv.onclick = () => loadNote(folderName, note.id);
+                        noteDiv.setAttribute('data-note-id', note.id);
+                        noteDiv.setAttribute('data-folder', folderName);
+                        
+                        // Create inner elements
+                        const iconElement = document.createElement('i');
+                        iconElement.className = 'bi bi-file-earmark-text text-warning me-1';
+                        noteDiv.appendChild(iconElement);
+                        
+                        // Create title element
+                        const titleDiv = document.createElement('div');
+                        titleDiv.className = 'note-title flex-grow-1';
+                        titleDiv.textContent = note.title;
+                        noteDiv.appendChild(titleDiv);
+                        
+                        // If this is the currently loaded note, mark it as active
+                        if (currentNote && currentNote.id === note.id && currentFolder === folderName) {
+                            noteDiv.classList.add('active');
+                        }
+                        
+                        // Create actions container
+                        const actionsDiv = document.createElement('div');
+                        actionsDiv.className = 'note-actions ms-auto';
+                        actionsDiv.style.display = 'flex';
+                        actionsDiv.style.gap = '4px';
+                        
+                        // View button
+                        const viewBtn = document.createElement('button');
+                        viewBtn.className = 'btn btn-sm btn-link text-info note-view-btn';
+                        viewBtn.title = 'View';
+                        viewBtn.innerHTML = '<i class="bi bi-eye"></i>';
+                        viewBtn.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            viewNoteFromSidebar(folderName, note.id);
+                        });
+                        actionsDiv.appendChild(viewBtn);
+                        
+                        // Rename button
+                        const renameBtn = document.createElement('button');
+                        renameBtn.className = 'btn btn-sm btn-link text-secondary note-rename-btn';
+                        renameBtn.title = 'Rename';
+                        renameBtn.innerHTML = '<i class="bi bi-pencil"></i>';
+                        renameBtn.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            renameNote(folderName, note.id, note.title);
+                        });
+                        actionsDiv.appendChild(renameBtn);
+                        
+                        // Delete button
+                        const deleteBtn = document.createElement('button');
+                        deleteBtn.className = 'btn btn-sm btn-link text-danger note-delete-btn';
+                        deleteBtn.title = 'Delete';
+                        deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
+                        deleteBtn.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            deleteNoteFromSidebar(folderName, note.id);
+                        });
+                        actionsDiv.appendChild(deleteBtn);
+                        
+                        noteDiv.appendChild(actionsDiv);
+                        
+                        // Only load note if clicking on the note item itself, not on action buttons
+                        noteDiv.addEventListener('click', function(e) {
+                            if (!e.target.closest('.note-actions')) {
+                                // First, mark this note as active and remove active from others
+                                document.querySelectorAll('.note-item').forEach(item => {
+                                    item.classList.remove('active');
+                                });
+                                noteDiv.classList.add('active');
+                                
+                                // Then load the note
+                                loadNote(folderName, note.id);
+                            }
+                        });
+                        
                         parentElement.appendChild(noteDiv);
                     });
                 } else {
@@ -1038,6 +1371,15 @@
                 // Set the title in the title field
                 document.getElementById('noteTitle').value = note.title;
                 
+                // Update document title to include note title
+                document.title = `${note.title} | Notes | Local Cloud`;
+                
+                // Update current folder display
+                const currentFolderDisplay = document.getElementById('currentFolderDisplay');
+                if (currentFolderDisplay) {
+                    currentFolderDisplay.textContent = `(in ${folderName})`;
+                }
+                
                 // Remove the title from the content if it appears at the beginning
                 let content = note.content;
                 
@@ -1058,6 +1400,9 @@
                 
                 // Store current content for auto-save comparison
                 lastSavedContent = content;
+                
+                // Update sidebar selection state
+                updateSidebarSelectionState();
                 
                 // Reset any save indicator
                 let saveIndicator = document.getElementById('autoSaveIndicator');
@@ -1128,16 +1473,7 @@
                     lastSavedContent = content;
                     let saveIndicator = document.getElementById('autoSaveIndicator');
                     if (saveIndicator) { saveIndicator.style.opacity = '1'; setTimeout(() => { saveIndicator.style.opacity = '0'; }, 1200); }
-                    // Reload folders and notes via AJAX
-                    await loadFolders();
-                    // Optionally, re-select the current folder and note
-                    if (folder) {
-                        selectFolder(folder);
-                        // If editing an existing note, reload it
-                        if (currentNote && currentNote.id) {
-                            await loadNote(folder, currentNote.id);
-                        }
-                    }
+                    // Do not reload folders or call selectFolder here to avoid cursor jump
                 } else {
                     alert('Failed to save note. Please try again.');
                 }
@@ -1177,14 +1513,7 @@
                     body: JSON.stringify(noteData)
                 });
                 lastSavedContent = content;
-                // Reload folders and notes via AJAX
-                await loadFolders();
-                if (folder) {
-                    selectFolder(folder);
-                    if (currentNote && currentNote.id) {
-                        await loadNote(folder, currentNote.id);
-                    }
-                }
+                // Do not reload folders or call selectFolder here to avoid cursor jump
             } catch (error) {
                 // Optionally handle error
             }
@@ -1298,18 +1627,58 @@
         async function deleteNote() {
             if (currentNote && confirm('Are you sure you want to delete this note?')) {
                 try {
-                    const response = await fetch(`/api/notes/${currentFolder}/${currentNote.id}`, {
+                    console.log(`Deleting current note: folder=${currentFolder}, noteId=${currentNote.id}`);
+                    const noteId = currentNote.id;
+                    const folder = currentFolder;
+                    
+                    const response = await fetch(`/api/notes/${folder}/${noteId}`, {
                         method: 'DELETE'
                     });
 
                     if (response.ok) {
+                        console.log('Note deleted successfully');
+                        
+                        // Update sidebar by removing the note element
+                        const folderContent = document.getElementById(`folder-${folder}`);
+                        if (folderContent) {
+                            const noteDiv = folderContent.querySelector(`.note-item[data-note-id="${noteId}"]`);
+                            if (noteDiv) {
+                                console.log('Found note element, removing from DOM');
+                                noteDiv.remove();
+                                
+                                // If no notes left, show empty message
+                                if (folderContent.querySelectorAll('.note-item').length === 0) {
+                                    folderContent.innerHTML = '<div class="text-center text-muted py-2">No notes in this folder</div>';
+                                }
+                            } else {
+                                console.log('Note element not found, reloading folder content');
+                                await loadNotes(folder, folderContent);
+                            }
+                        }
+                        
+                        // Clear the editor
                         currentNote = null;
                         document.getElementById('noteTitle').value = '';
-                        editor.setData('');
-                        loadFolders();
+                        if (editor) editor.setData('');
+                        
+                        // Update document title
+                        document.title = 'Notes | Local Cloud';
+                        
+                        // Clear the current folder display
+                        const currentFolderDisplay = document.getElementById('currentFolderDisplay');
+                        if (currentFolderDisplay) {
+                            currentFolderDisplay.textContent = '';
+                        }
+                        
+                        // Update sidebar visual state
+                        updateSidebarSelectionState();
+                    } else {
+                        console.error('Failed to delete note, server returned:', response.status);
+                        alert('Failed to delete note. Please try again.');
                     }
                 } catch (error) {
                     console.error('Error deleting note:', error);
+                    alert('Error deleting note: ' + error.message);
                 }
             }
         }
@@ -1352,12 +1721,15 @@
 
         // Select a folder and update the UI
         window.selectFolder = async function(folderName) {
+            console.log(`Selecting folder: ${folderName}`);
             currentFolder = folderName;
+            
             // Update current folder display badge
             const display = document.getElementById('currentFolderDisplay');
             if (display) {
                 display.innerHTML = `<span class="badge bg-primary">${folderName}</span>`;
             }
+            
             // Highlight the selected folder in the sidebar
             document.querySelectorAll('.folder-item').forEach(item => {
                 const nameSpan = item.querySelector('.folder-name-span');
@@ -1367,12 +1739,31 @@
                     item.classList.remove('active');
                 }
             });
+            
             // Expand the folder if collapsed
             folderCollapseState[folderName] = false;
+            
+            // Show the folder content
+            const folderContents = document.querySelectorAll('.folder-content');
+            folderContents.forEach(content => {
+                if (content.id === `folder-${folderName}`) {
+                    content.classList.remove('collapsed');
+                    // Update folder toggle icon
+                    const toggleIcon = document.querySelector(`#folder-${folderName}-toggle i`);
+                    if (toggleIcon) {
+                        toggleIcon.classList.remove('bi-caret-right-fill');
+                        toggleIcon.classList.add('bi-caret-down-fill');
+                    }
+                }
+            });
+            
             // Reload notes for the selected folder
             const folderContent = document.getElementById(`folder-${folderName}`);
             if (folderContent) {
                 await loadNotes(folderName, folderContent);
+                
+                // After loading notes, update selection state
+                updateSidebarSelectionState();
             }
         };
 
@@ -1393,68 +1784,162 @@
             }
         });
 
-        function viewNoteFromSidebar(folder, noteId) {
-            window.open(`${window.location.origin}/view/${folder}/${noteId}`, '_blank');
-        }
-
-        async function deleteNoteFromSidebar(folder, noteId) {
-            if (confirm('Are you sure you want to delete this note?')) {
-                try {
-                    const response = await fetch(`/api/notes/${folder}/${noteId}`, { method: 'DELETE' });
-                    if (response.ok) {
-                        loadFolders();
-                    }
-                } catch (error) {
-                    console.error('Error deleting note:', error);
-                }
+        // View current note in a new tab
+        function viewCurrentNote() {
+            if (currentNote && currentFolder) {
+                window.open(`/view/${encodeURIComponent(currentFolder)}/${encodeURIComponent(currentNote.id)}`, '_blank');
+            } else {
+                alert('No note loaded to view.');
             }
         }
 
-        // Add note rename function to global scope
+        // Add this global function for sidebar eye button
+        function viewNoteFromSidebar(folder, noteId) {
+            window.open(`/view/${encodeURIComponent(folder)}/${encodeURIComponent(noteId)}`, '_blank');
+        }
+
+        // Add global renameNote function
         window.renameNote = async function(folder, noteId, oldTitle) {
+            console.log(`Renaming note in folder ${folder}, noteId ${noteId}, oldTitle ${oldTitle}`);
             const newTitle = prompt('Enter new note title:', oldTitle);
             if (!newTitle || newTitle.trim() === '' || newTitle === oldTitle) return;
+            
             try {
-                // Load the note to get its content
-                const response = await fetch(`/api/notes/${folder}/${noteId}`);
-                if (!response.ok) throw new Error('Failed to load note');
-                const note = await response.json();
-                // Save note with new title (keep same id and content)
-                const saveResp = await fetch('/api/notes/save', {
+                // First try to get the note to ensure it exists
+                const getResponse = await fetch(`/api/notes/${folder}/${noteId}`);
+                if (!getResponse.ok) {
+                    alert('Could not find the note to rename.');
+                    return;
+                }
+                const note = await getResponse.json();
+                
+                // Update the title and save the note
+                note.title = newTitle.trim();
+                const saveResponse = await fetch('/api/notes/save', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        ...note,
-                        title: newTitle
-                    })
+                    body: JSON.stringify(note)
                 });
-                if (saveResp.ok) {
-                    await loadFolders();
-                    // If this note is currently loaded, update the title field
-                    if (currentNote && currentNote.id === noteId && currentFolder === folder) {
-                        document.getElementById('noteTitle').value = newTitle;
+                
+                if (saveResponse.ok) {
+                    console.log('Note renamed successfully');
+                    // Update the note title in the sidebar instantly using data attributes
+                    const folderContent = document.getElementById(`folder-${folder}`);
+                    let updated = false;
+                    if (folderContent) {
+                        const noteDiv = folderContent.querySelector(`.note-item[data-note-id="${noteId}"]`);
+                        if (noteDiv) {
+                            const titleDiv = noteDiv.querySelector('.note-title');
+                            if (titleDiv) {
+                                titleDiv.textContent = newTitle.trim();
+                                updated = true;
+                            }
+                        }
                     }
+                    
+                    if (!updated && folderContent) {
+                        console.log('DOM update failed, reloading notes');
+                        // Fallback: reload notes for the folder
+                        await loadNotes(folder, folderContent);
+                    }
+                    
+                    // If the currently loaded note was renamed, update its title in the editor
+                    if (currentNote && currentNote.id === noteId && currentFolder === folder) {
+                        document.getElementById('noteTitle').value = newTitle.trim();
+                        currentNote.title = newTitle.trim();
+                        // Update document title to include new note title
+                        document.title = `${newTitle.trim()} | Notes | Local Cloud`;
+                    }
+                    
+                    // Update sidebar selection state
+                    updateSidebarSelectionState();
                 } else {
-                    alert('Failed to rename note.');
+                    alert('Failed to rename note. Please try again.');
                 }
             } catch (error) {
+                console.error('Error renaming note:', error);
                 alert('Error renaming note: ' + error.message);
             }
         };
-    </script>
 
-    <script>
-        (function() {
-            fetch('/settings/api').then(r => r.json()).then(settings => {
-                if (settings.headerBgColor) document.documentElement.style.setProperty('--header-bg', settings.headerBgColor);
-                if (settings.headerTextColor) document.documentElement.style.setProperty('--header-text', settings.headerTextColor);
-                if (settings.backgroundColor) document.documentElement.style.setProperty('--background-color', settings.backgroundColor);
-                if (settings.fontSize) document.documentElement.style.setProperty('--font-size', settings.fontSize + 'px');
-                if (settings.fontFamily) document.documentElement.style.setProperty('--font-family', settings.fontFamily);
-                if (settings.borderRadius) document.documentElement.style.setProperty('--border-radius', settings.borderRadius + 'px');
+        // Add global deleteNoteFromSidebar function
+        window.deleteNoteFromSidebar = async function(folder, noteId) {
+            console.log(`Deleting note: folder=${folder}, noteId=${noteId}`);
+            if (!confirm('Are you sure you want to delete this note?')) return;
+            
+            try {
+                const response = await fetch(`/api/notes/${folder}/${noteId}`, { 
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (response.ok) {
+                    console.log('Note deleted successfully');
+                    
+                    // Remove the note DOM element instantly using data attributes
+                    const folderContent = document.getElementById(`folder-${folder}`);
+                    if (folderContent) {
+                        // Find the note item by data attributes
+                        const noteDiv = folderContent.querySelector(`.note-item[data-note-id="${noteId}"]`);
+                        
+                        if (noteDiv) {
+                            console.log('Found note element, removing from DOM');
+                            noteDiv.remove();
+                            
+                            // If no notes left, show empty message
+                            if (folderContent.querySelectorAll('.note-item').length === 0) {
+                                folderContent.innerHTML = '<div class="text-center text-muted py-2">No notes in this folder</div>';
+                            }
+                        } else {
+                            console.log('Note element not found, reloading folder content');
+                            // Fallback if we can't find the specific note
+                            await loadNotes(folder, folderContent);
+                        }
+                    }
+                    
+                    // If the currently loaded note was deleted, clear the editor
+                    if (currentNote && currentNote.id === noteId && currentFolder === folder) {
+                        console.log('Clearing editor for deleted note');
+                        currentNote = null;
+                        document.getElementById('noteTitle').value = '';
+                        if (editor) editor.setData('');
+                        
+                        // Also update the document title to reflect that no note is open
+                        document.title = 'Notes | Local Cloud';
+                        
+                        // Clear the current folder display
+                        const currentFolderDisplay = document.getElementById('currentFolderDisplay');
+                        if (currentFolderDisplay) {
+                            currentFolderDisplay.textContent = '';
+                        }
+                    }
+                    
+                    // Update sidebar visual state to reflect current selection state
+                    updateSidebarSelectionState();
+                } else {
+                    console.error('Failed to delete note, server returned:', response.status);
+                    alert('Failed to delete note. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error deleting note:', error);
+                alert('Error deleting note: ' + error.message);
+            }
+        };
+        // Helper function to update sidebar selection state
+        function updateSidebarSelectionState() {
+            // Remove 'active' class from all note items
+            document.querySelectorAll('.note-item').forEach(item => {
+                item.classList.remove('active');
             });
-        })();
+            
+            // If there is a current note, mark it as active
+            if (currentNote && currentFolder) {
+                const noteElement = document.querySelector(`.note-item[data-note-id="${currentNote.id}"][data-folder="${currentFolder}"]`);
+                if (noteElement) {
+                    noteElement.classList.add('active');
+                }
+            }
+        }
     </script>
 </body>
-
 </html>
