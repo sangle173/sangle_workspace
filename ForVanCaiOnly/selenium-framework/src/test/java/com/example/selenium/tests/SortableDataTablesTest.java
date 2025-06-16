@@ -28,7 +28,6 @@ public class SortableDataTablesTest {
     public void testTableSorting() {
         mainPage.goTo();
         mainPage.clickSortableDataTables();
-        List<List<String>> beforeSort = tablesPage.getTableData();
         tablesPage.sortByColumn(0); // Sort by first column
         List<List<String>> afterSort = tablesPage.getTableData();
         Assert.assertTrue(TableUtils.isColumnSorted(afterSort, 0), "Table is not sorted by first column");

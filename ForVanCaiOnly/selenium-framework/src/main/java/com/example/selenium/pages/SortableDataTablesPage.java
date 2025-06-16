@@ -8,7 +8,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SortableDataTablesPage extends BasePage {
-    private By table = By.id("table1");
     private By tableRows = By.cssSelector("#table1 tbody tr");
     private By tableHeaders = By.cssSelector("#table1 thead th");
 
