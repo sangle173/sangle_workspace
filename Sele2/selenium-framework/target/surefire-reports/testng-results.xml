@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testng-results ignored="0" total="1" passed="1" failed="0" skipped="0">
+  <reporter-output>
+  </reporter-output>
+  <suite started-at="2025-06-16T17:22:10 ICT" name="Surefire suite" finished-at="2025-06-16T17:22:15 ICT" duration-ms="5186">
+    <groups>
+    </groups>
+    <test started-at="2025-06-16T17:22:10 ICT" name="Surefire test" finished-at="2025-06-16T17:22:15 ICT" duration-ms="5186">
+      <class name="com.example.selenium.tests.SortableDataTablesTest">
+        <test-method is-config="true" signature="setUp()[pri:0, instance:com.example.selenium.tests.SortableDataTablesTest@4ddced80]" started-at="2025-06-16T17:22:10 ICT" name="setUp" finished-at="2025-06-16T17:22:10 ICT" duration-ms="855" status="PASS">
+          <reporter-output>
+          </reporter-output>
+        </test-method> <!-- setUp -->
+        <test-method signature="testTableSorting()[pri:0, instance:com.example.selenium.tests.SortableDataTablesTest@4ddced80]" started-at="2025-06-16T17:22:10 ICT" name="testTableSorting" finished-at="2025-06-16T17:22:15 ICT" duration-ms="4237" status="PASS">
+          <reporter-output>
+          </reporter-output>
+        </test-method> <!-- testTableSorting -->
+        <test-method is-config="true" signature="tearDown()[pri:0, instance:com.example.selenium.tests.SortableDataTablesTest@4ddced80]" started-at="2025-06-16T17:22:15 ICT" name="tearDown" finished-at="2025-06-16T17:22:15 ICT" duration-ms="70" status="PASS">
+          <reporter-output>
+          </reporter-output>
+        </test-method> <!-- tearDown -->
+      </class> <!-- com.example.selenium.tests.SortableDataTablesTest -->
+    </test> <!-- Surefire test -->
+  </suite> <!-- Surefire suite -->
+</testng-results>

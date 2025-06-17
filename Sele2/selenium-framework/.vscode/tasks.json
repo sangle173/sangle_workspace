@@ -1,0 +1,20 @@
+{
+    // ...existing tasks...
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build with Maven",
+            "type": "shell",
+            "command": "mvn clean compile",
+            "group": "build",
+            "problemMatcher": ["$javac"]
+        },
+        {
+            "label": "Test with Maven",
+            "type": "shell",
+            "command": "mvn test",
+            "group": "test",
+            "problemMatcher": ["$javac"]
+        }
+    ]
+}
