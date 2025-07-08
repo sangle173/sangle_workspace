@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jira Duplicate Issue Checker</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            padding-top: 110px;
+            padding-bottom: 20px;
+            padding-left: 20px;
+            padding-right: 20px;
+        }
+        .custom-card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+            background-color: #f8f9fa;
+        }
+        .fixed-top-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1030;
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .progress-bar-similarity {
+            height: 8px;
+            border-radius: 4px;
+        }
+        .score-high {
+            background-color: #dc3545; /* Red for high similarity (more likely duplicate) */
+        }
+        .score-medium {
+            background-color: #ffc107; /* Yellow for medium similarity */
+        }
+        .score-low {
+            background-color: #28a745; /* Green for low similarity (less likely duplicate) */
+        }
+        .similarity-badge {
+            font-size: 0.8rem;
+            padding: 0.25rem 0.5rem;
+        }
+        .result-card {
+            transition: transform 0.2s;
+        }
+        .result-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+        .status-pill {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            text-align: center;
+        }
+        /* Status colors - same as in the filter detail page */
+        .status-open { background-color: #0052CC; color: white; }
+        .status-in-progress { background-color: #0052CC; color: white; }
+        .status-closed { background-color: #00875A; color: white; }
+        .status-resolved { background-color: #00875A; color: white; }
+        .status-in-verification { background-color: #FFC400; color: black; }
+        .status-ready-to-verify { background-color: #FFC400; color: black; }
+        .status-blocked { background-color: #DFE1E5; color: black; }
+        .status-reopened { background-color: #FF0000; color: white; }
+        .status-in-review { background-color: #0052CC; color: white; }
+        .status-testing { background-color: #0052CC; color: white; }
+        .status-waiting-for-partner { background-color: #0052CC; color: white; }
+        .status-done { background-color: #00875A; color: white; }
+        .status-reviewed { background-color: #0052CC; color: white; }
+    </style>
+</head>
+<body>
+    <!-- Fixed top navigation -->
+    <div class="fixed-top-nav">
+        <div th:replace="fragments/navbar :: navbar"></div>
+        <div class="container-fluid pt-3 pb-2">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="h3 mb-0">Jira Duplicate Issue Checker</h1>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="custom-card">
+                    <h2 class="h5 mb-3">Check for Duplicate Issues</h2>
+                    <p class="text-muted">
+                        Enter text to find potential duplicate issues in Jira.
+                        The system will compare your text against existing issues and rank them by similarity.
+                    </p>
+                    
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="useSingleTextInput" name="useSingleTextInput">
+                            <label class="form-check-label" for="useSingleTextInput">Use Single Text Input</label>
+                        </div>
+                    </div>
+                    
+                    <form id="duplicateCheckerForm" class="mb-4">
+                        <div id="dualInputSection">
+                            <div class="mb-3">
+                                <label for="summary" class="form-label">Summary</label>
+                                <input type="text" class="form-control" id="summary" name="summary"
+                                       placeholder="Enter the issue summary...">
+                                <div class="form-text">At least one of Summary or Description is required</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="description" class="form-label">Description</label>
+                                <textarea class="form-control" id="description" name="description" rows="4"
+                                          placeholder="Enter a detailed description of the issue..."></textarea>
+                                <div class="form-text">At least one of Summary or Description is required</div>
+                            </div>
+                        </div>
+                        
+                        <div id="singleInputSection" class="mb-3 d-none">
+                            <label for="singleText" class="form-label">Search Text</label>
+                            <textarea class="form-control" id="singleText" name="singleText" rows="6"
+                                      placeholder="Enter text to search for duplicates. This will be compared against both summary and description fields..."></textarea>
+                            <div class="form-text">Enter any text that might help identify duplicate issues</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="useCustomJql" name="useCustomJql">
+                                <label class="form-check-label" for="useCustomJql">Use Custom JQL Query</label>
+                            </div>
+                        </div>
+                        
+                        <div id="projectSearchSection" class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="projects" class="form-label">Projects to Search</label>
+                                    <input type="text" class="form-control" id="projects" name="projects" 
+                                           th:value="${defaultProjects}"
+                                           placeholder="Comma-separated project keys (e.g. DUKE,RND,PMA)">
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label for="minSimilarity" class="form-label">Min. Similarity (0.0-1.0)</label>
+                                    <input type="number" class="form-control" id="minSimilarity" name="minSimilarity" 
+                                           value="0.3" min="0" max="1" step="0.05">
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-3">
+                                <div class="mb-3">
+                                    <label for="maxResults" class="form-label">Max Results</label>
+                                    <input type="number" class="form-control" id="maxResults" name="maxResults" 
+                                           value="10" min="1" max="50">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="jqlQuerySection" class="mb-3 d-none">
+                            <label for="jqlQuery" class="form-label">JQL Query</label>
+                            <textarea class="form-control" id="jqlQuery" name="jqlQuery" rows="3"
+                                      placeholder="Enter a JQL query to filter issues for comparison (e.g. project = DUKE AND issuetype = Bug)"></textarea>
+                            <div class="form-text">
+                                Use JQL to narrow down the search scope. Issues matching this query will be compared against your summary/description.
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-search me-1"></i> Check for Duplicates
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="resetForm()">
+                                <i class="bi bi-x-circle me-1"></i> Reset
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <div id="searchingIndicator" class="text-center my-5 d-none">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-2">Searching for similar issues...</p>
+                    </div>
+                    
+                    <div id="resultsContainer" class="mt-4 d-none">
+                        <h3 class="h5 mb-3">Potential Duplicates (<span id="resultCount">0</span>)</h3>
+                        <div id="noResultsMessage" class="alert alert-info d-none">
+                            <i class="bi bi-info-circle me-2"></i>
+                            No potential duplicates found based on your search criteria.
+                        </div>
+                        <div id="resultsContent"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Footer -->
+    <div th:replace="fragments/footer :: footer"></div>
+    
+    <!-- Bootstrap & JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize scroll behavior for fixed elements
+            initializeScrollBehavior();
+            
+            // Form submission
+            document.getElementById('duplicateCheckerForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                checkForDuplicates();
+            });
+            
+            // Toggle JQL input visibility
+            document.getElementById('useCustomJql').addEventListener('change', function(e) {
+                const useJql = e.target.checked;
+                document.getElementById('projectSearchSection').classList.toggle('d-none', useJql);
+                document.getElementById('jqlQuerySection').classList.toggle('d-none', !useJql);
+            });
+            
+            // Toggle between single and dual input modes
+            document.getElementById('useSingleTextInput').addEventListener('change', function(e) {
+                const useSingleInput = e.target.checked;
+                document.getElementById('dualInputSection').classList.toggle('d-none', useSingleInput);
+                document.getElementById('singleInputSection').classList.toggle('d-none', !useSingleInput);
+            });
+        });
+        
+        function initializeScrollBehavior() {
+            const fixedNav = document.querySelector('.fixed-top-nav');
+            
+            // Update body padding to account for fixed navbar
+            document.body.style.paddingTop = fixedNav.offsetHeight + 'px';
+            
+            // Update positions on window resize
+            window.addEventListener('resize', function() {
+                document.body.style.paddingTop = fixedNav.offsetHeight + 'px';
+            });
+        }
+        
+        function checkForDuplicates() {
+            const useSingleInput = document.getElementById('useSingleTextInput').checked;
+            const useCustomJql = document.getElementById('useCustomJql').checked;
+            const projects = document.getElementById('projects').value;
+            const jqlQuery = document.getElementById('jqlQuery').value;
+            const minSimilarity = document.getElementById('minSimilarity').value;
+            const maxResults = document.getElementById('maxResults').value;
+            
+            // Get form values based on input mode
+            let isValid = false;
+            const formData = new FormData();
+            
+            if (useSingleInput) {
+                // Single input mode
+                const singleText = document.getElementById('singleText').value.trim();
+                if (singleText === '') {
+                    alert('Please provide some text to search for duplicates.');
+                    return;
+                }
+                
+                isValid = true;
+                formData.append('text', singleText);
+            } else {
+                // Dual input mode (original)
+                const summary = document.getElementById('summary').value.trim();
+                const description = document.getElementById('description').value.trim();
+                
+                // Validate that at least summary or description is provided
+                if (summary === '' && description === '') {
+                    alert('Please provide either a Summary or Description to search for duplicates.');
+                    return;
+                }
+                
+                isValid = true;
+                formData.append('summary', summary);
+                formData.append('description', description);
+            }
+            
+            if (!isValid) return;
+            
+            // Show loading indicator, hide results
+            document.getElementById('searchingIndicator').classList.remove('d-none');
+            document.getElementById('resultsContainer').classList.add('d-none');
+            
+            // Add common parameters
+            formData.append('useCustomJql', useCustomJql);
+            
+            if (useCustomJql) {
+                formData.append('jqlQuery', jqlQuery);
+            } else {
+                formData.append('projects', projects);
+            }
+            
+            formData.append('minSimilarity', minSimilarity);
+            formData.append('maxResults', maxResults);
+            
+            // Determine which endpoint to use
+            const endpoint = useSingleInput ? 
+                '/jira-dashboard/check-duplicates-single' : 
+                '/jira-dashboard/check-duplicates';
+            
+            // Make API request
+            fetch(endpoint, {
+                method: 'POST',
+                body: new URLSearchParams(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Hide loading indicator
+                document.getElementById('searchingIndicator').classList.add('d-none');
+                
+                // Show results container
+                document.getElementById('resultsContainer').classList.remove('d-none');
+                
+                // Update result count
+                document.getElementById('resultCount').textContent = data.totalCount;
+                
+                // Display results or no results message
+                if (data.potentialDuplicates && data.potentialDuplicates.length > 0) {
+                    displayResults(data.potentialDuplicates);
+                    document.getElementById('noResultsMessage').classList.add('d-none');
+                } else {
+                    document.getElementById('resultsContent').innerHTML = '';
+                    document.getElementById('noResultsMessage').classList.remove('d-none');
+                }
+            })
+            .catch(error => {
+                console.error('Error checking for duplicates:', error);
+                document.getElementById('searchingIndicator').classList.add('d-none');
+                document.getElementById('resultsContainer').classList.add('d-none');
+                alert('Error checking for duplicates: ' + error.message);
+            });
+        }
+        
+        function displayResults(results) {
+            const container = document.getElementById('resultsContent');
+            container.innerHTML = '';
+            
+            results.forEach(issue => {
+                const statusLower = issue.status.toLowerCase().replace(/\s+/g, '-');
+                const statusClass = `status-${statusLower}`;
+                const similarityScore = issue.similarityScore;
+                const scoreClass = similarityScore > 0.7 ? 'score-high' : (similarityScore > 0.4 ? 'score-medium' : 'score-low');
+                const scoreDisplay = Math.round(similarityScore * 100);
+                const badgeClass = similarityScore > 0.7 ? 'bg-danger' : (similarityScore > 0.4 ? 'bg-warning text-dark' : 'bg-success');
+                
+                const card = document.createElement('div');
+                card.className = 'card mb-3 result-card';
+                card.innerHTML = `
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <a href="https://jira.sonos.com/browse/${issue.key}" target="_blank" 
+                               class="fw-bold text-decoration-none">${issue.key}</a>
+                            <span class="ms-2 text-muted small">${issue.project}</span>
+                            <span class="ms-2 status-pill ${statusClass}">${issue.status}</span>
+                        </div>
+                        <span class="badge ${badgeClass} similarity-badge">
+                            ${scoreDisplay}% Match
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title">${issue.summary}</h5>
+                        <div class="progress mb-3">
+                            <div class="progress-bar progress-bar-similarity ${scoreClass}" 
+                                 role="progressbar" style="width: ${scoreDisplay}%;" 
+                                 aria-valuenow="${scoreDisplay}" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <p class="card-text text-muted">
+                            ${issue.description ? truncateText(issue.description, 200) : 'No description available'}
+                        </p>
+                        <div class="d-flex justify-content-between">
+                            <small class="text-muted">Created: ${issue.created}</small>
+                            <small class="text-muted">Issue Type: ${issue.issue_type}</small>
+                        </div>
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+        
+        function truncateText(text, maxLength) {
+            if (!text) return '';
+            return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+        }
+        
+        function resetForm() {
+            document.getElementById('duplicateCheckerForm').reset();
+            document.getElementById('resultsContainer').classList.add('d-none');
+        }
+        
+        function getJiraBaseUrl() {
+            // This can be updated or made configurable
+            return "https://jira.sonos.com";
+        }
+    </script>
+</body>
+</html>

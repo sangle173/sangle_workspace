@@ -132,6 +132,11 @@
                                 </a>
                             </li>
                             <li>
+                                <a class="dropdown-item" th:classappend="${#httpServletRequest.getRequestURI().startsWith('/jira-dashboard/duplicate-checker') ? 'active' : ''}" href="/jira-dashboard/duplicate-checker">
+                                    <i class="bi bi-search me-1"></i>Duplicate Issue Checker
+                                </a>
+                            </li>
+                            <li>
                                 <a class="dropdown-item" th:classappend="${#httpServletRequest.getRequestURI().startsWith('/network-sonos-discovery') ? 'active' : ''}" href="/network-sonos-discovery">
                                     <i class="bi bi-wifi me-1"></i>Network Sonos Discovery
                                 </a>
