@@ -1,0 +1,69 @@
+<%- include('./partials/header') %>
+
+<div class="row mb-4">
+  <div class="col-md-12">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h1 class="card-title text-center mb-4">Task Report Generator</h1>
+        <p class="text-center">Generate daily, weekly, or custom date range reports for tasks</p>
+        
+        <!-- Board Selection -->
+        <div class="row mb-4">
+          <div class="col-md-6 offset-md-3">
+            <form action="/" method="GET" class="row g-3">
+              <div class="col-12">
+                <label for="boardId" class="form-label">Select Board:</label>
+                <div class="input-group">
+                  <select class="form-select" id="boardId" name="boardId">
+                    <% if (boards && boards.length > 0) { %>
+                      <% boards.forEach(board => { %>
+                        <option value="<%= board.id %>" <%= currentBoardId == board.id ? 'selected' : '' %>><%= board.name %></option>
+                      <% }); %>
+                    <% } else { %>
+                      <option value="1">Default Board</option>
+                    <% } %>
+                  </select>
+                  <button class="btn btn-outline-primary" type="submit">Switch Board</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+        
+        <div class="d-flex justify-content-center gap-3 my-4">
+          <a href="/reports/daily?boardId=<%= currentBoardId %>" class="btn btn-primary">Daily Report</a>
+          <a href="/reports/weekly?boardId=<%= currentBoardId %>" class="btn btn-success">Weekly Report</a>
+          <a href="/reports/custom?boardId=<%= currentBoardId %>" class="btn btn-info">Custom Date Range</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-12">
+    <div class="card shadow-sm">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">All Tasks (<%= count %>)</h5>
+        <div class="input-group" style="max-width: 300px;">
+          <input type="text" class="form-control" id="taskSearch" placeholder="Search tasks...">
+          <button class="btn btn-outline-secondary" type="button">
+            <i class="fas fa-search"></i>
+          </button>
+        </div>
+      </div>
+      <div class="card-body">
+        <% if (typeof error !== 'undefined' && error) { %>
+          <div class="alert alert-danger" role="alert">
+            <%= error %>
+            <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="window.location.reload()">Retry</button>
+          </div>
+        <% } %>
+        
+        <%- include('./partials/task-table', { tasks }) %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('./partials/footer') %>

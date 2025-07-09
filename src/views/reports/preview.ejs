@@ -1,0 +1,71 @@
+<%- include('../partials/header') %>
+
+<div class="row mb-4">
+  <div class="col-md-12">
+    <div class="card shadow-sm">
+      <div class="card-header">
+        <h2>Report Preview</h2>
+        <p class="text-muted mb-0">Review your report before sending it</p>
+      </div>
+      <div class="card-body">
+        <!-- Email Details -->
+        <div class="email-details mb-4">
+          <div class="row">
+            <div class="col-md-2 fw-bold">Subject:</div>
+            <div class="col-md-10"><%= emailConfig.subject %></div>
+          </div>
+          <div class="row">
+            <div class="col-md-2 fw-bold">To:</div>
+            <div class="col-md-10"><%= emailConfig.to %></div>
+          </div>
+          <% if (emailConfig.cc && emailConfig.cc.length > 0) { %>
+          <div class="row">
+            <div class="col-md-2 fw-bold">CC:</div>
+            <div class="col-md-10"><%= emailConfig.cc %></div>
+          </div>
+          <% } %>
+        </div>
+        
+        <!-- Report Content Preview -->
+        <div class="report-content">
+          <h5>Report Content:</h5>
+          <div class="card">
+            <div class="card-body bg-light">
+              <pre class="mb-0" style="white-space: pre-wrap;"><%= reportContent %></pre>
+            </div>
+          </div>
+        </div>
+        
+        <form action="/reports/send" method="POST" class="mt-4">
+          <input type="hidden" name="subject" value="<%= emailConfig.subject %>">
+          <input type="hidden" name="to" value="<%= emailConfig.to %>">
+          <input type="hidden" name="cc" value="<%= emailConfig.cc %>">
+          <input type="hidden" name="reportContent" value="<%= reportContent %>">
+          <input type="hidden" name="tasks" value="<%= JSON.stringify(tasks) %>">
+          <input type="hidden" name="boardId" value="<%= currentBoardId %>"
+          
+          <div class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-secondary" onclick="history.back()">Back</button>
+            <button type="submit" class="btn btn-primary">Send Report</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Task List -->
+<div class="row">
+  <div class="col-md-12">
+    <div class="card">
+      <div class="card-header">
+        <h5>Selected Tasks (<%= taskCount %>)</h5>
+      </div>
+      <div class="card-body">
+        <%- include('../partials/task-table', { tasks }) %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

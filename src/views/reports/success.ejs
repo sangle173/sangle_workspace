@@ -1,0 +1,20 @@
+<%- include('../partials/header') %>
+
+<div class="row mb-4">
+  <div class="col-md-12 text-center">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <i class="fas fa-check-circle text-success" style="font-size: 5rem;"></i>
+        <h2 class="mt-3">Report Sent Successfully!</h2>
+        <p class="text-muted mb-4"><%= message %></p>
+        
+        <div class="mt-4">
+          <a href="/reports" class="btn btn-primary me-2">Generate Another Report</a>
+          <a href="/" class="btn btn-outline-secondary">Back to Home</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>
