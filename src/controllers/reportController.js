@@ -3,6 +3,11 @@ const { format, startOfWeek, endOfWeek, addDays } = require('date-fns');
 
 exports.getReportPage = async (req, res) => {
   try {
+    // Set API base URL from session if available
+    if (req.session.apiBaseUrl) {
+      taskModel.setApiBaseUrl(req.session.apiBaseUrl);
+    }
+    
     const reportType = req.query.type || 'daily';
     const boardId = req.query.boardId || process.env.DEFAULT_BOARD_ID || '1';
     
@@ -158,8 +163,84 @@ exports.generateReport = async (req, res) => {
       tasks = await taskModel.getTasksByDateRange(startDate, endDate, boardId);
     }
     
-    // Generate report content
+    // Generate report content in two formats
     const reportContent = taskModel.generateReportContent(tasks, currentBoard);
+    const taskTable = taskModel.generateTaskTable(tasks);
+    
+    // Define consistent styles for all report elements
+    const styles = {
+      container: 'font-family: Calibri, sans-serif; font-size: 11pt; color: #000000; line-height: 1.15;',
+      h1: 'font-family: Calibri, sans-serif; font-size: 16pt; font-weight: bold; color: #000000; margin-bottom: 6pt;',
+      h2: 'font-family: Calibri, sans-serif; font-size: 14pt; font-weight: bold; color: #000000; margin-bottom: 6pt;',
+      p: 'font-family: Calibri, sans-serif; font-size: 11pt; margin-bottom: 6pt;',
+      strong: 'font-family: Calibri, sans-serif; font-weight: bold;',
+      section: 'margin-top: 20pt; border-top: 1px solid #dddddd; padding-top: 12pt;'
+    };
+    
+    // Build the period text based on report type
+    let periodText = '';
+    if (reportType === 'daily') {
+      periodText = date;
+    } else if (reportType === 'weekly') {
+      periodText = `${weekStart} to ${weekEnd}`;
+    } else {
+      periodText = `${startDate} to ${endDate}`;
+    }
+    
+    // Instead of trying to extract from the report content, let's recreate the team section directly
+    // This ensures better control over formatting
+    let teamSection = '';
+    
+    // Group tasks by team
+    const tasksByTeam = {};
+    tasks.forEach(task => {
+      const teamName = task.team.name;
+      if (!tasksByTeam[teamName]) {
+        tasksByTeam[teamName] = [];
+      }
+      tasksByTeam[teamName].push(task);
+    });
+    
+    // Build team section content
+    Object.entries(tasksByTeam).forEach(([team, teamTasks]) => {
+      teamSection += `
+        <div style="margin-bottom: 10pt; font-family: Calibri, sans-serif;">
+          <h3 style="font-family: Calibri, sans-serif; font-size: 12pt; font-weight: bold; margin-bottom: 5pt;">${team} (${teamTasks.length} tasks)</h3>
+      `;        teamTasks.forEach(task => {
+          let taskLinkHtml = '';
+          if (task.link_to_result) {
+            taskLinkHtml = ` - <a href="${task.link_to_result}" style="font-family: Calibri, sans-serif; font-size: 11pt; color: #0066cc; text-decoration: underline;">Link to Results</a>`;
+          }
+          
+          teamSection += `
+            <div style="margin-left: 10pt; margin-bottom: 8pt; font-family: Calibri, sans-serif;">
+              <div style="font-family: Calibri, sans-serif; font-size: 11pt; font-weight: bold;">${task.jira_id}: ${task.jira_summary}${taskLinkHtml}</div>
+              <div style="font-family: Calibri, sans-serif; font-size: 11pt; padding-left: 20pt;">Status: ${task.working_status.name} / ${task.ticket_status.name}</div>
+              <div style="font-family: Calibri, sans-serif; font-size: 11pt; padding-left: 20pt;">Created: ${new Date(task.created_at).toLocaleString()}</div>
+            </div>
+          `;
+        });
+      
+      teamSection += `</div>`;
+    });
+    
+    // Combine both formats for full preview with consistent font styling
+    const fullReportContent = `
+      <div style="${styles.container}">
+        <h1 style="${styles.h1}">Task Report for ${currentBoard.name}</h1>
+        <p style="${styles.p}">Period: <span style="${styles.container}">${periodText}</span></p>
+        <p style="${styles.p}">Total Tasks: <strong style="${styles.strong}">${tasks.length}</strong></p>
+        
+        ${taskTable}
+        
+        <div style="${styles.section}">
+          <h2 style="${styles.h2}">
+            Tasks by Team
+          </h2>
+          ${teamSection}
+        </div>
+      </div>
+    `;
     
     // Create email config
     const emailConfig = {
@@ -170,7 +251,7 @@ exports.generateReport = async (req, res) => {
     
     res.render('reports/preview', {
       title: 'Report Preview',
-      reportContent,
+      reportContent: fullReportContent,
       emailConfig,
       tasks,
       taskCount: tasks.length,

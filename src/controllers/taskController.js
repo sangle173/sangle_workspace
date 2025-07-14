@@ -3,6 +3,11 @@ const { startOfWeek, endOfWeek } = require('date-fns');
 
 exports.getHomePage = async (req, res) => {
   try {
+    // Set API base URL from session if available
+    if (req.session.apiBaseUrl) {
+      taskModel.setApiBaseUrl(req.session.apiBaseUrl);
+    }
+    
     // Get selected board ID from query params or use default
     const boardId = req.query.boardId || process.env.DEFAULT_BOARD_ID || '1';
     
@@ -23,6 +28,7 @@ exports.getHomePage = async (req, res) => {
       boards: boards,
       currentBoardId: boardId,
       currentBoard: currentBoard,
+      apiEndpoint: req.session.apiBaseUrl || process.env.API_BASE_URL || 'http://172.18.100.184/mini_project/public/api',
       error: null
     });
   } catch (error) {
@@ -42,6 +48,7 @@ exports.getHomePage = async (req, res) => {
       boards: boards,
       currentBoardId: req.query.boardId || process.env.DEFAULT_BOARD_ID || '1',
       currentBoard: { name: 'Unknown Board' },
+      apiEndpoint: req.session.apiBaseUrl || process.env.API_BASE_URL || 'http://172.18.100.184/mini_project/public/api',
       error: error.message 
     });
   }

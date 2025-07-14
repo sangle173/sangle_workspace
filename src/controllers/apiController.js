@@ -2,7 +2,7 @@ const axios = require('axios');
 
 exports.checkApiStatus = async (req, res) => {
   try {
-    const apiBaseUrl = process.env.API_BASE_URL || 'http://172.18.100.184/mini_project/public/api';
+    const apiBaseUrl = req.session?.apiBaseUrl || process.env.API_BASE_URL || 'http://172.18.100.184/mini_project/public/api';
     const response = await axios.get(`${apiBaseUrl}/tasks?board_id=1`, { timeout: 5000 });
     
     if (response.status === 200) {

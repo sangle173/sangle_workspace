@@ -31,10 +31,114 @@
           <h5>Report Content:</h5>
           <div class="card">
             <div class="card-body bg-light">
-              <pre class="mb-0" style="white-space: pre-wrap;"><%= reportContent %></pre>
+              <!-- Two tabs: HTML view and HTML source -->
+              <ul class="nav nav-tabs mb-3" id="reportTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link active" id="preview-tab" data-bs-toggle="tab" data-bs-target="#preview-content" type="button" role="tab">
+                    Preview
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="source-tab" data-bs-toggle="tab" data-bs-target="#source-content" type="button" role="tab">
+                    HTML Source
+                  </button>
+                </li>
+              </ul>
+              
+              <div class="tab-content" id="reportTabContent">
+                <!-- Preview Tab -->
+                <div class="tab-pane fade show active" id="preview-content" role="tabpanel">
+                  <div class="border p-3 bg-white">
+                    <%- reportContent %>
+                  </div>
+                  <div class="d-flex justify-content-end mt-2">
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="copyReportHTML()">
+                      <i class="fas fa-copy me-1"></i> Copy HTML
+                    </button>
+                  </div>
+                </div>
+                
+                <!-- Source Tab -->
+                <div class="tab-pane fade" id="source-content" role="tabpanel">
+                  <pre class="mb-0 border p-3" style="white-space: pre-wrap; max-height: 400px; overflow-y: auto;"><%= reportContent %></pre>
+                  <div class="d-flex justify-content-end mt-2">
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="copyReportSource()">
+                      <i class="fas fa-copy me-1"></i> Copy Source
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
+        
+        <!-- Script to handle copying -->
+        <script>
+          // Store the report content in a JS variable to avoid EJS template escaping issues
+          const reportContent = `<%- reportContent.replace(/`/g, '\\`').replace(/\$/g, '\\$') %>`;
+          
+          function copyReportHTML() {
+            // Create a container to hold the HTML content
+            const el = document.createElement('div');
+            el.innerHTML = reportContent;
+            copyToClipboard(el.innerHTML);
+          }
+          
+          function copyReportSource() {
+            copyToClipboard(reportContent);
+          }
+          
+          function copyToClipboard(text) {
+            // Modern clipboard API when available
+            if (navigator.clipboard && window.isSecureContext) {
+              navigator.clipboard.writeText(text).then(() => {
+                showCopiedFeedback();
+              }).catch(err => {
+                console.error('Failed to copy: ', err);
+                fallbackCopyToClipboard(text);
+              });
+            } else {
+              fallbackCopyToClipboard(text);
+            }
+          }
+          
+          function fallbackCopyToClipboard(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';  // Avoid scrolling to bottom
+            document.body.appendChild(textarea);
+            textarea.select();
+            
+            try {
+              document.execCommand('copy');
+              showCopiedFeedback();
+            } catch (err) {
+              console.error('Failed to copy: ', err);
+              alert('Failed to copy to clipboard. Please try again.');
+            }
+            
+            document.body.removeChild(textarea);
+          }
+          
+          function showCopiedFeedback() {
+            // Show feedback
+            const alertEl = document.createElement('div');
+            alertEl.className = 'alert alert-success alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x';
+            alertEl.style.zIndex = '1050';
+            alertEl.style.marginTop = '20px';
+            alertEl.innerHTML = `
+              <i class="fas fa-check-circle me-2"></i> Copied to clipboard!
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            document.body.appendChild(alertEl);
+            
+            // Auto-dismiss after 2 seconds
+            setTimeout(() => {
+              alertEl.classList.remove('show');
+              setTimeout(() => document.body.removeChild(alertEl), 200);
+            }, 2000);
+          }
+        </script>
         
         <form action="/reports/send" method="POST" class="mt-4">
           <input type="hidden" name="subject" value="<%= emailConfig.subject %>">
@@ -42,9 +146,12 @@
           <input type="hidden" name="cc" value="<%= emailConfig.cc %>">
           <input type="hidden" name="reportContent" value="<%= reportContent %>">
           <input type="hidden" name="tasks" value="<%= JSON.stringify(tasks) %>">
-          <input type="hidden" name="boardId" value="<%= currentBoardId %>"
+          <input type="hidden" name="boardId" value="<%= currentBoardId %>">
           
           <div class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-outline-success" onclick="copyReportHTML()">
+              <i class="fas fa-copy me-1"></i> Copy for Outlook/Email
+            </button>
             <button type="button" class="btn btn-secondary" onclick="history.back()">Back</button>
             <button type="submit" class="btn btn-primary">Send Report</button>
           </div>
