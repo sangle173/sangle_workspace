@@ -1,0 +1,349 @@
+// filepath: /home/sangle/Documents/sangle_workspace/task-report-nodejs/src/models/taskModel.js
+const axios = require('axios');
+const { format, isWithinInterval } = require('date-fns');
+
+class TaskModel {
+  constructor() {
+    this.apiBaseUrl = process.env.API_BASE_URL || 'http://172.18.100.184/mini_project/public/api';
+  }
+  
+  setApiBaseUrl(url) {
+    if (url) {
+      try {
+        // Validate URL
+        new URL(url);
+        this.apiBaseUrl = url;
+        console.log(`API Base URL updated to: ${url}`);
+        return true;
+      } catch (error) {
+        console.error(`Invalid API URL format: ${url}`);
+        console.error(error);
+        return false;
+      }
+    }
+    return false;
+  }
+
+  async getAllTasks(boardId = process.env.DEFAULT_BOARD_ID || '1') {
+    try {
+      console.log(`Fetching tasks from: ${this.apiBaseUrl}/tasks?board_id=${boardId}`);
+      const response = await axios.get(`${this.apiBaseUrl}/tasks?board_id=${boardId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching tasks:', error.message);
+      console.error('API URL:', `${this.apiBaseUrl}/tasks?board_id=${boardId}`);
+      
+      if (error.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        console.error('API Response:', error.response.data);
+        console.error('Status:', error.response.status);
+        throw new Error(`API Error: ${error.response.status} - ${JSON.stringify(error.response.data)}`);
+      } else if (error.request) {
+        // The request was made but no response was received
+        throw new Error('No response received from API server');
+      } else {
+        // Something happened in setting up the request
+        throw new Error(`Error setting up request: ${error.message}`);
+      }
+    }
+  }
+
+  async getTasksByDate(date, boardId = process.env.DEFAULT_BOARD_ID) {
+    try {
+      const allTasks = await this.getAllTasks(boardId);
+      const formattedDate = format(new Date(date), 'yyyy-MM-dd');
+      
+      return allTasks.data.tasks.filter(task => 
+        task.created_at.startsWith(formattedDate)
+      );
+    } catch (error) {
+      console.error('Error fetching tasks by date:', error.message);
+      throw new Error('Failed to fetch tasks by date');
+    }
+  }
+
+  async getTasksByDateRange(startDate, endDate, boardId = process.env.DEFAULT_BOARD_ID) {
+    try {
+      const allTasks = await this.getAllTasks(boardId);
+      const start = new Date(startDate).getTime();
+      const end = new Date(endDate).getTime();
+      
+      return allTasks.data.tasks.filter(task => {
+        const taskDate = new Date(task.created_at).getTime();
+        return taskDate >= start && taskDate <= end;
+      });
+    } catch (error) {
+      console.error('Error fetching tasks by date range:', error.message);
+      throw new Error('Failed to fetch tasks by date range');
+    }
+  }
+
+  generateReportContent(tasks, board = { name: 'All Boards' }) {
+    if (!tasks || tasks.length === 0) {
+      return `No tasks found for the selected period in ${board.name}.`;
+    }
+
+    // Group tasks by both type and team
+    const tasksByType = {};
+    const tasksByTeam = {};
+    
+    tasks.forEach(task => {
+      // Group by working status (type)
+      const taskType = task.working_status.name || 'Other';
+      if (!tasksByType[taskType]) {
+        tasksByType[taskType] = [];
+      }
+      tasksByType[taskType].push(task);
+      
+      // Group by team name
+      const teamName = task.team.name || 'Unassigned';
+      if (!tasksByTeam[teamName]) {
+        tasksByTeam[teamName] = [];
+      }
+      tasksByTeam[teamName].push(task);
+    });
+
+    // Build HTML report content with inline CSS for Outlook compatibility
+    // Define consistent styles for reuse
+    const styles = {
+      container: 'font-family: Calibri, sans-serif; font-size: 11pt; color: #000000; line-height: 1.15;',
+      h1: 'font-family: Calibri, sans-serif; font-size: 16pt; font-weight: bold; color: #000000; margin-bottom: 6pt;',
+      h2: 'font-family: Calibri, sans-serif; font-size: 14pt; font-weight: bold; color: #000000; margin-top: 12pt; margin-bottom: 6pt; border-bottom: 1px solid #dddddd; padding-bottom: 3pt;',
+      h3: 'font-family: Calibri, sans-serif; font-size: 12pt; font-weight: bold; margin-bottom: 5pt;',
+      p: 'font-family: Calibri, sans-serif; font-size: 11pt; margin-bottom: 6pt;',
+      taskTitle: 'font-family: Calibri, sans-serif; font-size: 11pt; font-weight: bold;',
+      taskDetail: 'font-family: Calibri, sans-serif; font-size: 11pt; padding-left: 12pt; margin-top: 3pt;',
+      link: 'font-family: Calibri, sans-serif; font-size: 11pt; color: #0066cc; text-decoration: underline;'
+    };
+
+    let content = `
+      <div style="${styles.container}">
+        <h1 style="${styles.h1}">Task Report for ${board.name}</h1>
+        <p style="${styles.p}">Total Tasks: <strong style="font-family: Calibri, sans-serif;">${tasks.length}</strong></p>
+    `;
+    
+    // First section: Tasks by Type
+    content += `
+      <div style="margin-top: 20pt; margin-bottom: 15pt; font-family: Calibri, sans-serif;">
+        <h2 style="${styles.h2}">Tasks by Type</h2>
+    `;
+    
+    Object.entries(tasksByType).forEach(([type, typeTasks]) => {
+      content += `
+        <div style="margin-bottom: 15pt; font-family: Calibri, sans-serif;">
+          <h3 style="${styles.h3}">${type} (${typeTasks.length} tasks)</h3>
+      `;
+      
+      typeTasks.forEach(task => {
+        // Create Jira hyperlink
+        const jiraUrl = `https://jira.sonos.com/browse/${task.jira_id}`;
+        
+        content += `
+          <div style="margin-left: 10pt; margin-bottom: 8pt; font-family: Calibri, sans-serif;">
+            <div style="${styles.taskTitle}">
+              <a href="${jiraUrl}" style="${styles.link}" target="_blank">${task.jira_id}</a>: 
+              ${task.jira_summary} [${task.ticket_status.name}]
+            </div>
+        `;
+        
+        if (task.link_to_result) {
+          content += `<div style="padding-left: 20pt; font-family: Calibri, sans-serif;">Link to Results: <a href="${task.link_to_result}" style="${styles.link}" target="_blank">${task.link_to_result}</a></div>`;
+        }
+        
+        content += `</div>`;
+      });
+      
+      content += `</div>`;
+    });
+    
+    // Second section: Tasks by Team
+    content += `
+      </div>
+      <div style="margin-top: 30pt; margin-bottom: 15pt; font-family: Calibri, sans-serif;">
+        <h2 style="${styles.h2}">Tasks by Team</h2>
+    `;
+    
+    Object.entries(tasksByTeam).forEach(([team, teamTasks]) => {
+      content += `
+        <div style="margin-bottom: 20pt; font-family: Calibri, sans-serif;">
+          <h3 style="${styles.h3}">${team} (${teamTasks.length} tasks)</h3>
+      `;
+      
+      teamTasks.forEach(task => {
+        // Create Jira hyperlink
+        const jiraUrl = `https://jira.sonos.com/browse/${task.jira_id}`;
+        
+        content += `
+          <div style="margin-left: 10pt; margin-bottom: 8pt; font-family: Calibri, sans-serif;">
+            <div style="${styles.taskTitle}">
+              <a href="${jiraUrl}" style="${styles.link}" target="_blank">${task.jira_id}</a>: 
+              ${task.jira_summary} [${task.ticket_status.name}]
+            </div>
+        `;
+        
+        if (task.link_to_result) {
+          content += `<div style="padding-left: 20pt; font-family: Calibri, sans-serif;">Link to Results: <a href="${task.link_to_result}" style="${styles.link}" target="_blank">${task.link_to_result}</a></div>`;
+        }
+        
+        content += `</div>`;
+      });
+      
+      content += `</div>`;
+    });
+
+    content += `</div>`;
+    return content;
+  }
+
+  async sendEmailReport(emailConfig, tasks) {
+    // In a real application, this would send an email using nodemailer
+    // For now, we'll just simulate it
+    console.log('Email would be sent with config:', emailConfig);
+    console.log('Report content would include', tasks.length, 'tasks');
+    return true;
+  }
+
+  async getAllBoards() {
+    try {
+      console.log(`Fetching boards from: ${this.apiBaseUrl}/boards`);
+      const response = await axios.get(`${this.apiBaseUrl}/boards`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching boards:', error.message);
+      
+      if (error.response) {
+        console.error('API Response:', error.response.data);
+        console.error('Status:', error.response.status);
+        throw new Error(`API Error: ${error.response.status} - ${JSON.stringify(error.response.data)}`);
+      } else if (error.request) {
+        throw new Error('No response received from API server');
+      } else {
+        throw new Error(`Error setting up request: ${error.message}`);
+      }
+    }
+  }
+  
+  // Generate a plain table for email
+  generateTaskTable(tasks) {
+    // Define consistent font style for Outlook
+    const fontStyle = 'font-family: Calibri, sans-serif; font-size: 11pt;';
+    
+    if (!tasks || tasks.length === 0) {
+      return `<p style="${fontStyle}">No tasks found.</p>`;
+    }
+    
+    // Define consistent styles
+    const styles = {
+      h2: `font-family: Calibri, sans-serif; font-size: 14pt; font-weight: bold; color: #000000; margin-top: 20pt; margin-bottom: 10pt; border-bottom: 1px solid #dddddd; padding-bottom: 3pt;`,
+      h3: `font-family: Calibri, sans-serif; font-size: 12pt; font-weight: bold; margin-top: 15px; margin-bottom: 5px;`,
+      taskTitle: `font-family: Calibri, sans-serif; font-size: 11pt; font-weight: bold;`,
+      taskDetail: `font-family: Calibri, sans-serif; font-size: 11pt; padding-left: 12pt; margin-top: 3pt;`,
+      link: 'color: #0066cc; text-decoration: underline;',
+    };
+    
+    // Group tasks by both type and team
+    const tasksByType = {};
+    const tasksByTeam = {};
+    
+    tasks.forEach(task => {
+      // Group by type (working status)
+      const taskType = task.working_status.name || 'Other';
+      if (!tasksByType[taskType]) {
+        tasksByType[taskType] = [];
+      }
+      tasksByType[taskType].push(task);
+      
+      // Group by team
+      const teamName = task.team.name || 'Unassigned';
+      if (!tasksByTeam[teamName]) {
+        tasksByTeam[teamName] = [];
+      }
+      tasksByTeam[teamName].push(task);
+    });
+    
+    let tableHtml = '';
+    
+    // Section 1: Tasks by Type
+    tableHtml += `<h2 style="${styles.h2}">Tasks by Type</h2>`;
+    
+    // Create a list for each task type
+    Object.entries(tasksByType).forEach(([type, typeTasks]) => {
+      tableHtml += `
+        <div style="margin-bottom: 15pt;">
+          <h3 style="${styles.h3}">${type} (${typeTasks.length} tasks)</h3>
+      `;
+      
+      typeTasks.forEach(task => {
+        const jiraUrl = `https://jira.sonos.com/browse/${task.jira_id}`;
+        
+        tableHtml += `
+          <div style="margin-left: 10pt; margin-bottom: 8pt; font-family: Calibri, sans-serif;">
+            <div style="font-family: Calibri, sans-serif; font-size: 11pt; font-weight: bold;">
+              <a href="${jiraUrl}" style="${styles.link}" target="_blank">${task.jira_id}</a>: 
+              ${task.jira_summary} [${task.ticket_status.name}]
+            </div>
+        `;
+        
+        if (task.link_to_result) {
+          tableHtml += `<div style="padding-left: 20pt; font-family: Calibri, sans-serif;">Link to Results: <a href="${task.link_to_result}" style="${styles.link}" target="_blank">${task.link_to_result}</a></div>`;
+        }
+        
+        tableHtml += `</div>`;
+      });
+      
+      tableHtml += `
+        <div style="margin-top: 5pt; margin-bottom: 10pt; font-family: Calibri, sans-serif; font-weight: bold;">
+          Total ${type} Tasks: ${typeTasks.length}
+        </div>
+      </div>
+      `;
+    });
+    
+    // Section 2: Tasks by Team
+    tableHtml += `<h2 style="${styles.h2}">Tasks by Team</h2>`;
+    
+    // Create a list for each team
+    Object.entries(tasksByTeam).forEach(([team, teamTasks]) => {
+      tableHtml += `
+        <div style="margin-bottom: 15pt;">
+          <h3 style="${styles.h3}">${team} (${teamTasks.length} tasks)</h3>
+      `;
+      
+      teamTasks.forEach(task => {
+        const jiraUrl = `https://jira.sonos.com/browse/${task.jira_id}`;
+        
+        tableHtml += `
+          <div style="margin-left: 10pt; margin-bottom: 8pt; font-family: Calibri, sans-serif;">
+            <div style="font-family: Calibri, sans-serif; font-size: 11pt; font-weight: bold;">
+              <a href="${jiraUrl}" style="${styles.link}" target="_blank">${task.jira_id}</a>: 
+              ${task.jira_summary} [${task.ticket_status.name}]
+            </div>
+        `;
+        
+        if (task.link_to_result) {
+          tableHtml += `<div style="padding-left: 20pt; font-family: Calibri, sans-serif;">Link to Results: <a href="${task.link_to_result}" style="${styles.link}" target="_blank">${task.link_to_result}</a></div>`;
+        }
+        
+        tableHtml += `</div>`;
+      });
+      
+      tableHtml += `
+        <div style="margin-top: 5pt; margin-bottom: 10pt; font-family: Calibri, sans-serif; font-weight: bold;">
+          Total ${team} Tasks: ${teamTasks.length}
+        </div>
+      </div>
+      `;
+    });
+    
+    tableHtml += `
+      <div style="margin-top: 20px; ${fontStyle} font-weight: bold;">
+        Total Tasks: ${tasks.length}
+      </div>
+    `;
+    
+    return tableHtml;
+  }
+}
+
+module.exports = new TaskModel();
