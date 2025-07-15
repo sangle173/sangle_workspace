@@ -168,41 +168,38 @@ class TaskModel {
       summaryLabel: 'font-size: 10pt; color: #666;'
     };
     
+    // Replace Task Report Summary section with Bug found summary
+    const bugCount = summary.byType['Bugs Reported'] || 0;
     let content = `
       <div style="${styles.container}">
         <div style="text-align: left !important;">
-          <h1 style="${styles.h1}; text-align: left !important;">Task Report Summary</h1>
+          <h1 style="${styles.h1}; text-align: left !important;">Bug found (${bugCount}):</h1>
         </div>
-        
         <!-- Summary Section - Card Style -->
         <div style="margin-bottom: 20pt; text-align: center;">
           <div style="${styles.summaryBox}">
             <div style="${styles.summaryNumber}">${summary.totalTasks}</div>
             <div style="${styles.summaryLabel}">Total Tasks</div>
           </div>
-          
-          <!-- Add more summary cards for top types -->
           ${Object.keys(summary.byType).length > 0 ? 
             Object.entries(summary.byType)
               .sort((a, b) => b[1] - a[1])
-              .slice(0, 3)
               .map(([type, count]) => 
                 `<div style="${styles.summaryBox}">
                   <div style="${styles.summaryNumber}">${count}</div>
-                  <div style="${styles.summaryLabel}">${type}</div>
+                  <div style="${styles.summaryLabel}">${type === 'Bugs Reported' ? 'Bug found' : type}</div>
                 </div>`
               ).join('') 
             : ''}
         </div>
-        
-        <!-- Team Breakdown Matrix Table -->
+        <!-- Team Task Matrix Table -->
         <h2 style="${styles.h2}">Team Task Matrix</h2>
         <table style="${styles.table}; background-color: #e9f1fb;">
           <tr>
             <th style="${styles.th}" rowspan="2">Team</th>
             <th style="${styles.th}" colspan="2">Testing requests</th>
             <th style="${styles.th}" colspan="2">Tickets verification</th>
-            <th style="${styles.th}" rowspan="2">Bugs reported</th>
+            <th style="${styles.th}" rowspan="2">Bug found</th>
           </tr>
           <tr>
             <th style="${styles.th}">Done</th>
@@ -210,7 +207,6 @@ class TaskModel {
             <th style="${styles.th}">Done</th>
             <th style="${styles.th}">In-progress</th>
           </tr>
-          
           ${Object.entries(summary.teamBreakdown)
             .map(([teamName, teamTypes]) => `
               <tr>
@@ -225,7 +221,6 @@ class TaskModel {
           }
         </table>
       </div>
-      
       <h1 style="${styles.h1}">Details of the assignment:</h1>
     `;
     
@@ -313,15 +308,25 @@ class TaskModel {
             `;
             
             // For other types, show working status as before
+            const statusOrder = [
+              'Blocked',
+              'Reopened',
+              'Closed',
+              'Done',
+              'Resolved',
+              'In Verification',
+              'Ready To Verify',
+              'In Progress',
+              'Open'
+            ];
             Object.entries(typeData.byWorkingStatus)
               .sort(([a], [b]) => {
-                // Sort: Done first, then In-progress, then others
-                const normalize = s => s.replace(/[-_ ]/gi, '').toLowerCase();
-                if (normalize(a) === 'done') return -1;
-                if (normalize(b) === 'done') return 1;
-                if (normalize(a).includes('inprogress')) return -1;
-                if (normalize(b).includes('inprogress')) return 1;
-                return a.localeCompare(b);
+                const idxA = statusOrder.findIndex(s => s.toLowerCase() === a.toLowerCase());
+                const idxB = statusOrder.findIndex(s => s.toLowerCase() === b.toLowerCase());
+                if (idxA === -1 && idxB === -1) return a.localeCompare(b);
+                if (idxA === -1) return 1;
+                if (idxB === -1) return -1;
+                return idxA - idxB;
               })
               .forEach(([workingStatus, workingStatusTasks]) => {
                 // Show icon only next to the working status label
@@ -537,16 +542,13 @@ class TaskModel {
             <div style="${styles.summaryNumber}">${summary.totalTasks}</div>
             <div style="${styles.summaryLabel}">Total Tasks</div>
           </div>
-          
-          <!-- Add more summary cards for top types -->
           ${Object.keys(summary.byType).length > 0 ? 
             Object.entries(summary.byType)
               .sort((a, b) => b[1] - a[1])
-              .slice(0, 3)
               .map(([type, count]) => 
                 `<div style="${styles.summaryBox}">
                   <div style="${styles.summaryNumber}">${count}</div>
-                  <div style="${styles.summaryLabel}">${type}</div>
+                  <div style="${styles.summaryLabel}">${type === 'Bugs Reported' ? 'Bug found' : type}</div>
                 </div>`
               ).join('') 
             : ''}
@@ -559,7 +561,7 @@ class TaskModel {
             <th style="${styles.th}" rowspan="2">Team</th>
             <th style="${styles.th}" colspan="2">Testing requests</th>
             <th style="${styles.th}" colspan="2">Tickets verification</th>
-            <th style="${styles.th}" rowspan="2">Bugs reported</th>
+            <th style="${styles.th}" rowspan="2">Bug found</th>
           </tr>
           <tr>
             <th style="${styles.th}">Done</th>
@@ -629,15 +631,25 @@ class TaskModel {
             `;
             
             // For other types, show working status as before
+            const statusOrder = [
+              'Blocked',
+              'Reopened',
+              'Closed',
+              'Done',
+              'Resolved',
+              'In Verification',
+              'Ready To Verify',
+              'In Progress',
+              'Open'
+            ];
             Object.entries(typeData.byWorkingStatus)
               .sort(([a], [b]) => {
-                // Sort: Done first, then In-progress, then others
-                const normalize = s => s.replace(/[-_ ]/gi, '').toLowerCase();
-                if (normalize(a) === 'done') return -1;
-                if (normalize(b) === 'done') return 1;
-                if (normalize(a).includes('inprogress')) return -1;
-                if (normalize(b).includes('inprogress')) return 1;
-                return a.localeCompare(b);
+                const idxA = statusOrder.findIndex(s => s.toLowerCase() === a.toLowerCase());
+                const idxB = statusOrder.findIndex(s => s.toLowerCase() === b.toLowerCase());
+                if (idxA === -1 && idxB === -1) return a.localeCompare(b);
+                if (idxA === -1) return 1;
+                if (idxB === -1) return -1;
+                return idxA - idxB;
               })
               .forEach(([workingStatus, workingStatusTasks]) => {
                 let statusLabel = workingStatus;
