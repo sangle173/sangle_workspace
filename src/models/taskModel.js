@@ -176,51 +176,64 @@ class TaskModel {
           <h1 style="${styles.h1}; text-align: left !important;">Bug found (${bugCount}):</h1>
         </div>
         <!-- Summary Section - Card Style -->
-        <div style="margin-bottom: 20pt; text-align: center;">
-          <div style="${styles.summaryBox}">
-            <div style="${styles.summaryNumber}">${summary.totalTasks}</div>
-            <div style="${styles.summaryLabel}">Total Tasks</div>
+        <div style="margin-bottom: 20pt; text-align: left;">
+          <div style="display: flex; justify-content: flex-start; gap: 20px;">
+            <div style="${styles.summaryBox}">
+              <div style="${styles.summaryNumber}">${summary.totalTasks}</div>
+              <div style="${styles.summaryLabel}">Total Tasks</div>
+            </div>
+            ${Object.keys(summary.byType).length > 0 ? 
+              Object.entries(summary.byType)
+                .sort((a, b) => b[1] - a[1])
+                .map(([type, count]) => {
+                  let bugCount = count;
+                  if (type === 'Bugs Reported' && summary.teamBreakdown) {
+                    bugCount = Object.values(summary.teamBreakdown).reduce((acc, teamTypes) => {
+                      if (teamTypes['Bugs Reported']) {
+                        return acc + (teamTypes['Bugs Reported'].Done || 0) + (teamTypes['Bugs Reported']['In-progress'] || 0);
+                      }
+                      return acc;
+                    }, 0);
+                  }
+                  return `<div style="${styles.summaryBox}">
+                    <div style="${styles.summaryNumber}">${type === 'Bugs Reported' ? bugCount : count}</div>
+                    <div style="${styles.summaryLabel}">${type === 'Bugs Reported' ? 'Bug found' : type}</div>
+                  </div>`;
+                }).join('') 
+              : ''}
           </div>
-          ${Object.keys(summary.byType).length > 0 ? 
-            Object.entries(summary.byType)
-              .sort((a, b) => b[1] - a[1])
-              .map(([type, count]) => 
-                `<div style="${styles.summaryBox}">
-                  <div style="${styles.summaryNumber}">${count}</div>
-                  <div style="${styles.summaryLabel}">${type === 'Bugs Reported' ? 'Bug found' : type}</div>
-                </div>`
-              ).join('') 
-            : ''}
         </div>
-        <!-- Team Task Matrix Table -->
-        <h2 style="${styles.h2}">Team Task Matrix</h2>
-        <table style="${styles.table}; background-color: #e9f1fb;">
-          <tr>
-            <th style="${styles.th}" rowspan="2">Team</th>
-            <th style="${styles.th}" colspan="2">Testing requests</th>
-            <th style="${styles.th}" colspan="2">Tickets verification</th>
-            <th style="${styles.th}" rowspan="2">Bug found</th>
-          </tr>
-          <tr>
-            <th style="${styles.th}">Done</th>
-            <th style="${styles.th}">In-progress</th>
-            <th style="${styles.th}">Done</th>
-            <th style="${styles.th}">In-progress</th>
-          </tr>
-          ${Object.entries(summary.teamBreakdown)
-            .map(([teamName, teamTypes]) => `
-              <tr>
-                <td style="${styles.td}">${teamName}</td>
-                <td style="${styles.td}">${teamTypes['Testing Requests']?.Done || 0}</td>
-                <td style="${styles.td}">${teamTypes['Testing Requests']?.['In-progress'] || 0}</td>
-                <td style="${styles.td}">${teamTypes['Tickets Verification']?.Done || 0}</td>
-                <td style="${styles.td}">${teamTypes['Tickets Verification']?.['In-progress'] || 0}</td>
-                <td style="${styles.td}">${teamTypes['Bugs Reported'] ? (teamTypes['Bugs Reported'].Done || 0) + (teamTypes['Bugs Reported']['In-progress'] || 0) : 0}</td>
-              </tr>
-            `).join('')
-          }
-        </table>
+        <h2 style="${styles.h2}; text-align: left;">Team Task Matrix</h2>
+        <div style="display: block; text-align: left;">
+          <table style="${styles.table}; background-color: #e9f1fb;">
+            <tr>
+              <th style="${styles.th}" rowspan="2">Team</th>
+              <th style="${styles.th}" colspan="2">Testing requests</th>
+              <th style="${styles.th}" colspan="2">Tickets verification</th>
+              <th style="${styles.th}" rowspan="2">Bug found</th>
+            </tr>
+            <tr>
+              <th style="${styles.th}">Done</th>
+              <th style="${styles.th}">In-progress</th>
+              <th style="${styles.th}">Done</th>
+              <th style="${styles.th}">In-progress</th>
+            </tr>
+            ${Object.entries(summary.teamBreakdown)
+              .map(([teamName, teamTypes]) => `
+                <tr>
+                  <td style="${styles.td}">${teamName}</td>
+                  <td style="${styles.td}">${teamTypes['Testing Requests']?.Done || 0}</td>
+                  <td style="${styles.td}">${teamTypes['Testing Requests']?.['In-progress'] || 0}</td>
+                  <td style="${styles.td}">${teamTypes['Tickets Verification']?.Done || 0}</td>
+                  <td style="${styles.td}">${teamTypes['Tickets Verification']?.['In-progress'] || 0}</td>
+                  <td style="${styles.td}">${teamTypes['Bugs Reported'] ? (teamTypes['Bugs Reported'].Done || 0) + (teamTypes['Bugs Reported']['In-progress'] || 0) : 0}</td>
+                </tr>
+              `).join('')
+            }
+          </table>
+        </div>
       </div>
+      
       <h1 style="${styles.h1}">Details of the assignment:</h1>
     `;
     
@@ -535,54 +548,66 @@ class TaskModel {
         <div style="text-align: left !important;">
           <h1 style="${styles.h1}; text-align: left !important;">Task Report Summary</h1>
         </div>
-        
         <!-- Summary Section - Card Style -->
-        <div style="margin-bottom: 20pt; text-align: center;">
-          <div style="${styles.summaryBox}">
-            <div style="${styles.summaryNumber}">${summary.totalTasks}</div>
-            <div style="${styles.summaryLabel}">Total Tasks</div>
+        <div style="margin-bottom: 20pt; text-align: left;">
+          <div style="display: flex; justify-content: flex-start; gap: 20px;">
+            <div style="${styles.summaryBox}">
+              <div style="${styles.summaryNumber}">${summary.totalTasks}</div>
+              <div style="${styles.summaryLabel}">Total Tasks</div>
+            </div>
+            ${Object.keys(summary.byType).length > 0 ? 
+              Object.entries(summary.byType)
+                .sort((a, b) => b[1] - a[1])
+                .map(([type, count]) => {
+                  let bugCount = count;
+                  if (type === 'Bugs Reported' && summary.teamBreakdown) {
+                    bugCount = Object.values(summary.teamBreakdown).reduce((acc, teamTypes) => {
+                      if (teamTypes['Bugs Reported']) {
+                        return acc + (teamTypes['Bugs Reported'].Done || 0) + (teamTypes['Bugs Reported']['In-progress'] || 0);
+                      }
+                      return acc;
+                    }, 0);
+                  }
+                  return `<div style="${styles.summaryBox}">
+                    <div style="${styles.summaryNumber}">${type === 'Bugs Reported' ? bugCount : count}</div>
+                    <div style="${styles.summaryLabel}">${type === 'Bugs Reported' ? 'Bug found' : type}</div>
+                  </div>`;
+                }).join('') 
+              : ''}
           </div>
-          ${Object.keys(summary.byType).length > 0 ? 
-            Object.entries(summary.byType)
-              .sort((a, b) => b[1] - a[1])
-              .map(([type, count]) => 
-                `<div style="${styles.summaryBox}">
-                  <div style="${styles.summaryNumber}">${count}</div>
-                  <div style="${styles.summaryLabel}">${type === 'Bugs Reported' ? 'Bug found' : type}</div>
-                </div>`
-              ).join('') 
-            : ''}
         </div>
         
         <!-- Team Breakdown Matrix Table -->
-        <h2 style="${styles.h2}">Team Task Matrix</h2>
-        <table style="${styles.table}; background-color: #e9f1fb;">
-          <tr>
-            <th style="${styles.th}" rowspan="2">Team</th>
-            <th style="${styles.th}" colspan="2">Testing requests</th>
-            <th style="${styles.th}" colspan="2">Tickets verification</th>
-            <th style="${styles.th}" rowspan="2">Bug found</th>
-          </tr>
-          <tr>
-            <th style="${styles.th}">Done</th>
-            <th style="${styles.th}">In-progress</th>
-            <th style="${styles.th}">Done</th>
-            <th style="${styles.th}">In-progress</th>
-          </tr>
-          
-          ${Object.entries(summary.teamBreakdown)
-            .map(([teamName, teamTypes]) => `
-              <tr>
-                <td style="${styles.td}">${teamName}</td>
-                <td style="${styles.td}">${teamTypes['Testing Requests']?.Done || 0}</td>
-                <td style="${styles.td}">${teamTypes['Testing Requests']?.['In-progress'] || 0}</td>
-                <td style="${styles.td}">${teamTypes['Tickets Verification']?.Done || 0}</td>
-                <td style="${styles.td}">${teamTypes['Tickets Verification']?.['In-progress'] || 0}</td>
-                <td style="${styles.td}">${teamTypes['Bugs Reported'] ? (teamTypes['Bugs Reported'].Done || 0) + (teamTypes['Bugs Reported']['In-progress'] || 0) : 0}</td>
-              </tr>
-            `).join('')
-          }
-        </table>
+        <h2 style="${styles.h2}; text-align: left;">Team Task Matrix</h2>
+        <div style="display: block; text-align: left;">
+          <table style="${styles.table}; background-color: #e9f1fb;">
+            <tr>
+              <th style="${styles.th}" rowspan="2">Team</th>
+              <th style="${styles.th}" colspan="2">Testing requests</th>
+              <th style="${styles.th}" colspan="2">Tickets verification</th>
+              <th style="${styles.th}" rowspan="2">Bug found</th>
+            </tr>
+            <tr>
+              <th style="${styles.th}">Done</th>
+              <th style="${styles.th}">In-progress</th>
+              <th style="${styles.th}">Done</th>
+              <th style="${styles.th}">In-progress</th>
+            </tr>
+            
+            ${Object.entries(summary.teamBreakdown)
+              .map(([teamName, teamTypes]) => `
+                <tr>
+                  <td style="${styles.td}">${teamName}</td>
+                  <td style="${styles.td}">${teamTypes['Testing Requests']?.Done || 0}</td>
+                  <td style="${styles.td}">${teamTypes['Testing Requests']?.['In-progress'] || 0}</td>
+                  <td style="${styles.td}">${teamTypes['Tickets Verification']?.Done || 0}</td>
+                  <td style="${styles.td}">${teamTypes['Tickets Verification']?.['In-progress'] || 0}</td>
+                  <td style="${styles.td}">${teamTypes['Bugs Reported'] ? (teamTypes['Bugs Reported'].Done || 0) + (teamTypes['Bugs Reported']['In-progress'] || 0) : 0}</td>
+                </tr>
+              `).join('')
+            }
+          </table>
+        </div>
       </div>
       
       <h1 style="${styles.h1}">Details of the assignment:</h1>
